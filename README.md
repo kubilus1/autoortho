@@ -142,3 +142,11 @@ that.
 ## Other projects and links
 * (Ortho4XP) [https://github.com/oscarpilote/Ortho4XP]
 * (Slippy Mapy Tilenames) [https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames]
+
+## Warnings, Warranty, etc
+
+This project is provided free of charge and is not warrantied in any way.  Use
+at your own risk.
+
+Accessing map data from 3rd parties may or may not be allowed and is up to you
+the end user to determine and use appropriately.
