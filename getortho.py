@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import subprocess
+import collections
 from io import BytesIO
 import threading
 from urllib.request import urlopen, Request
@@ -50,6 +51,18 @@ class GetOrtho(object):
     chunk_condition = threading.Condition()
     active_chunks = []
 
+    tile_fetch_times = {}
+    tile_averages = {
+        20:-1,
+        19:-1,
+        18:-1,
+        17:-1,
+        16:-1,
+        15:-1,
+        14:-1,
+        13:-1,
+        12:-1
+    }
 
     def __init__(self, chunk_threads=16, tile_threads=4, dds_convert=True):
         self.dds_convert = dds_convert
@@ -134,7 +147,7 @@ class GetOrtho(object):
             "ARC": f"http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{row}/{col}",
             "USGS": f"https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{zoom}/{row}/{col}"
         }
-        url = MAPTYPES[maptype]
+        url = MAPTYPES[maptype.upper()]
 
         try:
             chunks[f"{row}-{col}-{zoom}"] = do_url(
@@ -227,6 +240,7 @@ class GetOrtho(object):
         #     return
 
 
+        zoom = int(zoom)
         wait_for_tile = False
         with self.tile_condition:
             if outfile not in self.active_tiles:
@@ -274,8 +288,12 @@ class GetOrtho(object):
             new_im.save(outfile, "JPEG")
 
         end_time = time.time()
-        log.info(f"Retrieved tile {outfile} : {tilerow} x {tilecol} x {zoom} in %s seconds" % (end_time - start_time))
+        tile_time = end_time - start_time
+        log.info(f"Retrieved tile {outfile} : {tilerow} x {tilecol} x {zoom} in {tile_time} seconds")
         #new_im.save(outfile, "DDS")
+        
+        self.tile_fetch_times.setdefault(zoom, collections.deque(maxlen=10)).append(tile_time)
+        self.tile_averages[zoom] = sum(self.tile_fetch_times.get(zoom))/len(self.tile_fetch_times.get(zoom))      
         
         #with self.tile_lock:
         #    self.active_tiles.remove(tile_id)

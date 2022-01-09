@@ -136,8 +136,9 @@ that.
 
 ## TODOS
 
+* See if this will work on Windows with WinFSP
 * Some kind of maximum cache size cleanup mechanism
-* Can we somehow pull in max resolution imagery for the starting location?
+* ~Can we somehow pull in max resolution imagery for the starting location?~  Done
 
 ## Other projects and links
 * (Ortho4XP) [https://github.com/oscarpilote/Ortho4XP]
