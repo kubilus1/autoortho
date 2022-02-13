@@ -242,14 +242,22 @@ class GetOrtho(object):
 
         zoom = int(zoom)
         wait_for_tile = False
+        wait_start_time = time.time()
         with self.tile_condition:
             if outfile not in self.active_tiles:
                  self.active_tiles.append(outfile)
             else:
-                while outfile in self.active_tiles:
+                while outfile in self.active_tiles and not os.path.exists(outfile):
                     wait_for_tile = True
                     log.info(f"{outfile} already being retrieved.  Waiting...")
-                    self.tile_condition.wait()
+                    self.tile_condition.wait(2)
+            if os.path.exists(outfile):
+                log.info(f"{outfile} already exists.  Notify and exit.")
+                if outfile in self.active_tiles:
+                    self.active_tiles.remove(outfile)
+                self.tile_condition.notify_all()
+                return
+
 
         if wait_for_tile:
             log.info(f"Done waiting for other process to retreive {outfile}.  Exiting.")

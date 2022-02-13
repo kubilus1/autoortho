@@ -56,7 +56,7 @@ class FlightFollower(object):
         self.sock = socket.socket(socket.AF_INET, # Internet
                             socket.SOCK_DGRAM) # UDP
 
-        self.sock.settimeout(5.0)
+        self.sock.settimeout(2.0)
         t = threading.Thread(target=self.start)
         t.start()
 
@@ -93,7 +93,7 @@ class FlightFollower(object):
             self.hdg = hdg
             self.spd = spd
 
-            time.sleep(2)
+            time.sleep(0.5)
 
 
 class DSF(object):
@@ -239,33 +239,46 @@ class TileCacher(object):
             log.info("Creating cache dir.")
             os.makedirs(self.cache_dir)
 
-    def get_quick(self, row, col, map_type, zoom, min_zoom=0, priority=1):
+
+    def _get_cached_tile(self, row, col, map_type, zoom, min_zoom=0):
         zoom = int(zoom)
         if not min_zoom:
             min_zoom = zoom - 3
 
         found = False
         for z in range(zoom, (min_zoom-1), -1):
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{z}.dds")
-
+            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{z}.dds")
+            log.info(f"Check cache for {cache_file}...")
             with self.go.tile_condition:
-                #while cache_file in self.go.active_tiles:
-                #    log.info(f"{cache_file} is being actively worked on!")
-                #    self.go.tile_condition.wait()
                 if cache_file in self.go.active_tiles:
                     log.info(f"{cache_file} is being actively worked on.  Be quick, so continue.")
                     continue
 
                 if os.path.exists(cache_file):
-                    log.debug(f"Cache HIT!. Found cached object: {cache_file}")
+                    log.info(f"Cache HIT!. Found cached object: {cache_file}")
                     found = True
                     break
 
         if not found:
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{min_zoom}.dds")
+            return None
+        else:
+            log.info(f"Cache file found! {cache_file}")
+            return cache_file
+
+
+    def get_quick(self, row, col, map_type, zoom, min_zoom=0, priority=1):
+        zoom = int(zoom)
+        if not min_zoom:
+            min_zoom = zoom - 3
+
+        cache_file = self._get_cached_tile(row, col, map_type, zoom, min_zoom)
+
+        if not cache_file:
+            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{min_zoom}.dds")
             log.info(f"Cache MISS.  Retrieving quick tile {cache_file}")
             while cache_file in self.go.active_tiles:
                 log.info(f"{cache_file} is being actively worked on!")
+                # Waiting isn't really quick!
                 self.go.tile_condition.wait()
                 if os.path.exists(cache_file):
                     log.info(f"{cache_file} is ready.")
@@ -281,7 +294,7 @@ class TileCacher(object):
 
     def get_background(self, row, col, map_type, zoom):
         log.info(f"Tile queue size: {self.go.tile_work_queue.qsize()}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
-        cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}.dds")
+        cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{zoom}.dds")
         if os.path.exists(cache_file):
             log.debug(f"Cache HIT! Found high quality cached object: {cache_file}")
         else:
@@ -289,7 +302,7 @@ class TileCacher(object):
             self.go.get_background_tile(int(col), int(row), int(zoom), maptype=map_type, outfile=cache_file)
 
     def get_best(self, row, col, map_type, zoom):
-        cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}.dds")
+        cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{zoom}.dds")
         if os.path.exists(cache_file):
             log.debug(f"Cache HIT! Found high quality cached object: {cache_file}")
         #elif cache_file in self.go.active_tiles:
@@ -305,7 +318,19 @@ class TileCacher(object):
         return cache_file
 
     def get_deadline(self, row, col, map_type, zoom, quick_zoom=0, min_zoom=0, deadline=0.25, priority=5):
+        """
+            row = Row to retrieve
+            col = Column to retrieve
+            map_type = Type of map: BI, EOX, et
+            zoom = Original zoom level for row,col coordinates
+            quick_zoom = reduced zoom level fidelity to use (optional)
+            min_zoom = The minimum zoom level to auto reduce to, if needed
+            deadline = Length of time to allow for retrieval
+            priority = Priority for tile fetch.  0 being top priority
+        """
 
+
+        # Determine best zoom level we could reasonably retrieve by deadline
         req_zoom = quick_zoom if quick_zoom else zoom
         for z in range(req_zoom, req_zoom-3, -1):
             t = self.go.tile_averages.get(z, 99)
@@ -320,22 +345,51 @@ class TileCacher(object):
             log.info(f"We likely won't get {req_zoom} by {deadline}.  Reduce zoom to {best_zoom}")
             quick_zoom = best_zoom
 
+        # Check to see if we already have a cached tile available to us
+        cache_file = self._get_cached_tile(row, col, map_type, zoom, best_zoom)
+        if cache_file:
+            log.debug(f"DEADLINE Cache HIT! Found cached object: {cache_file}")
+            return cache_file
+
         if quick_zoom:
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{quick_zoom}.dds")
+            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{quick_zoom}.dds")
         else:
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}.dds")
+            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{zoom}.dds")
+
 
         if os.path.exists(cache_file):
-            log.debug(f"DEADLINE Cache HIT! Found cached object: {cache_file}")
-            if req_zoom > best_zoom and (deadline - self.go.tile_averages[best_zoom])/deadline >= 0.5:
-                log.info("Big difference with deadline.  Reset.")
-                self.go.tile_averages[best_zoom+1] = -1
+            log.warning(f"{cache_file} exists.  We shouldn't ever get here.")
             return cache_file
-        else:
-            log.info(f"Cache MISS. Background fetch high quality tile {cache_file}")
-            log.info(f"Active tile size: {len(self.go.active_tiles)}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
-            self.go.get_background_tile(int(col), int(row), int(zoom),
-                    quick_zoom=quick_zoom, maptype=map_type, outfile=cache_file, priority=priority)
+        # if os.path.exists(cache_file):
+        #     log.debug(f"DEADLINE Cache HIT! Found cached object: {cache_file}")
+        #     if req_zoom > best_zoom and (deadline - self.go.tile_averages[best_zoom])/deadline >= 0.5:
+        #         log.info("Big difference with deadline.  Reset.")
+        #         self.go.tile_averages[best_zoom+1] = -1
+        #     return cache_file
+        # else:
+        #     log.info(f"Cache MISS. Background fetch high quality tile {cache_file}")
+        #     log.info(f"Active tile size: {len(self.go.active_tiles)}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
+        #     self.go.get_background_tile(int(col), int(row), int(zoom),
+        #             quick_zoom=quick_zoom, maptype=map_type, outfile=cache_file, priority=priority)
+
+        log.info(f"Cache MISS. Background fetch high quality tile {cache_file}")
+        log.info(f"Active tile size: {len(self.go.active_tiles)}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
+        self.go.get_background_tile(int(col), int(row), int(zoom),
+                quick_zoom=quick_zoom, maptype=map_type, outfile=cache_file, priority=priority)
+
+        if req_zoom > best_zoom:
+
+            log.info(f"We wanted zoom {req_zoom} but ran out of time. Background fetch {best_zoom+1}") 
+            # Background fetch a higher quality tile at lower priority
+            self.go.get_background_tile(
+                    int(col), 
+                    int(row), 
+                    int(zoom),
+                    quick_zoom=best_zoom+1,
+                    maptype=map_type, 
+                    outfile=os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{best_zoom+1}.dds"),
+                    priority=best_zoom + 1
+            )
 
         deadline_reached = False
         start_time = time.time()
@@ -356,13 +410,14 @@ class TileCacher(object):
                 if req_zoom > best_zoom and (deadline - actual_time)/deadline >= 0.5:
                     log.info("Beat deadline by a lot.  Reset.")
                     self.go.tile_averages[best_zoom+1] = -1
+                
+                #cache_file = self.get_quick(int(row), int(col), map_type, zoom, min_zoom)
+                cache_file = self._get_cached_tile(int(row), int(col), map_type, zoom, min_zoom)
                 return cache_file
             else:
                 log.info(f"DEADLINE reached.  No tile yet.")
 
         log.warning(f"DEADLINE reached for {cache_file}.  Get quickly instead ...")
-        if not min_zoom:
-            min_zoom = int(zoom) - 3
         cache_file = self.get_quick(int(row), int(col), map_type, zoom, min_zoom)
         return cache_file
 
@@ -444,6 +499,13 @@ class AutoOrtho(Operations):
                     #log.info(f"Third access for {path}.  Checking if an airport tile ...")
                     if os.path.basename(path) in self.dsf_parser.airport_tiles:
                         log.info(f"Starting zone tile detected: {path}!")
+                        # if f"{row+16}_{col}_{maptype}{zoom}.dds" in self.dsf_parser.airport_tiles:
+                        #     self.tc.get_background(int(col), int(row)+16,
+                        #             maptype, int(zoom))
+
+                        # if f"{row}_{col+16}_{maptype}{zoom}.dds" in self.dsf_parser.airport_tiles:
+                        #     self.tc.get_background(int(col)+16, int(row),
+                        #             maptype, int(zoom))
                         full_path = self.tc.get_best(row, col, maptype, zoom)
                     else:
                         full_path = self.tc.get_quick(row, col, maptype, zoom)
