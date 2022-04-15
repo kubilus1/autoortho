@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+
+import os
+import time
+import pytest
+import psutil
+import getortho
+
+
+@pytest.fixture
+def chunk():
+    return getortho.Chunk(2176, 3232, 'EOX', 13)
+
+def test_chunk_get(chunk):
+    ret = chunk.get()
+    assert ret == True
+
+def test_null_chunk():
+    c = getortho.Chunk(2176, 3232, 'Null', 13)
+    ret = c.get()
+    assert ret
+
+def test_chunk_getter():
+    c = getortho.Chunk(2176, 3232, 'EOX', 13)
+    getortho.chunk_getter.submit(c)
+    ready = c.ready.wait(5)
+    assert ready == True
+
+@pytest.fixture
+def tile(tmpdir):
+    t = getortho.Tile(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
+    return t
+
+def test_get_bytes(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    ret = tile.get_bytes(131073)
+    assert ret
+
+def test_get_mipmap(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    ret = tile.get_mipmap(5)
+    assert ret
+
+def test_get_bytes_all(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    ret = tile.get_bytes(131072)
+    ret = tile.get()
+    assert ret
+
+def test_get_header(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    ret = tile.get_header()
+    assert ret
+
+def test_get_null_tile(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    ret = tile.get()
+    assert ret
+
+def test_tile_fetch(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
+    ret = tile.fetch()
+    assert ret == True
+    assert len(tile.chunks[13]) == (tile.width * tile.height)
+    #getortho.chunk_getter.stop() 
+    #time.sleep(10)
+
+def _test_tile_fetch_many(tmpdir):
+    start_col = 2176
+    start_row = 3232
+
+    #for c in range(2176, 2432, 16):
+    #    for r in range(3232, 3488, 16):
+    for c in range(2176, 2200, 16):
+        for r in range(3232, 3264, 16):
+            t = getortho.Tile(c, r, 'BI', 13, cache_dir=tmpdir)
+            t.get()
+            #t.fetch()
+            #print(len(t.chunks))
+
+    #assert True == False
+
+
+def test_tile_quick_zoom(tmpdir):
+    t = getortho.Tile(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
+    t.get(quick_zoom=10)
+    t.get(quick_zoom=11)
+    t.get(quick_zoom=12)
+    t.get()
+    #assert True == False
+
+def test_tile_get(tile):
+    ret = tile.get()
+    assert ret
+
+def test_tile_close(tmpdir):
+    process = psutil.Process(os.getpid())
+    start_mem = process.memory_info().rss
+    t = getortho.Tile(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
+    t.get()
+    get_mem = process.memory_info().rss
+    t.close()
+    del(t)
+    close_mem = process.memory_info().rss
+    print(f"S: {start_mem} G: {get_mem} C: {close_mem}.  Diff {close_mem-start_mem}")
+    assert True == False
+
+def test_map(tmpdir):
+    m = getortho.Map(cache_dir=tmpdir)
+    ret = m.get_tiles(2176, 3232, 'EOX', 13)
+    assert ret
+
+def test_map_background(tmpdir):
+    m = getortho.Map(cache_dir=tmpdir)
+    start_c = 2176
+    start_r = 3232
+    num_c = 2
+    num_r = 1
+    for c in range(start_c, (start_c + num_c*16), 16):
+        for r in range(start_r, (start_r + num_r*16), 16):
+            ret = m.get_tiles(c, r, 'EOX', 13, background=True)
+    
+    for t in m.tiles:
+        print(f"Waiting on {t}")
+        ret = t.ready.wait(600)
+        assert ret == True
+        assert len(t.chunks[13]) == 256
+
+    files = os.listdir(tmpdir)
+    assert len(m.tiles) == len(files)
