@@ -15,7 +15,7 @@ jobs:
     
     - name: Setup 
       run: |
-          python3 -m pip install -U pytest
+          python3 -m pip install -U pytest test_getortho.py
           python3 -m pip install -U -r requirements.txt
 
     - name: Test
