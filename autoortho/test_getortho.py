@@ -40,7 +40,6 @@ def test_get_mipmap(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     ret = tile.get_mipmap(5)
     assert ret
-    assert True == False
 
 def test_get_bytes_all(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
