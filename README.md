@@ -10,6 +10,20 @@ the imagery that we need on the fly.
 
 [![Video](https://img.youtube.com/vi/seuguds8GX0/hqdefault.jpg)](https://www.youtube.com/watch?v=seuguds8GX0)
 
+## Quick start
+Assumptions:
+* You are running on Linux
+* You have installed X-Plane 11.50+
+* You have setup a mount point in your custom scenery and added it to the end
+  of your `scenery_packs.ini` file
+
+```
+git clone https://github.com/kubilus1/autoortho
+cd autoortho
+python3 -m pip install -U -r requirements.txt
+python3 autoortho <my orthophoto directory> <mount point in custom scenery>
+```
+
 ## Approach
 
 There does not appear to be a way to hook directly into the internal
