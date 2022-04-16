@@ -44,6 +44,11 @@ contains would then point to the textures requested for this terrain,
 including satellite photo textures.  These files are typically `.dds` files,
 though that's not always the case.
 
+DDS files can contain multiple copies of the same texture at reduced
+resolutions.  These are referred to as 'mipmaps'.  This allows X-Plane to just
+pull in the minimum amount of data that is required into memory at any given
+time.  Typically the maximum resolution for a texture is only required while
+flying low and for close by tetxures.
 
 ### How this project leverages this setup (high level description)
 
@@ -53,22 +58,17 @@ imagery, except for the satellite photos themselves.
 Existing mechanisms to create and manage DSF files, and related terrain files,
 still applies.  X-Plane continues to reference these files as per normal.
 
-This program will detect when a DSF files is accessed.  The DSF file is parsed
-and related terrain files are detected.  The terrain files are then parsed and
-DDS files are detected.  These DDS files are then downloaded at a lower
-resolution than the requested zoom level in order to maintain performance.
-These files are cached on the disk and will not require re-downloading unless
-deleted.
+This program will detect when DDS files are accessed and read from X-Plane.
+When X-Plane attempts to read a specific mipmap of a texture this program will
+pull down just the minimum required data and return this data to X-Plane.
+This happens behind the scenes and as far as X-Plane is concerned, it is
+continuing to read a normal filesystem.
 
-While flying, X-Plane will re-access DDS files that are nearby.  This program
-will detect this access.  
+Since we only download the minimum required data, this process is relatively
+efficient.
 
-Information about our flight is tracked through the UDP interface X-Plane
-provides.  From this we can determine if this DDS file being requested is in
-the direction we are facing, near or far, if we are going very fast, etc and
-from that info determine the quality of tile we should return.  Ideally we
-will pull down the maximum requested zoom level for the DDS file being
-accessed.  This is then returned by the virtual file system.
+Data is cached in memory until a memory limit is reached, at which time older
+data will be purged.
 
 
 ## Usage
@@ -93,7 +93,7 @@ You will effectively now 'mount' your prepared orthophoto directory to your
 and for example:
 
 ```
-python3 autoortho.py <my orthophoto directory> <mount point in custom scenery>
+python3 autoortho <my orthophoto directory> <mount point in custom scenery>
 ```
 
 Start X-Plane normally.  
@@ -107,8 +107,11 @@ Since this starts with low resolution imagery until you get going, I
 recommend enabling `high_zl_airports`
 
 So far I've been testing with a ZL of 16 for most tiles with increased ZL of
-17 for airports.  You may have want to play around with the ZL levels for best
+18 for airports.  You may have want to play around with the ZL levels for best
 results.
+
+Higher zoom levels will lead to increased resource usage and longer delays
+initially starting up flights.
 
 ## Requirements and Compatibility
 
@@ -120,16 +123,16 @@ This project requires python3.x and all pre-requisites in the
 
 All testing is done on Ubuntu 20.04.  Other Linux flavors ought to work as
 well.  MacOS very likely *should* work, but I have no way of testing it.
-Doubtful that this will work on Windows, but I also have no way of testing
-that.
+
+It's possible this technique would work on Windows with the
+[WinFSP](https://github.com/winfsp/winfsp) project, though I currently have no
+way of testing this.
 
 ## Known issues and limits
-* Going really really fast may lead to lag downloading files (though high
-  numbers of DSF triangles seems to be the worse culprit)
+* Currently I try to limit the cache to 4GB of memory, though it's possible it
+  will exceed this in certain scenarios.
 * Not really possible to post-process the satellite photos.  You get what you
   get.
-* FUSE doesn't seem to be supported with Windows, AFAICT, so probably won't
-  ever work on that platform.  (Maybe with Cygwin or something IDK)
 * Will still require properly created DSF files
 * Will add a couple minutes to initial flight time for new areas.  That's to
   be expected though.
@@ -137,8 +140,9 @@ that.
 ## TODOS
 
 * See if this will work on Windows with WinFSP
-* Some kind of maximum cache size cleanup mechanism
-* ~Can we somehow pull in max resolution imagery for the starting location?~  Done
+* Re-introduce a file cache for tiles purged from memory
+* Allow for overriding the satellite source type.  Since this pulls on the
+  fly, we aren't stuck with what was setup initially with Ortho4XP.
 
 ## Other projects and links
 * (Ortho4XP) [https://github.com/oscarpilote/Ortho4XP]
