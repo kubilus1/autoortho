@@ -40,6 +40,7 @@ def test_get_mipmap(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     ret = tile.get_mipmap(5)
     assert ret
+    assert True == False
 
 def test_get_bytes_all(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
@@ -101,9 +102,9 @@ def test_tile_close(tmpdir):
     get_mem = process.memory_info().rss
     t.close()
     del(t)
+    time.sleep(1)
     close_mem = process.memory_info().rss
     print(f"S: {start_mem} G: {get_mem} C: {close_mem}.  Diff {close_mem-start_mem}")
-    assert True == False
 
 def test_map(tmpdir):
     m = getortho.Map(cache_dir=tmpdir)

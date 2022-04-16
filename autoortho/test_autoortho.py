@@ -154,7 +154,3 @@ def test_read_mip1(mount, tmpdir):
         shell=True
     )
     assert rc == 0
-    
-
-
-    assert True == False

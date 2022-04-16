@@ -42,193 +42,6 @@ def tilemeters(lat_deg, zoom):
     return (x, y)
 
 
-class FlightFollower(object):
-
-    tiles = []
-    connected = False
-    lat = -1
-    lon = -1
-    alt = -1
-    hdg = -1
-    spd = -1
-
-    def __init__(self):
-        #self.go = getortho.GetOrtho(chunk_threads=16, tile_threads=2, dds_convert=True)
-        self.sock = socket.socket(socket.AF_INET, # Internet
-                            socket.SOCK_DGRAM) # UDP
-
-        self.sock.settimeout(2.0)
-        t = threading.Thread(target=self.start)
-        t.start()
-
-    def start(self):
-        log.info("Starting Flight Follower thread.")
-        RequestDataRefs(self.sock)
-        while True:
-            try:
-                data, addr = self.sock.recvfrom(1024)
-            except socket.timeout:
-                self.connected = False
-                log.debug("Socket timeout.  Reset.")
-                RequestDataRefs(self.sock)
-                continue
-
-            self.connected = True
-
-            values = DecodePacket(data)
-
-            for k,v in values.items():
-                log.debug(f"{k}: {v}")
-                
-            lat = values[0][0]
-            lon = values[1][0]
-            alt = values[3][0]
-            hdg = values[4][0]
-            spd = values[6][0]
-
-            log.debug(f"Lat: {lat}, Lon: {lon}, Alt: {alt}")
-            
-            self.alt = alt
-            self.lat = lat
-            self.lon = lon
-            self.hdg = hdg
-            self.spd = spd
-
-            time.sleep(0.5)
-
-
-class DSF(object):
-
-    dds_accesses = {}
-    start_tiles = []
-    airport_tiles = [] 
-
-    def __init__(self, tc=None):
-        if tc:
-            self.tc = tc
-        else:
-            self.tc = TileCacher()
-
-        self.dds_re = re.compile(".*/(\d+)[-_](\d+)[-_](\D*)(\d+).dds")
-
-    def open(self, path, extra_fast=False):
-        start_time = time.time()
-
-        log.info(f"DSF: opening {path} ...")
-        ter_files = []
-        with open(path, encoding='utf-8', errors='ignore') as h:
-            ter_files = re.findall("(terrain\W?\d+[-_]\d+[-_]\D*(\d+)\w*\.ter)", h.read())
-        log.debug(ter_files)
-
-        ter_dir = os.path.join(os.path.dirname(path), "..", "..")
-
-        dds_full_paths = set()
-
-
-        coverage_zl = min([ int(x[1]) for x in ter_files])
-        max_zl = max([ int(x[1]) for x in ter_files])
-        log.info(f"DSF: Detected coverage ZL: {coverage_zl}, Max ZL: {max_zl}")
-        
-        log.info(f"DSF: found {len(ter_files)} terrain files.  Parsing ...")
-        for t in [ x[0] for x in ter_files]:
-            ter_path = os.path.join(ter_dir, t) 
-            log.debug(f"Checking {ter_path}...")
-            with open(ter_path) as h:
-                #dds_files = self.dds_re.findall(h.read())
-                dds_files = re.findall("\S*/\d+[-_]\d+[-_]\D*\d+.dds", h.read())
-                log.debug(f"Found: {dds_files}")
-                for dds in dds_files:
-                    dds_full_paths.add(
-                        os.path.join(os.path.dirname(ter_path), dds)
-                    )
-
-        if coverage_zl < max_zl:
-            # We have higher airport zoom levels
-            log.info(f"DSF: Coverage ZL: {coverage_zl}, Max ZL: {max_zl}.  Detect airport tiles")
-            for dds in dds_full_paths:
-                m = self.dds_re.match(dds) 
-                if m:
-                    row, col, maptype, zoom = m.groups()
-                    row = int(row)
-                    col = int(col)
-                    zoom = int(zoom)
-                    
-                    if zoom > coverage_zl:
-                        self.airport_tiles.append(os.path.basename(dds))
-
-                        # Assume coverage level surrounding tiles
-                        zoom_diff = zoom - coverage_zl
-                        row_z = int(row / pow(2, zoom_diff))
-                        col_z = int(col / pow(2, zoom_diff))
-
-                        rows = [row_z, row_z+16, row_z-16]
-                        cols = [col_z, col_z+16, col_z-16]
-
-                        for r,c in itertools.product(rows, cols):
-                            self.airport_tiles.append(f"{r}_{c}_{maptype}{coverage_zl}.dds")
-
-
-        log.debug(dds_full_paths)
-        num_dds = len(dds_full_paths)
-        log.info(f"DSF: found {num_dds} dds files.  Retrieving...")
-
-        num_chunks = 8
-        chunk_size = int(num_dds/num_chunks)
-        dds_list = list(dds_full_paths)
-        chunked_list = [dds_list[i:i+chunk_size] for i in
-                range(len(dds_list))[::chunk_size]] 
-
-        log.debug("Chunked list:")
-        log.debug(chunked_list)
-
-        worker_threads = []
-        for dds_paths in chunked_list:
-            t = threading.Thread(target=self.get_dds,
-                    args=(dds_paths,extra_fast))            
-            t.start()
-            worker_threads.append(t)
-
-        for w in worker_threads:
-            w.join()
-
-        end_time = time.time()
-
-        log.info(f"DSF: Retrieved all tiles for {path} in %s seconds" % (end_time - start_time))
-
-
-    def get_dds(self, dds_files, extra_fast=False):
-        log.debug(f"DSF: Processing {len(dds_files)} dds files ...")
-
-        for dds in dds_files:
-            #m = re.match(".*/(\d+)[-_](\d+)[-_](\D*)(\d+).dds", dds)
-            m = self.dds_re.match(dds)
-            if m:
-                self.dds_accesses[dds] = 0
-                log.debug(f"Found DDS file {dds}: %s " % str(m.groups()))
-
-                if not os.path.exists(dds):
-                    log.debug(f"DDS file {dds} does not exist.  Create it.")
-                    pathlib.Path(dds).touch()
-
-                size = os.path.getsize(dds)
-                log.debug(f"FILE SIZE: {size}")
-
-                if size == 0:
-                    log.debug(f"{dds} Empty DDS, get ortho")
-                    row, col, maptype, zoom = m.groups()
-                    zoom = int(zoom)
-                    if extra_fast:
-                        cache_file = self.tc.get_quick(row, col, maptype, zoom, priority=0)
-                        #cache_file = self.tc.get_quick(row, col, maptype, zoom, int(zoom)-4, priority=0)
-                    else:
-                        cache_file = self.tc.get_quick(row, col, maptype, zoom, priority=0)
-                else:
-                    log.debug("DDS already exists.")
-            else:
-                log.info(f"DDS: {dds} does not match known pattern.")
-
-
-
 class TileCacher(object):
     min_zoom = 13
     max_zoom = 18
@@ -237,7 +50,7 @@ class TileCacher(object):
     tile_lock = threading.Lock()
 
     def clean(self):
-        memlimit = 2147483648
+        memlimit = pow(2,30) * 4
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
         while True:
             process = psutil.Process(os.getpid())
@@ -248,10 +61,10 @@ class TileCacher(object):
                 with self.tile_lock:
                     for i in list(self.tiles.keys())[:100]:
                         t = self.tiles.pop(i)
-                        t.close()
+                        #t.close()
                         del(t)
                 cur_mem = process.memory_info().rss
-            time.sleep(60)
+            time.sleep(30)
 
     def __init__(self, cache_dir='.cache'):
         self.cache_dir = cache_dir
@@ -275,264 +88,6 @@ class TileCacher(object):
                 self.tiles[idx] = tile
         return tile
 
-    def get_header(self, row, col, map_type, zoom):
-        t = self._get_tile(row, col, map_type, zoom)
-        cache_file = t.get_header()
-        return cache_file
-
-    def get_bytes(self, row, col, map_type, zoom, numbytes):
-        t = self._get_tile(row, col, map_type, zoom)
-        cache_file = t.get_bytes(numbytes)
-        return cache_file
-
-    def get_quick(self, row, col, map_type, zoom, min_zoom=0, priority=1):
-        # Get tile as quick as possible.  Blocking
-        #cache_file = self.map.get_tiles(col, row, map_type, zoom, min_zoom, priority) 
-        zoom = int(zoom)
-        if not min_zoom:
-            min_zoom = zoom - 3
-        
-        t = self._get_tile(row, col, map_type, zoom)
-        t.priority = priority
-        cache_file = t.get(quick_zoom=min_zoom)
-        return cache_file
-
-    def get_background(self, row, col, map_type, zoom):
-        # Fetch background tile if we don't already have it.  Non blocking
-        t = self._get_tile(row, col, map_type, zoom)
-        getortho.tile_getter.submit(t)
-
-
-    def get_best(self, row, col, map_type, zoom):
-        # Get best quality tile.  Blocking
-        t = self._get_tile(row, col, map_type, zoom)
-        cache_file = t.get()
-        return cache_file
-
-
-    def get_deadline(self, row, col, map_type, zoom, quick_zoom=0, min_zoom=0, deadline=0.25, priority=5):
-        # Get best possible tile up time the deadline.  Blocking
-
-        req_zoom = quick_zoom if quick_zoom else zoom
-        for z in range(req_zoom, req_zoom-3, -1):
-            t_z = getortho.tile_averages.get(z, 99)
-            best_zoom = z
-            # Average tile fetch time should be less than deadline
-            if t_z < deadline:
-                log.info(f"Detected best zoom of {z} ({t_z}) for deadline {deadline}")
-                break
-
-        t = self._get_tile(row, col, map_type, zoom)
-        t.min_zoom = min_zoom
-        t.priority = priority
-        cached_zoom_level = t.cache_file[0]
-        if cached_zoom_level >= best_zoom:
-            log.info(f"Already have a good tile for {t} : {t.cache_file[1]} Return.")
-            return t.cache_file[1]
-
-        if req_zoom > best_zoom:
-            log.info(f"We likely won't get {req_zoom} by {deadline}.  Reduce zoom to {best_zoom}")
-            #quick_zoom = best_zoom
-
-        getortho.tile_getter.submit(t, quick_zoom)
-        t.ready.clear()
-        if t.ready.wait(deadline):
-            log.info(f"{t} beat deadline {deadline}")
-            cache_file = t.cache_file[1] 
-        else:
-            log.info(f"{t} did NOT beat deadline {deadline}")
-            cache_file = t.get(quick_zoom=min_zoom)
-
-        return cache_file
-
-
-
-
-
-
-
-
-    def Z_get_cached_tile(self, row, col, map_type, zoom, min_zoom=0):
-        zoom = int(zoom)
-        if not min_zoom:
-            min_zoom = zoom - 3
-
-        found = False
-        for z in range(zoom, (min_zoom-1), -1):
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{z}.dds")
-            log.info(f"Check cache for {cache_file}...")
-            with self.go.tile_condition:
-                if cache_file in self.go.active_tiles:
-                    log.info(f"{cache_file} is being actively worked on.  Be quick, so continue.")
-                    continue
-
-                if os.path.exists(cache_file):
-                    log.info(f"Cache HIT!. Found cached object: {cache_file}")
-                    found = True
-                    break
-
-        if not found:
-            return None
-        else:
-            log.info(f"Cache file found! {cache_file}")
-            return cache_file
-
-    def Zget_quick(self, row, col, map_type, zoom, min_zoom=0, priority=1):
-        zoom = int(zoom)
-        if not min_zoom:
-            min_zoom = zoom - 3
-
-        cache_file = self._get_cached_tile(row, col, map_type, zoom, min_zoom)
-
-        if not cache_file:
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{min_zoom}.dds")
-            log.info(f"Cache MISS.  Retrieving quick tile {cache_file}")
-            while cache_file in self.go.active_tiles:
-                log.info(f"{cache_file} is being actively worked on!")
-                # Waiting isn't really quick!
-                self.go.tile_condition.wait()
-                if os.path.exists(cache_file):
-                    log.info(f"{cache_file} is ready.")
-                    return cache_file
-
-            start_time = time.time()
-            self.go.get_quick_tile(int(col), int(row), int(zoom),
-                    int(min_zoom), maptype=map_type, outfile=cache_file,
-                    priority=priority)
-
-        return cache_file
-
-
-    def Zget_background(self, row, col, map_type, zoom):
-        log.info(f"Tile queue size: {self.go.tile_work_queue.qsize()}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
-        cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{zoom}.dds")
-        if os.path.exists(cache_file):
-            log.debug(f"Cache HIT! Found high quality cached object: {cache_file}")
-        else:
-            log.info(f"Cache MISS. Background fetch high quality tile {cache_file}")
-            self.go.get_background_tile(int(col), int(row), int(zoom), maptype=map_type, outfile=cache_file)
-
-    def Zget_best(self, row, col, map_type, zoom):
-        cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{zoom}.dds")
-        if os.path.exists(cache_file):
-            log.debug(f"Cache HIT! Found high quality cached object: {cache_file}")
-        #elif cache_file in self.go.active_tiles:
-        #    log.info(f"Cache MISS. Want high quality tile {cache_file} but it's busy.  Get quick...")
-        #    cache_file = self.get_quick(int(row), int(col), map_type, int(zoom), int(zoom)-2)
-        else:
-            log.info(f"Cache MISS. Retrieving high quality tile {cache_file}")
-            try:
-                self.go.get_tile(int(col), int(row), int(zoom), maptype=map_type, outfile=cache_file)
-            except Exception as err:
-                log.error(err)
-
-        return cache_file
-
-    def Zget_deadline(self, row, col, map_type, zoom, quick_zoom=0, min_zoom=0, deadline=0.25, priority=5):
-        """
-            row = Row to retrieve
-            col = Column to retrieve
-            map_type = Type of map: BI, EOX, et
-            zoom = Original zoom level for row,col coordinates
-            quick_zoom = reduced zoom level fidelity to use (optional)
-            min_zoom = The minimum zoom level to auto reduce to, if needed
-            deadline = Length of time to allow for retrieval
-            priority = Priority for tile fetch.  0 being top priority
-        """
-
-
-        # Determine best zoom level we could reasonably retrieve by deadline
-        req_zoom = quick_zoom if quick_zoom else zoom
-        for z in range(req_zoom, req_zoom-3, -1):
-            t = self.go.tile_averages.get(z, 99)
-            best_zoom = z
-            # Average tile fetch time should be less than deadline
-            if t < deadline:
-                log.info(f"Detected best zoom of {z} ({t}) for deadline {deadline}")
-                break
-
-        log.info(f"Averages: {self.go.tile_averages}")
-        if req_zoom > best_zoom:
-            log.info(f"We likely won't get {req_zoom} by {deadline}.  Reduce zoom to {best_zoom}")
-            quick_zoom = best_zoom
-
-        # Check to see if we already have a cached tile available to us
-        cache_file = self._get_cached_tile(row, col, map_type, zoom, best_zoom)
-        if cache_file:
-            log.debug(f"DEADLINE Cache HIT! Found cached object: {cache_file}")
-            return cache_file
-
-        if quick_zoom:
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{quick_zoom}.dds")
-        else:
-            cache_file = os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{zoom}.dds")
-
-
-        if os.path.exists(cache_file):
-            log.warning(f"{cache_file} exists.  We shouldn't ever get here.")
-            return cache_file
-        # if os.path.exists(cache_file):
-        #     log.debug(f"DEADLINE Cache HIT! Found cached object: {cache_file}")
-        #     if req_zoom > best_zoom and (deadline - self.go.tile_averages[best_zoom])/deadline >= 0.5:
-        #         log.info("Big difference with deadline.  Reset.")
-        #         self.go.tile_averages[best_zoom+1] = -1
-        #     return cache_file
-        # else:
-        #     log.info(f"Cache MISS. Background fetch high quality tile {cache_file}")
-        #     log.info(f"Active tile size: {len(self.go.active_tiles)}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
-        #     self.go.get_background_tile(int(col), int(row), int(zoom),
-        #             quick_zoom=quick_zoom, maptype=map_type, outfile=cache_file, priority=priority)
-
-        log.info(f"Cache MISS. Background fetch high quality tile {cache_file}")
-        log.info(f"Active tile size: {len(self.go.active_tiles)}.  Chunk queue size {self.go.chunk_work_queue.qsize()}")
-        self.go.get_background_tile(int(col), int(row), int(zoom),
-                quick_zoom=quick_zoom, maptype=map_type, outfile=cache_file, priority=priority)
-
-        if req_zoom > best_zoom:
-
-            log.info(f"We wanted zoom {req_zoom} but ran out of time. Background fetch {best_zoom+1}") 
-            # Background fetch a higher quality tile at lower priority
-            self.go.get_background_tile(
-                    int(col), 
-                    int(row), 
-                    int(zoom),
-                    quick_zoom=best_zoom+1,
-                    maptype=map_type, 
-                    outfile=os.path.join(self.cache_dir, f"{row}_{col}_{map_type}_{zoom}_{best_zoom+1}.dds"),
-                    priority=best_zoom + 1
-            )
-
-        deadline_reached = False
-        start_time = time.time()
-        with self.go.tile_condition:
-            
-            while cache_file in self.go.active_tiles or not os.path.exists(cache_file):
-                self.go.tile_condition.wait(deadline)
-                if (time.time() - start_time) > deadline:
-                    log.info(f"DEADLINE {deadline} reached. Break loop.")
-                    deadline_reached = True
-                    break
-
-            actual_time = time.time() - start_time
-            log.info("DEADLINE loop exit.")
-            #if not deadline_reached:
-            if os.path.exists(cache_file) and not deadline_reached:
-                log.info(f"DEADLINE Beat deadline!. Found background object: {cache_file}")
-                if req_zoom > best_zoom and (deadline - actual_time)/deadline >= 0.5:
-                    log.info("Beat deadline by a lot.  Reset.")
-                    self.go.tile_averages[best_zoom+1] = -1
-                
-                #cache_file = self.get_quick(int(row), int(col), map_type, zoom, min_zoom)
-                cache_file = self._get_cached_tile(int(row), int(col), map_type, zoom, min_zoom)
-                return cache_file
-            else:
-                log.info(f"DEADLINE reached.  No tile yet.")
-
-        log.warning(f"DEADLINE reached for {cache_file}.  Get quickly instead ...")
-        cache_file = self.get_quick(int(row), int(col), map_type, zoom, min_zoom)
-        return cache_file
-
-
 
 class AutoOrtho(Operations):
 
@@ -552,8 +107,8 @@ class AutoOrtho(Operations):
         #self._start_reset()
         #self.go = getortho.GetOrtho()
         self.tc = TileCacher(cache_dir)
-        self.dsf_parser = DSF(self.tc) 
-        self.ff = FlightFollower()
+        #self.dsf_parser = DSF(self.tc) 
+        #self.ff = FlightFollower()
         #self.background_tc = TileCacher()
 
     # Helpers
@@ -588,7 +143,7 @@ class AutoOrtho(Operations):
 
 
     def getattr(self, path, fh=None):
-        #log.info(f"GETATTR {path}")
+        log.debug(f"GETATTR {path}")
 
         full_path = None
         m = self.dds_re.match(path)
@@ -596,38 +151,6 @@ class AutoOrtho(Operations):
             #log.info(f"{path}: MATCH!")
             row, col, maptype, zoom = m.groups()
             log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
-            #row = int(row)
-            #col = int(col)
-            #zoom = int(zoom)
-
-            #full_path = self.tc.get_header(row, col, maptype, zoom)
-
-            # if not self.ff.connected:
-            #     self.dsf_parser.dds_accesses[path] = self.dsf_parser.dds_accesses.get(path, 0) + 1
-
-            # if maptype != "ZL":
-            #     if False and self.dsf_parser.dds_accesses.get(path, 0) == 3 and not self.ff.connected:
-            #         # Accessing a tile a third time pre-flight indicates we
-            #         # will want this data for our starting area
-            #         #log.info(f"Third access for {path}.  Checking if an airport tile ...")
-            #         if os.path.basename(path) in self.dsf_parser.airport_tiles:
-            #             log.info(f"Starting zone tile detected: {path}!")
-            #             # if f"{row+16}_{col}_{maptype}{zoom}.dds" in self.dsf_parser.airport_tiles:
-            #             #     self.tc.get_background(int(col), int(row)+16,
-            #             #             maptype, int(zoom))
-
-            #             # if f"{row}_{col+16}_{maptype}{zoom}.dds" in self.dsf_parser.airport_tiles:
-            #             #     self.tc.get_background(int(col)+16, int(row),
-            #             #             maptype, int(zoom))
-            #             full_path = self.tc.get_best(row, col, maptype, zoom)
-            #         else:
-            #             full_path = self.tc.get_quick(row, col, maptype, zoom)
-            #     else:
-            #         full_path = self._fetch_dds(row, col, maptype, zoom)
-            #     # Store the last checked cache path.
-            #     self.path_dict[path] = full_path
-            # else:
-            #     log.debug(f"{path} is ZL type. Skip it.")
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -649,8 +172,6 @@ class AutoOrtho(Operations):
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
                         'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
 
-        #if m:
-        #    log.debug(f"GETATTR: {path} {attrs}")
 
         return attrs
 
@@ -709,101 +230,12 @@ class AutoOrtho(Operations):
     # ============
 
 
-    def _fetch_dds(self, row, col, maptype, zoom):
-
-        if not self.ff.connected:
-            cache_file = self.tc.get_quick(row, col, maptype, zoom)
-            return cache_file
-
-        x, y = deg2num(self.ff.lat, self.ff.lon, int(zoom))
-
-        log.info(f"Empty DDS and we are flying.  Attempt retrieval...")
-        log.info(f"HEADING: {self.ff.hdg} LOCATION: {self.ff.lat}x{self.ff.lon} SPEED {self.ff.spd} ms/s, ALT {self.ff.alt}")
-        
-        near_range = pow(2, (max(12, int(zoom)) - 12))*4
-
-        distance = math.sqrt( 
-            pow((x - col), 2) + pow((y - row), 2)
-        )
-
-        tile_x_m, tile_y_m = tilemeters(self.ff.lat, int(zoom))
-        log.info(f"Tile Size : {tile_x_m} X {tile_y_m} meters.  We are going {self.ff.spd} m/s")
-        
-        facing_tile = False
-        if 315 <= float(self.ff.hdg) or float(self.ff.hdg) < 45:
-            # North
-            fly_direction = "north"
-            if row <= y: 
-                facing_tile = True
-            max_deadline = tile_y_m/self.ff.spd
-        elif 135 <= float(self.ff.hdg) < 225:
-            # South
-            fly_direction = "south"
-            if row >= y: 
-                facing_tile = True
-            max_deadline = tile_y_m/self.ff.spd
-        elif 45 <= float(self.ff.hdg) < 135:
-            # East
-            fly_direction = "east"
-            if col >= x: 
-                facing_tile = True
-            max_deadline = tile_x_m/self.ff.spd
-        elif 225 <= float(self.ff.hdg) < 315:
-            # West
-            fly_direction = "west"
-            if col <= x:
-                facing_tile = True
-            max_deadline = tile_x_m/self.ff.spd
-
-        log.info(f"MAX DEADLINE: {max_deadline}")
-
-
-        if distance <= near_range:
-            log.info(f"Tile is near.  Check direction for tile {row}_{col}_{zoom}")
-            cache_file = None
-
-            if facing_tile:
-                #cache_file = self.tc.get_best(row, col, maptype, zoom)
-                cache_file = self.tc.get_deadline(row, col, maptype, zoom,
-                        deadline=max_deadline, priority=2)
-            else:
-                cache_file = self.tc.get_deadline(row, col, maptype, zoom,
-                        deadline=max_deadline/4, priority=3)
-        
-        elif distance <= (near_range * 2):
-            log.info(f"Tile is far {row}_{col}_{maptype}_{zoom}.  Current position row:{y} col:{x}.  Distance to tile {distance}.  Range is {near_range}")
-            cache_file = self.tc.get_quick(row, col, maptype, zoom)
-            #cache_file = self.tc.get_deadline(row, col, maptype, zoom,
-            #        deadline=max_deadline/4, priority=4)
-        else:
-            log.info(f"Tile is VERY far {row}_{col}_{maptype}_{zoom}.  Current position row:{y} col:{x}.  Distance to tile {distance}.  Range is {near_range}")
-            cache_file = self.tc.get_quick(row, col, maptype, zoom)
-            #cache_file = self.tc.get_deadline(row, col, maptype, zoom,
-            #        deadline=max_deadline/4, priority=4)
-
-
-        return cache_file
-
     def open(self, path, flags):
         h = 0
 
-        #log.info(f"OPEN: {path}, {flags}")
+        log.debug(f"OPEN: {path}, {flags}")
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
-       
-        #go_fast = False
-        #if self.ff.spd > 400 and self.ff.alt > 4500:
-        #    log.info("Going very very fast.  Work quickly...")
-        #    go_fast = True
-
-        # m = self.dsf_re.match(path)
-        # if m:
-        #     log.debug("DSF match")
-        #     #self.coverage_zl = 100
-        #     #self.max_zl = -1
-        #     self.dsf_parser.open(full_path)
-        #     h = os.open(full_path, flags)
-       
 
         m = self.dds_re.match(path)
         if m:
@@ -815,21 +247,6 @@ class AutoOrtho(Operations):
                 log.info(f"Opening for {path}....")
                 self.open_paths.append(path)
 
-            # cache_file = self.path_dict.get(path)
-            # log.debug(f"Get cached file from dict: {cache_file}.")
-            # if not cache_file:
-            #     log.warning(f"{path} Not present in accessed file list.")
-            #     row, col, maptype, zoom = m.groups()
-            #     row = int(row)
-            #     col = int(col)
-            #     zoom = int(zoom)
-                #cache_file = self.tc.get_quick(row, col, maptype, zoom)
-                #cache_file = self.tc.get_header(row, col, maptype, zoom)
-                #self.path_dict[path] = cache_file
-
-            #h = os.open(cache_file, flags)
-
-            
         else:
             h = os.open(full_path, flags)
 
@@ -843,17 +260,10 @@ class AutoOrtho(Operations):
         return fd
 
     def read(self, path, length, offset, fh):
-
-
-        #log.debug(f"READ: {path}")
+        log.debug(f"READ: {path}")
         data = None
         m = self.dds_re.match(path)
         if m:
-
-            #with self.path_condition:
-            #    if path in self.open_paths:
-            #        self.path_condition.wait()
-
             row, col, maptype, zoom = m.groups()
             row = int(row)
             col = int(col)
@@ -929,14 +339,11 @@ class AutoOrtho(Operations):
         m = self.dds_re.match(path)
         if m:
             log.info(f"RELEASE: {path}")
-        # try:
             with self.path_condition:
                 if path in self.open_paths:
                     log.debug(f"RELEASE: {path}")
                     self.open_paths.remove(path)
                     self.path_condition.notify_all()
-        # except:
-        #     pass
             return 0
         else:
             return os.close(fh)

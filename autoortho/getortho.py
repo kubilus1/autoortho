@@ -4,15 +4,15 @@ import os
 import sys
 import time
 import math
+import tempfile
+import threading
 import subprocess
 import collections
+
 from io import BytesIO
-import threading
 from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
-import tempfile
 
-import conv
 import pydds
 
 import logging
@@ -21,7 +21,6 @@ log = logging.getLogger('log')
 log.setLevel(logging.INFO)
 
 from PIL import Image
-from wand import image as wand_image
 
 def do_url(url, headers={}):
     req = Request(url, headers=headers)
@@ -227,7 +226,7 @@ class Tile(object):
     col = -1
     maptype = None
     zoom = -1
-    min_zoom = -1
+    min_zoom = 12
     cache_dir = './cache'
     width = 16
     height = 16
@@ -238,13 +237,7 @@ class Tile(object):
 
     chunks = None
     cache_file = None
-    #dds_output = "nvcompress"
-    #dds_output = "PIL"
-    #dds_output = "conv"
-    dds_output = "pydds"
-    #dds_output = "concat"
     dds = None
-
 
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir='./cache'):
         self.row = int(row)
@@ -255,9 +248,7 @@ class Tile(object):
         self.cache_file = (-1, None)
         self.ready = threading.Event()
         self.tile_condition = threading.Condition()
-        if not min_zoom:
-            self.min_zoom = self.zoom - 4
-        else:
+        if min_zoom:
             self.min_zoom = int(min_zoom)
 
         if cache_dir:
@@ -285,7 +276,7 @@ class Tile(object):
         return f"Tile({self.col}, {self.row}, {self.maptype}, {self.zoom}, {self.min_zoom}, {self.cache_dir})"
 
     def _create_chunks(self, quick_zoom=0):
-        col, row, width, height, zoom = self._get_quick_zoom(quick_zoom)
+        col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom)
 
         if not self.chunks.get(zoom):
             self.chunks[zoom] = []
@@ -310,7 +301,8 @@ class Tile(object):
 
     def _get_quick_zoom(self, quick_zoom=0):
         if quick_zoom:
-            zoom_diff = min((self.zoom - int(quick_zoom)), 3)
+            quick_zoom = max(int(quick_zoom), self.min_zoom)
+            zoom_diff = min((self.zoom - int(quick_zoom)), 4)
             col = int(self.col/pow(2,zoom_diff))
             row = int(self.row/pow(2,zoom_diff))
             width = int(self.width/pow(2,zoom_diff))
@@ -322,13 +314,14 @@ class Tile(object):
             width = self.width
             height = self.height
             zoom = self.zoom
+            zoom_diff = 0
 
-        return (col, row, width, height, zoom)
+        return (col, row, width, height, zoom, zoom_diff)
 
 
     def fetch(self, quick_zoom=0, background=False):
         self._create_chunks(quick_zoom)
-        col, row, width, height, zoom = self._get_quick_zoom(quick_zoom)
+        col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom)
 
         for chunk in self.chunks[zoom]:
             chunk_getter.submit(chunk)
@@ -343,7 +336,7 @@ class Tile(object):
 
     def write_cache_tile(self, quick_zoom=0):
 
-        col, row, width, height, zoom = self._get_quick_zoom(quick_zoom)
+        col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom)
 
         outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{zoom}.dds")
 
@@ -503,18 +496,18 @@ class Tile(object):
 
 
     def get_mipmap(self, mipmap=0):
+        
+        zoom = self.zoom - mipmap
+        col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom)
 
-        mipmap = min(mipmap, 3)
+        #mipmap = min(mipmap, 4)
 
         log.debug(self.dds.mipmap_list)
         if self.dds.mipmap_list[mipmap].retrieved:
             log.info(f"We already have mipmap {mipmap} for {self}")
             return
 
-        zoom = self.zoom - mipmap
-
         self._create_chunks(zoom)
-        col, row, width, height, zoom = self._get_quick_zoom(zoom)
 
         log.info(f"Retrive mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
         data_updated = False

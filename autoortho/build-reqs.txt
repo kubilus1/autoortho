@@ -1,3 +1,4 @@
 fusepy
+# psutil
 # Pillow includes system libs that can't be packaged
 # pillow >= 8.3.0

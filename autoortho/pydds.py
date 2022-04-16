@@ -14,8 +14,13 @@ logging.basicConfig()
 log = logging.getLogger('log')
 log.setLevel(logging.INFO)
 
+import sys
+print(sys.path)
+
+
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib_stb_dxt.so')
+#_dxt_path = os.path.join('./foo','lib_stb_dxt.so')
 _dxt = CDLL(_dxt_path)
 
 DDSD_CAPS = 0x00000001          # dwCaps/dwCaps2 is enabled. 
@@ -263,24 +268,12 @@ class DDS(Structure):
             return None
 
         is_rgba = True
-        #self.width = width
-        #self.height = height
-
         
         blocksize = 16
-        #self.pitchOrLinearSize = int((width / 4) * blocksize)
-        #log.debug(hex(self.pitchOrLinearSize))
-
         dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
-        #self.pitchOrLinearSize += dxt_size
-        #log.debug(f"OUT SIZE: {dxt_size}")
-        #outdata = np.zeros(dxt_size).astype(c_uint8)
-      
-        #outdata = bytearray(dxt_size)
         outdata = create_string_buffer(dxt_size)
 
         _dxt.compress_pixels.argtypes = (
-                #POINTER(c_uint8), 
                 c_char_p,
                 c_char_p, 
                 c_uint64, 
@@ -288,13 +281,8 @@ class DDS(Structure):
                 c_bool)
 
         result = _dxt.compress_pixels(
-                #outdata.ctypes.data_as(POINTER(c_uint8)), 
-                #c_char_p(outdata),
-                #from_buffer(outdata),
-                #create_string_buffer(outdata),
                 outdata,
                 c_char_p(data),
-                #data.ctypes.data_as(POINTER(c_uint8)), 
                 c_uint64(width), 
                 c_uint64(height), 
                 c_bool(is_rgba))
@@ -312,17 +300,13 @@ class DDS(Structure):
 
         width, height = img.size
         img_width, img_height = img.size
-        #ratio = 1
         mipmap = startmipmap
-        #self.buffer.seek(128)
 
         while (width > 4) and (height > 4):
 
             ratio = pow(2,mipmap)
             desired_width = self.width / ratio
             desired_height = self.height / ratio
-            #log.debug(f"{ratio}: {desired_width}x{desired_height}")
-
 
             # Only squares for now
             reduction_ratio = int(img_width // desired_width)
@@ -341,25 +325,14 @@ class DDS(Structure):
 
             dxtdata = self.compress(width, height, imgdata)
             if dxtdata is not None:
-                #self.buffer.seek(self.mipmap_list[mipmap][0])
-                #self.mipmaps.append(dxtdata)
-                #startpos = self.buffer.tell()
-                #log.debug(f"MIPMAP {mipmap} : {startpos}")
-                #self.mipmap_map[mipmap] = startpos
-                #self.buffer.write(dxtdata)
-
                 self.mipmap_list[mipmap].databuffer.seek(0)
                 self.mipmap_list[mipmap].databuffer.write(dxtdata)
                 self.mipmap_list[mipmap].retrieved = True
-                #self.mipMapCount += 1
 
-            #ratio *= 2
             mipmap += 1
             if maxmipmaps and mipmap >= maxmipmaps:
                 break
 
-        #log.debug(self.mipmap_list)
-        #self.mipMapCount = len(self.mipmaps)
         self.dump_header()
 
 
