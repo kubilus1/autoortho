@@ -5,21 +5,25 @@ import sys
 from io import BytesIO
 from binascii import hexlify
 from ctypes import *
-#import getortho
 from PIL import Image
-#import numpy as np
+import platform
 
 import logging
 logging.basicConfig()
 log = logging.getLogger('log')
 log.setLevel(logging.INFO)
 
-import sys
-print(sys.path)
-
-
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
-_dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib_stb_dxt.so')
+if platform.system().lower() == 'linux':
+    print("Linux detected")
+    _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','lib_stb_dxt.so')
+    #_dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib_stb_dxt.so')
+elif platform.system().lower() == 'windows':
+    print("Windows detected")
+    _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
+else:
+    print("System is not supported")
+    exit()
 #_dxt_path = os.path.join('./foo','lib_stb_dxt.so')
 _dxt = CDLL(_dxt_path)
 
@@ -157,6 +161,7 @@ class DDS(Structure):
             height = int(height/2)
             self.mipMapCount+=1
             self.mipmap_list.append(mipmap)
+        # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
         self.pitchOrLinearSize = curbytes 
         self.dump_header()
 
@@ -171,19 +176,12 @@ class DDS(Structure):
         with open(filename, 'wb') as h:
             h.write(self)
             log.debug(f"Wrote {h.tell()} bytes")
-            #h.write(self.buffer.getbuffer())
-            #log.debug(h.tell())
-            #h.write(self.data)
-            #for m in self.mipmaps:
-                #h.write(m.getbuffer())
-            #    h.write(m)
-            #    log.debug(h.tell())
             for mipmap in self.mipmap_list:
-                if mipmap.retrieved:
-                    log.debug(f"Writing {mipmap.startpos}")
-                    h.seek(mipmap.startpos)
-                    h.write(mipmap.databuffer.getbuffer())
-                    log.debug(f"Wrote {h.tell()-mipmap.startpos} bytes")
+                #if mipmap.retrieved:
+                log.debug(f"Writing {mipmap.startpos}")
+                h.seek(mipmap.startpos)
+                h.write(mipmap.databuffer.getbuffer())
+                log.debug(f"Wrote {h.tell()-mipmap.startpos} bytes")
 
             # Make sure we complete the full file size
             mipmap = self.mipmap_list[-1]
@@ -221,36 +219,34 @@ class DDS(Structure):
                 remaining_mipmap_len = mipmap.endpos - self.position
 
                 log.debug(f"Len: {length}, remain: {remaining_mipmap_len}, mipmap_pos {mipmap_pos}")
-                if length <= remaining_mipmap_len and mipmap.retrieved:
-                    # We have a mipmap and remaining length
+                if length <= remaining_mipmap_len: 
+                    # We have remaining length in current mipmap
                     log.debug("We have a mipmap and remaining length")
                     mipmap.databuffer.seek(mipmap_pos)
-                    outdata += mipmap.databuffer.read(length)
+                    data = mipmap.databuffer.read(length)
+                    ret_len = length - len(data)
+                    if ret_len != 0:
+                        log.debug(f"Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        data += b'\x00' * ret_len
+                
+                    outdata += data
                     self.position += length
                     break
 
-                elif length > remaining_mipmap_len and mipmap.retrieved:
-                    # We have a mipmap but not enough length
-                    log.debug("We have a mipmap but not enough length")
+                elif length > remaining_mipmap_len:
+                    # We don't have enough length in current mipmap
                     mipmap.databuffer.seek(mipmap_pos)
-                    outdata += mipmap.databuffer.read(remaining_mipmap_len)
+                    data = mipmap.databuffer.read(remaining_mipmap_len)
+                    
+                    ret_len = remaining_mipmap_len - len(data)
+                    if ret_len != 0:
+                        log.debug(f"Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        data += b'\x00' * ret_len
+
+                    outdata += data
+
                     length -= remaining_mipmap_len
                     #self.position += remaining_mipmap_len
-                    self.position = mipmap.endpos
-
-                elif length <= remaining_mipmap_len and not mipmap.retrieved:
-                    # Empty mipmap but within length
-                    log.debug("Empty mipmap but within length")
-                    outdata += b'\x00' * length
-                    self.position += length
-                    break
-
-                elif length > remaining_mipmap_len and not mipmap.retrieved:
-                    # Empty mipmap and not enough length
-                    log.debug("Empty mipmap and not enough length")
-                    outdata += b'\x00' * remaining_mipmap_len
-                    #self.position += remaining_mipmap_len
-                    length -= remaining_mipmap_len
                     self.position = mipmap.endpos
 
 
@@ -322,8 +318,13 @@ class DDS(Structure):
             imgdata = timg.tobytes()
             width, height = timg.size
             log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
+            
+            try:
+                dxtdata = self.compress(width, height, imgdata)
+            finally:
+                timg.close()
+                del(imgdata)
 
-            dxtdata = self.compress(width, height, imgdata)
             if dxtdata is not None:
                 self.mipmap_list[mipmap].databuffer.seek(0)
                 self.mipmap_list[mipmap].databuffer.write(dxtdata)
@@ -342,24 +343,8 @@ def to_dds(img, outpath):
         img = img.convert("RGBA")
     width, height = img.size
 
-
-    #mipmaps = mipmap(img)
-    #log.debug(len(mipmaps))
-
-    #data = np.flip(np.array(img), axis=0)
-    #data = data.flatten()
-
     dds = DDS(width, height)
-    #dds.data = dds.compress(width, height, data)
-    #dds.pitchOrLinearSize = 22369616
-    #dds.buffer.seek(128)
-    #dds.buffer.write(b'\x00' * dds.pitchOrLinearSize)
     dds.gen_mipmaps(img)
-    #dds.mipMapCount = 11
-    #dds.pitchOrLinearSize = 22369616
-    #dds.dump_header()
-
-
     dds.write(outpath)
     
 

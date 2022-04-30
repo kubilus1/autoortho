@@ -4,11 +4,17 @@ import os
 import time
 import pytest
 import shutil
+import hashlib
 import autoortho
 from pathlib import Path
 import threading
 import subprocess
 from fuse import fuse_exit
+
+import logging
+logging.basicConfig()
+log = logging.getLogger('log')
+log.setLevel(logging.DEBUG)
 
 def runmount(mountdir, cachedir):
     ao = autoortho.AutoOrtho('./testfiles', cachedir)
@@ -111,7 +117,7 @@ def _test_read_mip0(mount):
 
     assert rc == 0
 
-def test_read_mip1(mount, tmpdir):
+def _test_read_mip1(mount, tmpdir):
     things = os.listdir(mount)
   
     testfile = f"{mount}/24832_12416_BI16.dds"
@@ -154,3 +160,57 @@ def test_read_mip1(mount, tmpdir):
         shell=True
     )
     assert rc == 0
+
+    assert True == False
+
+def test_middle_read(mount, tmpdir):
+    testfile = f"{mount}/24832_12416_BI16.dds"
+    # rc = subprocess.call(
+    #     f"identify -verbose {testfile}", 
+    #     shell=True
+    # )
+    # assert rc == 0
+    
+    #with open(testfile, "rb") as h:
+    #    header = h.read(128)
+    #    data = h.read(1000)
+
+    with open(testfile, "rb") as h:
+        header = h.read(128)
+        h.seek(100000)
+        log.debug(f"TEST TELL(): {h.tell()}")
+        data1 = h.read(1000)
+        print(data1[0:20])
+        log.debug("TEST MIDDLE: SEEK(128)")
+        h.seek(128)
+        log.debug(f"TEST TELL(): {h.tell()}")
+        data0 = h.read(99872)
+        print(data0[0:20])
+
+    testdata = header + data0 + data1
+
+    with open(testfile, "rb") as h:
+        data = h.read(101000)
+        print(data[100000:20])
+        print(data[129:149])
+
+    assert len(testdata) == len(data)
+    assert testdata[100000:100020] == data[100000:100020]
+    assert testdata[0:128] == data[0:128]
+    assert testdata[128:150] == data[128:150]
+
+    assert hashlib.md5(testdata).hexdigest() == hashlib.md5(data).hexdigest()
+    #assert True == False
+
+def _test_multi_read(mount, tmpdir):
+    testfile = f"{mount}/24832_12416_BI16.dds"
+    with open(testfile, "rb") as h:
+        header1 = h.read(128)
+        print(header1)
+
+        with open(testfile, "rb") as h2:
+            header2 = h.read(128)
+            print(header2)
+
+
+    assert True == False
