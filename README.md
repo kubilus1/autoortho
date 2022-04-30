@@ -24,6 +24,28 @@ python3 -m pip install -U -r requirements.txt
 python3 autoortho <my orthophoto directory> <mount point in custom scenery>
 ```
 
+### Experimental Windows Setup
+
+Assumptions:
+* You are running 64bit Windows 10+
+* You have install X-Plane 11.50+
+* You have setup and configured [WinFSP](https://github.com/winfsp/winfsp)
+* You have installed a recent version of [Python](https://www.python.org/downloads/)
+
+Setup:
+* Grab the latest release zip (https://github.com/kubilus1/autoortho/releases)
+  and extract somewhere
+* Open a command prompt, go to extract dir location
+* Install python reqs:  `py -m pip install -r requirements.txt`
+* `py autoortho <my orthophoto directory> <path within X-Plane custom scenery folder>`
+
+NOTES:
+* WinFSP has a quirk where the mount point you choose cannot be a directory
+  that already exists.
+* Windows support has been tested to the extent that unit tests run.  Feedback
+  on if this works at all within X-Plane one way or another would be good to hear.
+
+
 ## Approach
 
 There does not appear to be a way to hook directly into the internal
@@ -138,12 +160,13 @@ This project requires python3.x and all pre-requisites in the
 All testing is done on Ubuntu 20.04.  Other Linux flavors ought to work as
 well.  MacOS very likely *should* work, but I have no way of testing it.
 
-It's possible this technique would work on Windows with the
-[WinFSP](https://github.com/winfsp/winfsp) project, though I currently have no
-way of testing this.
+I have done basic testing on Windows 10 with the
+[WinFSP](https://github.com/winfsp/winfsp) project.  So far this looks
+promising but I have no way of fully testing this with X-Plane so your mileage
+may vary.
 
 ## Known issues and limits
-* Currently I try to limit the cache to 4GB of memory, though it's possible it
+* Currently I try to limit the cache to 2GB of memory, though it's possible it
   will exceed this in certain scenarios.
 * Not really possible to post-process the satellite photos.  You get what you
   get.
@@ -153,10 +176,11 @@ way of testing this.
 
 ## TODOS
 
-* See if this will work on Windows with WinFSP
+* ~See if this will work on Windows with WinFSP~ 
 * Re-introduce a file cache for tiles purged from memory
 * Allow for overriding the satellite source type.  Since this pulls on the
   fly, we aren't stuck with what was setup initially with Ortho4XP.
+* Package a set of DSF files to get started with
 
 ## Other projects and links
 * (Ortho4XP) [https://github.com/oscarpilote/Ortho4XP]
