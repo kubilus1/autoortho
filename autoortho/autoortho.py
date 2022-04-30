@@ -330,6 +330,7 @@ def main(mountpoint, root):
     nothreads=False
     if platform.system() == 'Windows':
         nothreads=False
+    log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
     FUSE(AutoOrtho(root), mountpoint, nothreads=nothreads, foreground=True, allow_other=True)
 
 

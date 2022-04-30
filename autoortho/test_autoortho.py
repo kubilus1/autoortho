@@ -5,16 +5,20 @@ import time
 import pytest
 import shutil
 import hashlib
-import autoortho
+import platform
 from pathlib import Path
 import threading
 import subprocess
+import autoortho
+
 from fuse import fuse_exit
 
 import logging
 logging.basicConfig()
 log = logging.getLogger('log')
 log.setLevel(logging.DEBUG)
+
+
 
 def runmount(mountdir, cachedir):
     ao = autoortho.AutoOrtho('./testfiles', cachedir)
@@ -33,23 +37,20 @@ def runmount(mountdir, cachedir):
 @pytest.fixture
 def mount(tmpdir):
     mountdir = str(os.path.join(tmpdir, 'mount'))
-    os.makedirs(mountdir)
+
+    if platform.system() != "Windows":
+        os.makedirs(mountdir)
     cachedir = os.path.join(tmpdir, 'cache')
-    #time.sleep(2)
     t = threading.Thread(daemon=True, target=runmount, args=(mountdir, cachedir))
     t.start()
     time.sleep(1)
     
     yield mountdir
-
-    #fuse_exit()
-    #ao.destroy('/')
     
     files = os.listdir(mountdir)
     print(files)
-    #shutil.rmtree(f"{mountdir}/.pytest_cache")
-    #time.sleep(1)
-    subprocess.check_call(f"umount {mountdir}", shell=True)
+    if platform.system() != "Windows":
+        subprocess.check_call(f"umount {mountdir}", shell=True)
     time.sleep(1)
 
 
@@ -164,7 +165,7 @@ def _test_read_mip1(mount, tmpdir):
     assert True == False
 
 def test_middle_read(mount, tmpdir):
-    testfile = f"{mount}/24832_12416_BI16.dds"
+    testfile = os.path.join(mount, "24832_12416_BI16.dds")
     # rc = subprocess.call(
     #     f"identify -verbose {testfile}", 
     #     shell=True

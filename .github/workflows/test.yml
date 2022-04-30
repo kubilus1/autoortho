@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  test-linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,3 +20,23 @@ jobs:
 
     - name: Test
       run: cd autoortho && pytest test_getortho.py 
+
+
+  test-windows:
+    runs-on: windows-latest
+
+
+    steps:
+    - uses: actions/checkout@v3
+   
+    - uses: actions/setup-python@v3
+      with:
+        python-version: '3.x'
+
+    - name: Setup 
+      run: |
+          py -m pip install -U pytest 
+          py -m pip install -U -r requirements.txt
+
+    - name: Test
+      run: cd autoortho && py -m pytest test_getortho.py 
