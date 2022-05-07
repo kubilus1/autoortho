@@ -35,9 +35,8 @@ Assumptions:
 Setup:
 * Grab the latest release zip (https://github.com/kubilus1/autoortho/releases)
   and extract somewhere
-* Open a command prompt, go to extract dir location
-* Install python reqs:  `py -m pip install -r requirements.txt`
-* `py autoortho <my orthophoto directory> <path within X-Plane custom scenery folder>`
+* Execute the `run.bat` file
+* On first run answer the prompts.  Subsequent runs will preserve this config.
 
 NOTES:
 * WinFSP has a quirk where the mount point you choose cannot be a directory

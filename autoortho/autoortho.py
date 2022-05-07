@@ -13,8 +13,10 @@ import random
 import psutil
 import pathlib
 import platform
+import argparse
 import threading
 import itertools
+import configparser
 
 import logging
 logging.basicConfig()
@@ -326,13 +328,80 @@ class AutoOrtho(Operations):
         log.info(f"CLOSE: {path}")
         return 0
 
-def main(mountpoint, root):
-    nothreads=False
+
+def configure(force=False):
+    config = configparser.ConfigParser()
+
+    conf_file = os.path.join(os.path.expanduser("~"), (".autoortho"))
+    if os.path.isfile(conf_file) and not force:
+        log.info(f"Config file found {conf_file} reading...") 
+        config.read(conf_file)
+        root = config['paths']['root']
+        mountpoint = config['paths']['mountpoint']
+    else:
+        log.info("-"*28)
+        log.info(f"Running setup!")
+        log.info("-"*28)
+        root = input("Enter path to your OrthoPhoto files: ")
+        mountpoint = input("Enter path to mount point in X-Plane 11 custom_scenery directory: ")
+        config['paths'] = {}
+        config['paths']['root'] = root
+        config['paths']['mountpoint'] = mountpoint
+        with open(conf_file, 'w') as h:
+            config.write(h)
+        log.info(f"Wrote config file: {conf_file}")
+
+    return root, mountpoint
+
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description="AutoOrtho: X-Plane scenery streamer"
+    )
+    parser.add_argument(
+        "root",
+        help = "Root directory of orthophotos",
+        nargs="?"
+    )
+    parser.add_argument(
+        "mountpoint",
+        help = "Directory within X-Plane 11 custom scenery folder to mount",
+        nargs="?"
+    )
+    parser.add_argument(
+        "-c",
+        "--configure",
+        default=False,
+        action="store_true",
+        help = "Run the configuration setup again."
+    )
+
+    args = parser.parse_args()
+    if args.configure:
+        root, mountpoint = configure(force=True)
+    elif not args.root or args.mountpoint:
+        root, mountpoint = configure()
+    else:
+        root = args.root
+        mountpoint = args.mountpoint
+
+
     if platform.system() == 'Windows':
         nothreads=False
+        if os.path.exists(mountpoint):
+            log.error("Mountpoint cannot already exist.  Please remove this or specify a different mountpoint.")
+            time.sleep(5)
+            sys.exit(1)
+    else:    
+        nothreads=False
+        if not os.path.exists(mountpoint):
+            os.makedirs(mountpoint)
+
+
     log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
     FUSE(AutoOrtho(root), mountpoint, nothreads=nothreads, foreground=True, allow_other=True)
 
 
 if __name__ == '__main__':
-    main(sys.argv[2], sys.argv[1])
+    main()
