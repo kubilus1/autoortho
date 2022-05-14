@@ -9,7 +9,8 @@ from PIL import Image
 import platform
 
 import logging
-logging.basicConfig()
+#logging.basicConfig()
+logging.basicConfig(filename='autoortho.log')
 log = logging.getLogger('log')
 log.setLevel(logging.INFO)
 

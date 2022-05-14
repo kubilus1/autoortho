@@ -16,7 +16,8 @@ from queue import Queue, PriorityQueue, Empty
 import pydds
 
 import logging
-logging.basicConfig()
+#logging.basicConfig()
+logging.basicConfig(filename='autoortho.log')
 log = logging.getLogger('log')
 log.setLevel(logging.INFO)
 
