@@ -26,6 +26,8 @@ python3 autoortho <my orthophoto directory> <mount point in custom scenery>
 
 ### Experimental Windows Setup
 
+:warning: *THIS PROBABLY WON'T WORK.  THIS IS COMPLETELY EXPERIMENTAL AT THIS POINT.  See [this issue.](https://github.com/kubilus1/autoortho/issues/1)* :warning
+
 Assumptions:
 * You are running 64bit Windows 10+
 * You have install X-Plane 11.50+
