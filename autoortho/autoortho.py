@@ -21,7 +21,7 @@ import configparser
 import logging
 logging.basicConfig()
 log = logging.getLogger('log')
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
@@ -153,7 +153,7 @@ class AutoOrtho(Operations):
                 'st_nlink': 1, 
                 'st_size': 22369744, 
                 'st_uid': 1000, 
-                'st_blksize': 16384
+                'st_blksize': 4096
             }
 
         else:
@@ -263,7 +263,7 @@ class AutoOrtho(Operations):
         return fd
 
     def read(self, path, length, offset, fh):
-        #log.info(f"READ: {path}")
+        log.info(f"READ: {path}")
         data = None
         m = self.dds_re.match(path)
         if m:
@@ -400,7 +400,7 @@ def main():
 
 
     log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-    FUSE(AutoOrtho(root), mountpoint, nothreads=nothreads, foreground=True, allow_other=True)
+    FUSE(AutoOrtho(root), mountpoint, nothreads=nothreads, foreground=True, allow_other=True, max_readahead=0)
 
 
 if __name__ == '__main__':
