@@ -12,7 +12,11 @@ import logging
 #logging.basicConfig()
 logging.basicConfig(filename='autoortho.log')
 log = logging.getLogger('log')
-log.setLevel(logging.INFO)
+if os.environ.get('AO_DEBUG'):
+    log.setLevel(logging.DEBUG)
+else:
+    log.setLevel(logging.INFO)
+
 
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
@@ -195,10 +199,11 @@ class DDS(Structure):
         return self.position
 
     def seek(self, offset):
+        log.info(f"SEEK: {offset}")
         self.position = offset
 
     def read(self, length):
-        log.debug(f"READ: {self.position} {length} bytes")
+        log.info(f"READ: {self.position} {length} bytes")
 
         outdata = b''
 

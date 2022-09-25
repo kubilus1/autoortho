@@ -21,7 +21,11 @@ import configparser
 import logging
 logging.basicConfig()
 log = logging.getLogger('log')
-log.setLevel(logging.DEBUG)
+
+if os.environ.get('AO_DEBUG'):
+    log.setLevel(logging.DEBUG)
+else:
+    log.setLevel(logging.INFO)
 
 
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
@@ -153,7 +157,9 @@ class AutoOrtho(Operations):
                 'st_nlink': 1, 
                 'st_size': 22369744, 
                 'st_uid': 1000, 
-                'st_blksize': 4096
+                'st_blksize': 32768
+                #'st_blksize': 8192
+                #'st_blksize': 4096
             }
 
         else:
@@ -207,6 +213,7 @@ class AutoOrtho(Operations):
             #     'f_frsize', 'f_namemax'))
         elif platform.system() == 'Linux':
             stv = os.statvfs(full_path)
+            log.info(stv)
             return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
                 'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
                 'f_frsize', 'f_namemax'))
@@ -354,6 +361,20 @@ def configure(force=False):
     return root, mountpoint
 
 
+
+def run(ao, mountpoint, nothreads=False):
+    FUSE(
+        ao,
+        mountpoint, 
+        nothreads=nothreads, 
+        foreground=True, 
+        allow_other=True, 
+        max_readahead=0,
+        max_read=8192,
+        direct_io=True
+    )
+
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -400,8 +421,7 @@ def main():
 
 
     log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-    FUSE(AutoOrtho(root), mountpoint, nothreads=nothreads, foreground=True, allow_other=True, max_readahead=0)
-
+    run(AutoOrtho(root), mountpoint, nothreads)
 
 if __name__ == '__main__':
     main()

@@ -19,7 +19,11 @@ import logging
 #logging.basicConfig()
 logging.basicConfig(filename='autoortho.log')
 log = logging.getLogger('log')
-log.setLevel(logging.INFO)
+if os.environ.get('AO_DEBUG'):
+    log.setLevel(logging.DEBUG)
+else:
+    log.setLevel(logging.INFO)
+
 
 from PIL import Image
 
@@ -100,6 +104,7 @@ class Getter(object):
                 #log.debug(f"Got: {obj} {args} {kwargs}")
             except Empty:
                 #log.debug(f"timeout, continue")
+                #log.info(f"Got {self.counter}")
                 continue
 
             try:
@@ -117,7 +122,9 @@ class Getter(object):
         self.queue.put((obj, args, kwargs))
 
 class ChunkGetter(Getter):
+    counter = 0
     def get(self, obj, *args, **kwargs):
+        self.counter += 1
         if obj.ready.is_set():
             log.info(f"{obj} already retrieved.  Exit")
             return True
@@ -129,7 +136,9 @@ class ChunkGetter(Getter):
 chunk_getter = ChunkGetter(32)
 
 class TileGetter(Getter):
+    counter = 0
     def get(self, obj, *args, **kwargs):
+        self.counter += 1
         log.debug(f"{obj}, {args}, {kwargs}")
         return obj.get(*args)
 
@@ -159,6 +168,9 @@ class Chunk(object):
         self.row = row
         self.zoom = zoom
         self.maptype = maptype
+        # Hack override maptype
+        self.maptype = "BI"
+
         if not priority:
             self.priority = zoom
         self.chunk_id = f"{col}_{row}_{zoom}_{maptype}"
@@ -257,6 +269,10 @@ class Tile(object):
 
         if cache_dir:
             self.cache_dir = cache_dir
+        
+        # Hack override maptype
+        self.maptype = "BI"
+
 
         #self._find_cached_tiles()
         self.ready.clear()
@@ -413,6 +429,8 @@ class Tile(object):
             log.info(f"We already have mipmap 0 for {self}")
             return True
 
+        log.info(f"Retrieving {length} bytes from mipmap 0")
+
         numrows = length >> 20 # Divide by 1048576
         #log.debug(f"BYTES: {pydds.get_size(256,256)}")
         if length % 1048576:
@@ -533,7 +551,7 @@ class Tile(object):
 
         self._create_chunks(zoom)
 
-        log.info(f"Retrive mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
+        log.info(f"Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
         data_updated = False
         for chunk in self.chunks[zoom]:
             if not chunk.ready.is_set():
@@ -546,7 +564,9 @@ class Tile(object):
 
         #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
+        log.info(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
         new_im = Image.new('RGBA', (256*width,256*height), (0,0,250))
+        log.info(f"NUM CHUNKS: {len(self.chunks[zoom])}")
         for chunk in self.chunks[zoom]:
             ret = chunk.ready.wait()
             if not ret:
@@ -570,7 +590,9 @@ class Tile(object):
             new_im.close()
 
         self.ready.set()
-        
+       
+
+
         if mipmap == 0:
             log.debug("Will close all chunks.")
             for z,chunks in self.chunks.items():
@@ -579,6 +601,8 @@ class Tile(object):
                     #del(chunk.data)
                     #del(chunk.img)
         #return outfile
+        log.debug("Results:")
+        log.debug(self.dds.mipmap_list)
         return True
 
 
