@@ -167,6 +167,7 @@ def _test_read_mip1(mount, tmpdir):
     assert True == False
 
 def test_mip_4_read(mount, tmpdir):
+    global ao
     testfile = os.path.join(mount, "24832_12416_BI16.dds")
     with open(testfile, "rb") as h:
         time.sleep(0.5)
@@ -174,25 +175,33 @@ def test_mip_4_read(mount, tmpdir):
         log.info("First read the header:")
         header = h.read(128)
 
-        
-#         time.sleep(0.5)
-#         log.info("-"*32)
-#         log.info("Now seek to mipmap4")
-#         h.seek(22282368)
-#         time.sleep(1)
-#         log.info("-"*32)
-#         log.info("Tell:")
-#         pos = h.tell()
-#         log.debug(f"TEST TELL(): {pos}")
-#         time.sleep(1)
-#         log.info("-"*32)
-#         log.info("Read mipmap 4")
-#         data1 = h.read(65536)
-#         print(data1[0:20])
-#         time.sleep(0.5)
-#         log.info("-"*32)
-#         log.info("Close")
-# 
+
+
+        time.sleep(0.5)
+        log.info("-"*32)
+        log.info("Now seek to mipmap4")
+        h.seek(22282368)
+        time.sleep(1)
+        log.info("-"*32)
+        log.info("Tell:")
+        pos = h.tell()
+        log.debug(f"TEST TELL(): {pos}")
+        time.sleep(1)
+        log.info("-"*32)
+        log.info("Read mipmap 4")
+        data1 = h.read(65536)
+        print(data1[0:20])
+        time.sleep(0.5)
+        log.info("-"*32)
+        log.info("Close")
+        time.sleep(0.5)
+
+    log.info(f"Tiles: {len(ao.tc.tiles)}")
+    for k,v in ao.tc.tiles.items():
+        log.info(f"{k} {v}")
+        log.info(f"Chunks: {len(v.chunks)}")
+        log.info(v.dds.mipmap_list)
+
 
 #     with open(testfile, "rb") as h:
 #         data = h.read(101000)
