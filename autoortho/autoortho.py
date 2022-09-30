@@ -35,6 +35,7 @@ import getortho
 from xp_udp import DecodePacket, RequestDataRefs
 import socket
 
+from memory_profiler import profile
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
@@ -57,6 +58,9 @@ class TileCacher(object):
     tiles = {}
     tile_lock = threading.Lock()
 
+    hits = 0
+    misses = 0
+
     def clean(self):
         memlimit = pow(2,30) * 2
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
@@ -72,6 +76,7 @@ class TileCacher(object):
                         #t.close()
                         del(t)
                 cur_mem = process.memory_info().rss
+            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
             time.sleep(30)
 
     def __init__(self, cache_dir='.cache'):
@@ -84,21 +89,33 @@ class TileCacher(object):
         with self.tile_lock:
             tile = self.tiles.get(idx)
         if not tile:
-            tile = getortho.Tile(col, row, map_type, zoom, cache_dir =
-                    self.cache_dir)
+            self.misses += 1
             with self.tile_lock:
+                tile = getortho.Tile(col, row, map_type, zoom, cache_dir =
+                    self.cache_dir)
                 self.tiles[idx] = tile
+        else:
+            self.hits += 1
+
         return tile
 
 
 class AutoOrtho(Operations):
 
     open_paths = []
+    read_paths = []
+    
     path_condition = threading.Condition()
+    read_lock = threading.Lock()
+    tc = TileCacher(".cache")
+
     path_dict = {}
     tile_dict = {}
 
     fh = 1000
+
+    default_uid = 0
+    default_gid = 0
 
     def __init__(self, root, cache_dir='.cache'):
         log.info(f"ROOT: {root}")
@@ -106,7 +123,7 @@ class AutoOrtho(Operations):
         self.dsf_re = re.compile(".*/\+\d+[-+]\d+.dsf")
         self.root = root
         self.cache_dir = cache_dir
-        self.tc = TileCacher(cache_dir)
+        #self.tc = TileCacher(cache_dir)
 
     # Helpers
     # =======
@@ -121,7 +138,7 @@ class AutoOrtho(Operations):
     # Filesystem methods
     # ==================
 
-    def access(self, path, mode):
+    def _access(self, path, mode):
         log.info(f"ACCESS: {path}")
         #m = re.match(".*/(\d+)[-_](\d+)[-_](\D*)(\d+).dds", path)
         #if m:
@@ -142,35 +159,55 @@ class AutoOrtho(Operations):
     def getattr(self, path, fh=None):
         log.debug(f"GETATTR {path}")
 
-        full_path = None
+        full_path = self._full_path(path)
+        exists = os.path.exists(full_path)
         m = self.dds_re.match(path)
-        if m:
+        if m and not exists:
             #log.info(f"{path}: MATCH!")
             row, col, maptype, zoom = m.groups()
             log.info(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
-                'st_gid': 1000, 
+                #'st_gid': 1000,
+                'st_gid': self.default_gid,
+                'st_uid': self.default_uid,
                 'st_mode': 33204,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
                 'st_size': 22369744, 
-                'st_uid': 1000, 
-                'st_blksize': 32768
+                #'st_uid': 1000, 
+                #'st_blksize': 262144
+                #'st_blksize': 32768
+                'st_blksize': 16384
                 #'st_blksize': 8192
                 #'st_blksize': 4096
+            }
+        elif not exists:
+            attrs = {
+                'st_atime': 1653275838.0, 
+                'st_ctime': 1653275838.0, 
+                'st_btime': 1653275838.0, 
+                'st_gid': self.default_gid,
+                'st_uid': self.default_uid,
+                #'st_gid': 11, 
+                'st_mode': 16877, 
+                'st_mtime': 1653275838.0,
+                'st_nlink': 2,
+                'st_size': 0, 
+                #'st_uid': -1,
+                #'st_blksize': 262144
+                'st_blksize': 16384
             }
 
         else:
             full_path = self._full_path(path)
-
-        #log.info(f"GETATTR: FH: {fh}")
             st = os.lstat(full_path)
-     
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
                         'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
 
+        #log.info(f"GETATTR: FH: {fh}")
+        log.debug(attrs)
 
         return attrs
 
@@ -248,14 +285,15 @@ class AutoOrtho(Operations):
 
         m = self.dds_re.match(path)
         if m:
-            if not platform.system() == 'Windows':
-                with self.path_condition:
-                    while path in self.open_paths:
-                        log.info(f"{path} already open. {self.open_paths}  wait.")
-                        #self.path_condition.wait(10)
+            pass
+            # if not platform.system() == 'Windows':
+            #     with self.path_condition:
+            #         while path in self.open_paths:
+            #             log.info(f"{path} already open. {self.open_paths}  wait.")
+            #             self.path_condition.wait(10)
 
-                    log.info(f"Opening for {path} : {self.open_paths}....")
-                    #self.open_paths.append(path)
+            #         log.info(f"Opening for {path} : {self.open_paths}....")
+            #         self.open_paths.append(path)
         else:
             h = os.open(full_path, flags)
 
@@ -269,23 +307,47 @@ class AutoOrtho(Operations):
         os.chown(full_path,uid,gid) #chown to context uid & gid
         return fd
 
+    #@profile
     def read(self, path, length, offset, fh):
-        log.info(f"READ: {path}")
+        log.info(f"READ: {path} {offset} {length} {fh}")
         data = None
+        
+        #full_path = self._full_path(path)
+        #log.debug(f"FULL PATH: {full_path}")
+        #exists = os.path.exists(full_path)
+        
         m = self.dds_re.match(path)
         if m:
+            # with self.path_condition:
+            #     while path in self.read_paths:
+            #         log.debug(f"WAIT ON READ: DDS file {path}")
+            #         self.path_condition.wait()
+            #     
+            #     # Add current path we are reading
+            #     self.read_paths.append(path)
+
             row, col, maptype, zoom = m.groups()
             row = int(row)
             col = int(col)
             zoom = int(zoom)
             log.debug(f"READ: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
-            t = self.tc._get_tile(row, col, maptype, zoom) 
-            data = t.read_dds_bytes(offset, length)
+            with self.read_lock:
+                t = self.tc._get_tile(row, col, maptype, zoom) 
+                data = t.read_dds_bytes(offset, length)
+        
+            # Indicate we are done reading
+            # with self.path_condition:
+            #     self.read_paths.remove(path)
+            #     self.path_condition.notify_all()
+        elif path == "/test.png":
+            log.info(f"Waiting path: {path}")
+            time.sleep(0.5)
+
 
         if not data:
             os.lseek(fh, offset, os.SEEK_SET)
             data = os.read(fh, length)
-        
+
         return data
 
     def _write(self, path, buf, offset, fh):
@@ -369,8 +431,16 @@ def run(ao, mountpoint, nothreads=False):
         nothreads=nothreads, 
         foreground=True, 
         allow_other=True, 
-        max_readahead=0,
-        max_read=8192,
+        max_background=4,
+        #kernel_cache=False,
+        #max_readahead=0,
+        #sync_read=True,
+        #async_read=True,
+        #max_readahead=8192,
+        #max_readahead=0,
+        #max_read=16384,
+        #max_read=262144,
+        #default_permissions=True,
         direct_io=True
     )
 
@@ -419,6 +489,8 @@ def main():
         if not os.path.exists(mountpoint):
             os.makedirs(mountpoint)
 
+    #nothreads=True
+    nothreads=False
 
     log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
     run(AutoOrtho(root), mountpoint, nothreads)

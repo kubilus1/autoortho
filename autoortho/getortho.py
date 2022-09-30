@@ -27,6 +27,8 @@ else:
 
 from PIL import Image
 
+from memory_profiler import profile
+
 def do_url(url, headers={}):
     req = Request(url, headers=headers)
     resp = urlopen(req, timeout=5)
@@ -81,6 +83,7 @@ class Getter(object):
 
     def __init__(self, num_workers):
         
+        self.count = 0
         self.queue = PriorityQueue()
         self.workers = []
         self.WORKING = True
@@ -91,10 +94,15 @@ class Getter(object):
             t.start()
             self.workers.append(t)
 
+        self.stat_t = t = threading.Thread(target=self.show_stats, daemon=True)
+        self.stat_t.start()
+
+
     def stop(self):
         self.WORKING = False
         for t in self.workers:
             t.join()
+        self.stat_t.join()
 
     def worker(self, idx):
         self.localdata.idx = idx
@@ -106,6 +114,8 @@ class Getter(object):
                 #log.debug(f"timeout, continue")
                 #log.info(f"Got {self.counter}")
                 continue
+
+            self.count += 1
 
             try:
                 if not self.get(obj, *args, **kwargs):
@@ -121,10 +131,15 @@ class Getter(object):
     def submit(self, obj, *args, **kwargs):
         self.queue.put((obj, args, kwargs))
 
+    def show_stats(self):
+        while self.WORKING:
+            log.info(f"{self.__class__.__name__} got: {self.count}")
+            time.sleep(10)
+        log.info(f"Exiting {self.__class__.__name__} stat thread.  Got: {self.count} total")
+
+
 class ChunkGetter(Getter):
-    counter = 0
     def get(self, obj, *args, **kwargs):
-        self.counter += 1
         if obj.ready.is_set():
             log.info(f"{obj} already retrieved.  Exit")
             return True
@@ -135,17 +150,15 @@ class ChunkGetter(Getter):
 
 chunk_getter = ChunkGetter(32)
 
-class TileGetter(Getter):
-    counter = 0
-    def get(self, obj, *args, **kwargs):
-        self.counter += 1
-        log.debug(f"{obj}, {args}, {kwargs}")
-        return obj.get(*args)
-
-tile_getter = TileGetter(8)
+#class TileGetter(Getter):
+#    def get(self, obj, *args, **kwargs):
+#        log.debug(f"{obj}, {args}, {kwargs}")
+#        return obj.get(*args)
+#
+#tile_getter = TileGetter(8)
 
 log.info(f"chunk_getter: {chunk_getter}")
-log.info(f"tile_getter: {tile_getter}")
+#log.info(f"tile_getter: {tile_getter}")
 
 
 class Chunk(object):
@@ -262,7 +275,7 @@ class Tile(object):
         self.chunks = {}
         self.cache_file = (-1, None)
         self.ready = threading.Event()
-        self.tile_lock = threading.Lock()
+        self.tile_lock = threading.RLock()
         self.tile_condition = threading.Condition()
         if min_zoom:
             self.min_zoom = int(min_zoom)
@@ -295,16 +308,18 @@ class Tile(object):
     def _create_chunks(self, quick_zoom=0):
         col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom)
 
-        if not self.chunks.get(zoom):
-            self.chunks[zoom] = []
+        with self.tile_lock:
+            if not self.chunks.get(zoom):
+                self.chunks[zoom] = []
 
-            for r in range(row, row+height):
-                for c in range(col, col+width):
-                    chunk = Chunk(c, r, self.maptype, zoom, priority=self.priority)
-                    self.chunks[zoom].append(chunk)
+                for r in range(row, row+height):
+                    for c in range(col, col+width):
+                        chunk = Chunk(c, r, self.maptype, zoom, priority=self.priority)
+                        self.chunks[zoom].append(chunk)
 
     def _find_cache_file(self):
-        with self.tile_condition:
+        #with self.tile_condition:
+        with self.tile_lock:
             for z in range(self.zoom, (self.min_zoom-1), -1):
                 cache_file = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{z}.dds")
                 if os.path.exists(cache_file):
@@ -410,7 +425,8 @@ class Tile(object):
         #if self.cache_file[0] < zoom:
         log.info(f"Will get tile")
         start_time = time.time()
-        with self.tile_condition:
+        #with self.tile_condition:
+        with self.tile_lock:
             self.fetch(quick_zoom, background)
             self.write_cache_tile(quick_zoom)
         end_time = time.time()
@@ -438,15 +454,16 @@ class Tile(object):
 
         numchunks = 16*numrows
 
-        self._create_chunks()
-        #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
-        
-        # Determine height based on number of rows we will retrieve
-        height = math.ceil(numchunks/self.width)
-        new_im = Image.new('RGBA', (256*self.width,256*height), (250,0,0))
+        #with self.tile_condition:
+        with self.tile_lock:
+            self._create_chunks()
+            #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
+            
+            # Determine height based on number of rows we will retrieve
+            height = math.ceil(numchunks/self.width)
+            new_im = Image.new('RGBA', (256*self.width,256*height), (250,0,0))
 
-        data_updated = False
-        with self.tile_condition:
+            data_updated = False
             for chunk in self.chunks[self.zoom][0:numchunks]:
                 if not chunk.ready.is_set():
                     data_updated = True
@@ -486,7 +503,6 @@ class Tile(object):
             self.ready.set()
 
         return True
-
 
     def read_dds_bytes(self, offset, length):
         with self.tile_lock:
@@ -535,6 +551,7 @@ class Tile(object):
         return outfile
 
 
+    #@profile
     def get_mipmap(self, mipmap=0):
         
         zoom = self.zoom - mipmap
@@ -585,6 +602,7 @@ class Tile(object):
 
         self.ready.clear()
         try:
+            #with self.tile_lock:
             self.dds.gen_mipmaps(new_im, mipmap) 
         finally:
             new_im.close()

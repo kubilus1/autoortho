@@ -7,6 +7,9 @@ from binascii import hexlify
 from ctypes import *
 from PIL import Image
 import platform
+import threading
+
+from memory_profiler import profile
 
 import logging
 #logging.basicConfig()
@@ -96,7 +99,8 @@ class MipMap(object):
         self.endpos = 0
         self.length = 0
         self.retrieved = False
-        self.databuffer = BytesIO()
+        self.databuffer = None
+        #self.databuffer = BytesIO()
 
     def __repr__(self):
         return f"MipMap({self.idx}, {self.startpos}, {self.endpos}, {self.length}, {self.retrieved}, {self.databuffer})"
@@ -125,6 +129,7 @@ class DDS(Structure):
         ('reservedCaps', c_uint32 * 2),
         ('reserved2', c_uint32)
     ]
+
 
     def __init__(self, width, height):
         self.magic = b"DDS "  
@@ -176,6 +181,12 @@ class DDS(Structure):
         log.debug(self.pitchOrLinearSize)
         log.debug(self.mipMapCount)
 
+        self.lock = threading.Lock()
+        self.ready = threading.Event()
+        self.ready.clear()
+   
+        self.compress_count = 0
+
     def write(self, filename):
         #self.dump_header()
         with open(filename, 'wb') as h:
@@ -214,7 +225,10 @@ class DDS(Structure):
             length -= 128
 
         for mipmap in self.mipmap_list:
-            
+           
+            if mipmap.databuffer is None:
+                continue
+
             if mipmap.endpos > self.position >= mipmap.startpos:
                 log.debug(f"We are reading from mipmap {mipmap.idx}")
                 
@@ -263,7 +277,8 @@ class DDS(Structure):
     def dump_header(self):
         self.header.seek(0)
         self.header.write(self)
-    
+
+    #@profile 
     def compress(self, width, height, data):
         if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
             log.debug(f"Compressed images must have dimensions that are multiples of 4. We got {width}x{height}")
@@ -273,7 +288,13 @@ class DDS(Structure):
         
         blocksize = 16
         dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
-        outdata = create_string_buffer(dxt_size)
+        
+        #outdata = create_string_buffer(dxt_size)
+        
+        outdata = b'\x00'*dxt_size
+        
+        #bio.write(b'\x00'*dxt_size)
+        #outdata = bio.getbuffer().tobytes()
 
         _dxt.compress_pixels.argtypes = (
                 c_char_p,
@@ -293,54 +314,75 @@ class DDS(Structure):
         if not result:
             log.debug("Failed to compress")
 
+        self.compress_count += 1
         return outdata
 
-
+    #@profile
     def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0):
-       
-        # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
+    
+        #if maxmipmaps <= len(self.mipmap_list):
+        #    maxmipmaps = len(self.mipmap_list)
 
-        width, height = img.size
-        img_width, img_height = img.size
-        mipmap = startmipmap
+        with self.lock:
 
-        while (width > 4) and (height > 4):
+            # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
 
-            ratio = pow(2,mipmap)
-            desired_width = self.width / ratio
-            desired_height = self.height / ratio
+            width, height = img.size
+            img_width, img_height = img.size
+            mipmap = startmipmap
 
-            # Only squares for now
-            reduction_ratio = int(img_width // desired_width)
-            if reduction_ratio < 1:
-                #log.debug("0 ratio. skip")
+            log.info(self.mipmap_list)
+
+            while (width > 4) and (height > 4):
+
+                ratio = pow(2,mipmap)
+                desired_width = self.width / ratio
+                desired_height = self.height / ratio
+
+                #if True:
+                if not self.mipmap_list[mipmap].retrieved:
+
+                    # Only squares for now
+                    reduction_ratio = int(img_width // desired_width)
+                    if reduction_ratio < 1:
+                        #log.debug("0 ratio. skip")
+                        mipmap += 1
+                        if maxmipmaps and mipmap >= maxmipmaps:
+                            break
+                        continue
+
+                    timg = img.reduce(reduction_ratio)
+
+                    imgdata = timg.tobytes()
+                    width, height = timg.size
+                    log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
+                    
+                    try:
+                        dxtdata = self.compress(width, height, imgdata)
+                    finally:
+                        timg.close()
+                        del(imgdata)
+
+                    if dxtdata is not None:
+                    #    self.mipmap_list[mipmap].databuffer.seek(0)
+                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                        print(f"DXTLEN: {len(dxtdata)}")
+                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
+                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                        self.mipmap_list[mipmap].retrieved = True
+                        print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
+
+                    print(f"REF: {sys.getrefcount(dxtdata)}")
+
                 mipmap += 1
                 if maxmipmaps and mipmap >= maxmipmaps:
                     break
-                continue
+                
+                if mipmap >= len(self.mipmap_list):
+                    break
 
-            timg = img.reduce(reduction_ratio)
 
-            imgdata = timg.tobytes()
-            width, height = timg.size
-            log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
-            
-            try:
-                dxtdata = self.compress(width, height, imgdata)
-            finally:
-                timg.close()
-                del(imgdata)
-
-            if dxtdata is not None:
-                self.mipmap_list[mipmap].databuffer.seek(0)
-                self.mipmap_list[mipmap].databuffer.write(dxtdata)
-                self.mipmap_list[mipmap].retrieved = True
-
-            mipmap += 1
-            if maxmipmaps and mipmap >= maxmipmaps:
-                break
-
-        self.dump_header()
+            self.dump_header()
 
 
 
