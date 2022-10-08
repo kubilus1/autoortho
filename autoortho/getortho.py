@@ -169,6 +169,7 @@ class Chunk(object):
     priority = 0
     width = 256
     height = 256
+    cache_dir = 'cache'
 
     ready = None
     data = None
@@ -192,14 +193,35 @@ class Chunk(object):
         if maptype == "Null":
             self.maptype = "EOX"
 
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir)
+
+        self.cache_path = os.path.join(self.cache_dir, f"{self.chunk_id}.jpg")
+
     def __lt__(self, other):
         return self.priority < other.priority
 
     def __repr__(self):
         return f"Chunk({self.col},{self.row},{self.maptype},{self.zoom},{self.priority})"
 
+    def get_cache(self):
+        if os.path.isfile(self.cache_path):
+            with open(self.cache_path, 'rb') as h:
+                self.data = h.read()
+            return True
+        else:
+            return False
+
+    def save_cache(self):
+        with open(self.cache_path, 'wb') as h:
+            h.write(self.data)
+
     def get(self, idx=0):
         #log.debug(f"Getting {self}") 
+
+        if self.get_cache():
+            self.ready.set()
+            return True
 
         server_num = idx%(len(self.serverlist))
         server = self.serverlist[server_num]
@@ -239,6 +261,7 @@ class Chunk(object):
             pass
             resp.close()
 
+        self.save_cache()
         self.ready.set()
         return True
 
@@ -267,6 +290,8 @@ class Tile(object):
     cache_file = None
     dds = None
 
+    refs = 0
+
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir='./cache'):
         self.row = int(row)
         self.col = int(col)
@@ -289,7 +314,8 @@ class Tile(object):
 
         #self._find_cached_tiles()
         self.ready.clear()
-        self._find_cache_file()
+        
+        #self._find_cache_file()
 
         if not priority:
             self.priority = zoom
@@ -298,6 +324,7 @@ class Tile(object):
             os.makedirs(self.cache_dir)
 
         self.dds = pydds.DDS(self.width*256, self.height*256)
+        self.id = f"{row}_{col}_{maptype}_{zoom}"
 
     def __lt__(self, other):
         return self.priority < other.priority
@@ -328,7 +355,7 @@ class Tile(object):
                     self.ready.set()
                     return
 
-        log.info(f"No cache found for {self}!")
+        #log.info(f"No cache found for {self}!")
 
 
     def _get_quick_zoom(self, quick_zoom=0):
@@ -505,12 +532,19 @@ class Tile(object):
         return True
 
     def read_dds_bytes(self, offset, length):
+        log.debug(f"READ DDS BYTES: {offset} {length}")
         with self.tile_lock:
             if offset == 0:
                 # If offset = 0, read the header
                 log.debug("TILE: Read header")
                 self.get_bytes(length)
+            #elif offset < 16777344:
+            #elif offset < 65536:
+            elif offset < 131072:
+                log.debug("TILE: Middle of mipmap 0")
+                self.get_bytes(length + offset)
             else:
+                log.debug("TILE: Read full mipmap ...")
                 # For first mipmap.startpos in range of offset and offset + length, get mipmap and return data
                 for mipmap in self.dds.mipmap_list:
                     log.debug(f"TILE: mip start: {mipmap.startpos}, mip end: {mipmap.endpos}, offset: {offset}, len: {length}")
@@ -523,10 +557,16 @@ class Tile(object):
                         break
                     elif offset <= mipmap.startpos < (offset + length):
                         # Offset is before mipmap start, length is after start.  Check if retrieval is needed
-                        log.debug(f"TILE: Detected spanning read for mipmap {mipmap.idx}")
-                        if not mipmap.retrieved:
-                            log.debug(f"TILE: Retrieve {mipmap.idx}")
-                            self.get_mipmap(mipmap.idx)
+                        log.info(f"TILE: Detected spanning read for mipmap {mipmap.idx}.")
+                        #log.info(f"TILE: Retrieve mipmap {mipmap.idx - 1}")
+                        #self.get_mipmap(mipmap.idx-1)
+                        self.get_mipmap(mipmap.idx)
+                        # if not mipmap.retrieved:
+                        #     log.info(f"TILE: Retrieve {mipmap.idx}")
+                        #     self.get_mipmap(mipmap.idx)
+                        # else:
+                        #     log.info(f"TILE: Already retrieved")
+                        #     log.info(self.dds.mipmap_list)
                         break
 
 
@@ -555,7 +595,7 @@ class Tile(object):
     def get_mipmap(self, mipmap=0):
         
         zoom = self.zoom - mipmap
-        log.debug(f"Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
+        log.info(f"Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
         col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom)
         log.debug(f"Will use:  Zoom: {zoom},  Mipmap: {mipmap}")
 
@@ -568,7 +608,7 @@ class Tile(object):
 
         self._create_chunks(zoom)
 
-        log.info(f"Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
+        log.info(f"TILE: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
         data_updated = False
         for chunk in self.chunks[zoom]:
             if not chunk.ready.is_set():
@@ -616,6 +656,7 @@ class Tile(object):
             for z,chunks in self.chunks.items():
                 for chunk in chunks:
                     chunk.close()
+            self.chunks = {}
                     #del(chunk.data)
                     #del(chunk.img)
         #return outfile
@@ -627,9 +668,14 @@ class Tile(object):
     def close(self):
         log.info(f"Closing {self}")
 
+        if self.refs > 0:
+            log.warning(f"TILE: Trying to close, but has refs: {self.refs}")
+            return
+
         for chunks in self.chunks.values():
             for chunk in chunks:
                 chunk.close()
+        self.chunks = {}
         
 
 

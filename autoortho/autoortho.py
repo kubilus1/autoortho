@@ -27,7 +27,6 @@ if os.environ.get('AO_DEBUG'):
 else:
     log.setLevel(logging.INFO)
 
-
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 
 import getortho
@@ -36,6 +35,8 @@ from xp_udp import DecodePacket, RequestDataRefs
 import socket
 
 from memory_profiler import profile
+import tracemalloc
+
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
@@ -56,30 +57,43 @@ class TileCacher(object):
     max_zoom = 18
 
     tiles = {}
-    tile_lock = threading.Lock()
 
     hits = 0
     misses = 0
 
     def clean(self):
-        memlimit = pow(2,30) * 2
+        memlimit = pow(2,30) * 1
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
             log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
-            while len(self.tiles) >= 150 and cur_mem > memlimit:
+            while len(self.tiles) >= 20 and cur_mem > memlimit:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tile_lock:
                     for i in list(self.tiles.keys())[:20]:
-                        t = self.tiles.pop(i)
-                        #t.close()
-                        del(t)
+                        t = self.tiles.get(i)
+                        if t.refs <= 0:
+                            t = self.tiles.pop(i)
+                            t.close()
+                            t = None
+                            del(t)
                 cur_mem = process.memory_info().rss
             log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-            time.sleep(30)
+
+
+            snapshot = tracemalloc.take_snapshot()
+            top_stats = snapshot.statistics('lineno')
+
+            log.info("[ Top 10 ]")
+            for stat in top_stats[:10]:
+                    log.info(stat)
+
+            time.sleep(10)
 
     def __init__(self, cache_dir='.cache'):
+        tracemalloc.start()
+        self.tile_lock = threading.Lock()
         self.cache_dir = cache_dir
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
         self.clean_t.start()
@@ -94,7 +108,8 @@ class TileCacher(object):
                 tile = getortho.Tile(col, row, map_type, zoom, cache_dir =
                     self.cache_dir)
                 self.tiles[idx] = tile
-        else:
+        elif tile.refs <= 0:
+            # Only in this case would this cache have made a difference
             self.hits += 1
 
         return tile
@@ -104,10 +119,6 @@ class AutoOrtho(Operations):
 
     open_paths = []
     read_paths = []
-    
-    path_condition = threading.Condition()
-    read_lock = threading.Lock()
-    tc = TileCacher(".cache")
 
     path_dict = {}
     tile_dict = {}
@@ -123,7 +134,10 @@ class AutoOrtho(Operations):
         self.dsf_re = re.compile(".*/\+\d+[-+]\d+.dsf")
         self.root = root
         self.cache_dir = cache_dir
-        #self.tc = TileCacher(cache_dir)
+        self.tc = TileCacher(cache_dir)
+    
+        self.path_condition = threading.Condition()
+        self.read_lock = threading.Lock()
 
     # Helpers
     # =======
@@ -131,7 +145,7 @@ class AutoOrtho(Operations):
     def _full_path(self, partial):
         if partial.startswith("/"):
             partial = partial[1:]
-        path = os.path.join(self.root, partial)
+        path = os.path.abspath(os.path.join(self.root, partial))
         return path
 
 
@@ -155,12 +169,12 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         return os.chown(full_path, uid, gid)
 
-
     def getattr(self, path, fh=None):
-        log.debug(f"GETATTR {path}")
+        log.info(f"GETATTR {path}")
 
         full_path = self._full_path(path)
         exists = os.path.exists(full_path)
+        log.info(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
         m = self.dds_re.match(path)
         if m and not exists:
             #log.info(f"{path}: MATCH!")
@@ -203,16 +217,25 @@ class AutoOrtho(Operations):
         else:
             full_path = self._full_path(path)
             st = os.lstat(full_path)
+            log.info(st)
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
                         'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
 
+            if os.path.isdir(full_path):
+                attrs['st_nlink'] = 2
+
+        attrs['st_uid'] = self.default_uid
+        attrs['st_gid'] = self.default_gid
+        
+        #attrs['st_mode'] = 33204
+
         #log.info(f"GETATTR: FH: {fh}")
-        log.debug(attrs)
+        log.info(attrs)
 
         return attrs
 
     def readdir(self, path, fh):
-        log.debug(f"READDIR: {path}")
+        log.info(f"READDIR: {path}")
         full_path = self._full_path(path)
 
         dirents = ['.', '..']
@@ -240,10 +263,24 @@ class AutoOrtho(Operations):
         return os.mkdir(self._full_path(path), mode)
 
     def statfs(self, path):
-        #log.debug(f"STATFS: {path}")
+        log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
         if platform.system() == 'Windows':
-            return {}
+            #stv = os.statvfs(full_path)
+            #log.info(stv)
+            stats = {
+                    'f_bavail':1024, 
+                    'f_bfree':1024,
+                    'f_blocks':1204, 
+                    'f_bsize':4096, 
+                    'f_favail':1024, 
+                    'f_ffree':1024, 
+                    'f_files':1024, 
+                    'f_flag':0,
+                    'f_frsize':1024, 
+                    'f_namemax':1024
+            }
+            return stats
             # st = os.stat(full_path)
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
             #     'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
@@ -285,7 +322,12 @@ class AutoOrtho(Operations):
 
         m = self.dds_re.match(path)
         if m:
-            pass
+            row, col, maptype, zoom = m.groups()
+            row = int(row)
+            col = int(col)
+            zoom = int(zoom)
+            t = self.tc._get_tile(row, col, maptype, zoom) 
+            t.refs += 1
             # if not platform.system() == 'Windows':
             #     with self.path_condition:
             #         while path in self.open_paths:
@@ -331,9 +373,10 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             log.debug(f"READ: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
-            with self.read_lock:
-                t = self.tc._get_tile(row, col, maptype, zoom) 
-                data = t.read_dds_bytes(offset, length)
+            
+            #with self.read_lock:
+            t = self.tc._get_tile(row, col, maptype, zoom) 
+            data = t.read_dds_bytes(offset, length)
         
             # Indicate we are done reading
             # with self.path_condition:
@@ -379,11 +422,17 @@ class AutoOrtho(Operations):
         m = self.dds_re.match(path)
         if m:
             log.info(f"RELEASE: {path}")
-            with self.path_condition:
-                if path in self.open_paths:
-                    log.debug(f"RELEASE: {path}")
-                    self.open_paths.remove(path)
-                    self.path_condition.notify_all()
+            row, col, maptype, zoom = m.groups()
+            row = int(row)
+            col = int(col)
+            zoom = int(zoom)
+            t = self.tc._get_tile(row, col, maptype, zoom) 
+            t.refs -= 1
+            #with self.path_condition:
+            #    if path in self.open_paths:
+            #        log.debug(f"RELEASE: {path}")
+            #        self.open_paths.remove(path)
+            #        self.path_condition.notify_all()
             return 0
         else:
             return os.close(fh)
@@ -430,8 +479,19 @@ def run(ao, mountpoint, nothreads=False):
         mountpoint, 
         nothreads=nothreads, 
         foreground=True, 
-        allow_other=True, 
-        max_background=4,
+        allow_other=True,
+        #uid=-1,
+        #gid=-1,
+        #debug=True,
+        #mode="0777",
+        #umask="777",
+        #FileSecurity="D:P(A;;FA;;;OW)",
+        #FileSecurity="D:P(A;;0x1200A9;;;WD)",
+        #FileSecurity="D:P(A;OICI;FA;;;WD)(A;OICI;FA;;;BU)(A;OICI;FA;;;BA)(A;OICI;FA;;;OW)",
+        #FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
+        #umask=0,
+        #create_dir_umask=0,
+        #max_background=4,
         #kernel_cache=False,
         #max_readahead=0,
         #sync_read=True,
@@ -441,7 +501,7 @@ def run(ao, mountpoint, nothreads=False):
         #max_read=16384,
         #max_read=262144,
         #default_permissions=True,
-        direct_io=True
+        #direct_io=True
     )
 
 
