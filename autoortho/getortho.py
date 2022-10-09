@@ -27,7 +27,7 @@ else:
 
 from PIL import Image
 
-from memory_profiler import profile
+#from memory_profiler import profile
 
 def do_url(url, headers={}):
     req = Request(url, headers=headers)
@@ -276,7 +276,7 @@ class Tile(object):
     col = -1
     maptype = None
     zoom = -1
-    min_zoom = 12
+    min_zoom = 11
     cache_dir = './cache'
     width = 16
     height = 16

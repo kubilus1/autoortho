@@ -9,7 +9,7 @@ from PIL import Image
 import platform
 import threading
 
-from memory_profiler import profile
+#from memory_profiler import profile
 
 import logging
 #logging.basicConfig()
@@ -337,7 +337,7 @@ class DDS(Structure):
             img_width, img_height = img.size
             mipmap = startmipmap
 
-            log.info(self.mipmap_list)
+            log.debug(self.mipmap_list)
 
             while (width > 4) and (height > 4):
 
@@ -345,8 +345,8 @@ class DDS(Structure):
                 desired_width = self.width / ratio
                 desired_height = self.height / ratio
 
-                if True:
-                #if not self.mipmap_list[mipmap].retrieved:
+                #if True:
+                if not self.mipmap_list[mipmap].retrieved:
                 
                     # Only squares for now
                     reduction_ratio = int(img_width // desired_width)
@@ -361,7 +361,7 @@ class DDS(Structure):
 
                     imgdata = timg.tobytes()
                     width, height = timg.size
-                    log.info(f"MIPMAP: {mipmap} SIZE: {timg.size}")
+                    log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
                     
                     try:
                         dxtdata = self.compress(width, height, imgdata)

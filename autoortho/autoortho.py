@@ -34,7 +34,7 @@ import getortho
 from xp_udp import DecodePacket, RequestDataRefs
 import socket
 
-from memory_profiler import profile
+#from memory_profiler import profile
 import tracemalloc
 
 
@@ -51,6 +51,7 @@ def tilemeters(lat_deg, zoom):
     x = 64120000 / (pow(2, zoom))
     return (x, y)
 
+MEMTRACE=False
 
 class TileCacher(object):
     min_zoom = 13
@@ -62,13 +63,13 @@ class TileCacher(object):
     misses = 0
 
     def clean(self):
-        memlimit = pow(2,30) * 1
+        memlimit = pow(2,30) * 2
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
             log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
-            while len(self.tiles) >= 20 and cur_mem > memlimit:
+            while len(self.tiles) >= 90 and cur_mem > memlimit:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tile_lock:
                     for i in list(self.tiles.keys())[:20]:
@@ -82,17 +83,19 @@ class TileCacher(object):
             log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
 
 
-            snapshot = tracemalloc.take_snapshot()
-            top_stats = snapshot.statistics('lineno')
+            if MEMTRACE:
+                snapshot = tracemalloc.take_snapshot()
+                top_stats = snapshot.statistics('lineno')
 
-            log.info("[ Top 10 ]")
-            for stat in top_stats[:10]:
-                    log.info(stat)
+                log.info("[ Top 10 ]")
+                for stat in top_stats[:10]:
+                        log.info(stat)
 
-            time.sleep(10)
+            time.sleep(15)
 
     def __init__(self, cache_dir='.cache'):
-        tracemalloc.start()
+        if MEMTRACE:
+            tracemalloc.start()
         self.tile_lock = threading.Lock()
         self.cache_dir = cache_dir
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
@@ -102,15 +105,14 @@ class TileCacher(object):
         idx = f"{row}_{col}_{map_type}_{zoom}"
         with self.tile_lock:
             tile = self.tiles.get(idx)
-        if not tile:
-            self.misses += 1
-            with self.tile_lock:
+            if not tile:
+                self.misses += 1
                 tile = getortho.Tile(col, row, map_type, zoom, cache_dir =
                     self.cache_dir)
                 self.tiles[idx] = tile
-        elif tile.refs <= 0:
-            # Only in this case would this cache have made a difference
-            self.hits += 1
+            elif tile.refs <= 0:
+                # Only in this case would this cache have made a difference
+                self.hits += 1
 
         return tile
 
@@ -170,16 +172,17 @@ class AutoOrtho(Operations):
         return os.chown(full_path, uid, gid)
 
     def getattr(self, path, fh=None):
-        log.info(f"GETATTR {path}")
+        log.debug(f"GETATTR {path}")
 
         full_path = self._full_path(path)
         exists = os.path.exists(full_path)
-        log.info(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
+        log.debug(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
         m = self.dds_re.match(path)
-        if m and not exists:
+        #if m and not exists:
+        if m:
             #log.info(f"{path}: MATCH!")
             row, col, maptype, zoom = m.groups()
-            log.info(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
+            log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -197,45 +200,45 @@ class AutoOrtho(Operations):
                 #'st_blksize': 8192
                 #'st_blksize': 4096
             }
-        elif not exists:
-            attrs = {
-                'st_atime': 1653275838.0, 
-                'st_ctime': 1653275838.0, 
-                'st_btime': 1653275838.0, 
-                'st_gid': self.default_gid,
-                'st_uid': self.default_uid,
-                #'st_gid': 11, 
-                'st_mode': 16877, 
-                'st_mtime': 1653275838.0,
-                'st_nlink': 2,
-                'st_size': 0, 
-                #'st_uid': -1,
-                #'st_blksize': 262144
-                'st_blksize': 16384
-            }
+        # elif not exists:
+        #     attrs = {
+        #         'st_atime': 1653275838.0, 
+        #         'st_ctime': 1653275838.0, 
+        #         'st_btime': 1653275838.0, 
+        #         'st_gid': self.default_gid,
+        #         'st_uid': self.default_uid,
+        #         #'st_gid': 11, 
+        #         'st_mode': 16877, 
+        #         'st_mtime': 1653275838.0,
+        #         'st_nlink': 2,
+        #         'st_size': 0, 
+        #         #'st_uid': -1,
+        #         #'st_blksize': 262144
+        #         'st_blksize': 16384
+        #     }
 
         else:
             full_path = self._full_path(path)
             st = os.lstat(full_path)
-            log.info(st)
+            #log.info(st)
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
                         'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
 
-            if os.path.isdir(full_path):
-                attrs['st_nlink'] = 2
+            #if os.path.isdir(full_path):
+            #    attrs['st_nlink'] = 2
 
-        attrs['st_uid'] = self.default_uid
-        attrs['st_gid'] = self.default_gid
+        #attrs['st_uid'] = self.default_uid
+        #attrs['st_gid'] = self.default_gid
         
         #attrs['st_mode'] = 33204
 
         #log.info(f"GETATTR: FH: {fh}")
-        log.info(attrs)
+        log.debug(attrs)
 
         return attrs
 
     def readdir(self, path, fh):
-        log.info(f"READDIR: {path}")
+        log.debug(f"READDIR: {path}")
         full_path = self._full_path(path)
 
         dirents = ['.', '..']
@@ -287,7 +290,7 @@ class AutoOrtho(Operations):
             #     'f_frsize', 'f_namemax'))
         elif platform.system() == 'Linux':
             stv = os.statvfs(full_path)
-            log.info(stv)
+            #log.info(stv)
             return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
                 'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
                 'f_frsize', 'f_namemax'))
@@ -316,9 +319,9 @@ class AutoOrtho(Operations):
         #self.fh += 1
         h = 0
 
-        log.info(f"OPEN: {path}, {flags}")
+        log.debug(f"OPEN: {path}, {flags}")
         full_path = self._full_path(path)
-        log.info(f"OPEN: FULL PATH: {full_path}")
+        log.debug(f"OPEN: FULL PATH: {full_path}")
 
         m = self.dds_re.match(path)
         if m:
@@ -351,7 +354,7 @@ class AutoOrtho(Operations):
 
     #@profile
     def read(self, path, length, offset, fh):
-        log.info(f"READ: {path} {offset} {length} {fh}")
+        log.debug(f"READ: {path} {offset} {length} {fh}")
         data = None
         
         #full_path = self._full_path(path)
@@ -382,10 +385,6 @@ class AutoOrtho(Operations):
             # with self.path_condition:
             #     self.read_paths.remove(path)
             #     self.path_condition.notify_all()
-        elif path == "/test.png":
-            log.info(f"Waiting path: {path}")
-            time.sleep(0.5)
-
 
         if not data:
             os.lseek(fh, offset, os.SEEK_SET)
@@ -418,10 +417,10 @@ class AutoOrtho(Operations):
         return 0
 
     def release(self, path, fh):
-        log.info(f"RELEASE: {path}")
+        log.debug(f"RELEASE: {path}")
         m = self.dds_re.match(path)
         if m:
-            log.info(f"RELEASE: {path}")
+            log.debug(f"RELEASE: {path}")
             row, col, maptype, zoom = m.groups()
             row = int(row)
             col = int(col)
@@ -537,6 +536,9 @@ def main():
         root = args.root
         mountpoint = args.mountpoint
 
+    print("root:", root)
+    print("mountpoint:", mountpoint)
+
 
     if platform.system() == 'Windows':
         nothreads=False
@@ -544,10 +546,15 @@ def main():
             log.error("Mountpoint cannot already exist.  Please remove this or specify a different mountpoint.")
             time.sleep(5)
             sys.exit(1)
-    else:    
+    else:
+        root = os.path.expanduser(root)
+        mountpoint = os.path.expanduser(mountpoint)
         nothreads=False
         if not os.path.exists(mountpoint):
             os.makedirs(mountpoint)
+        if not os.path.isdir(mountpoint):
+            log.error(f"WARNING: {mountpoint} is not a directory.  Exiting.")
+            sys.exit(1)
 
     #nothreads=True
     nothreads=False
