@@ -246,8 +246,8 @@ class DDS(Structure):
                     data = mipmap.databuffer.read(length)
                     ret_len = length - len(data)
                     if ret_len != 0:
-                        log.debug(f"Didn't retrieve full length.  Fill empty bytes {ret_len}")
-                        data += b'\x00' * ret_len
+                        log.warning(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        data += b'\xFF' * ret_len
                 
                     outdata += data
                     self.position += length
@@ -258,16 +258,22 @@ class DDS(Structure):
 
                     if mipmap.databuffer is None:
                         # No buffer, return nulls
+                        #log.warning(f"PYDDS: No buffer for {mipmap.idx}, Attempt to fill {remaining_mipmap_len} bytes")
+                        log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
                         data = b''
+                        #data += b'\x88' * remaining_mipmap_len
                     else:    
                         # We don't have enough length in current mipmap
                         mipmap.databuffer.seek(mipmap_pos)
                         data = mipmap.databuffer.read(remaining_mipmap_len)
                     
+                    # Make sure we retrieved all the expected data from the mipmap we can.
                     ret_len = remaining_mipmap_len - len(data)
                     if ret_len != 0:
-                        log.debug(f"Didn't retrieve full length.  Fill empty bytes {ret_len}")
-                        data += b'\x00' * ret_len
+                        log.error(f"PYDDS: ERROR! Didn't retrieve full length of mipmap!")
+                        #log.error(f"PYDDS: Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        # Pretty sure this causes visual corruption
+                        #data += b'\x88' * ret_len
 
                     outdata += data
 

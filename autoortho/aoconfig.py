@@ -89,7 +89,7 @@ maptype_override =
                 [sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=2)],
                 [sg.HorizontalSeparator(pad=5)],
                 [sg.Text('Orthophoto dir', size=(15,1)), sg.InputText(orthos_path, key='orthos'), sg.FolderBrowse(target='orthos', initial_folder=orthos_path)],
-                [sg.Text('X-Plane scenry dir', size=(15,1)), sg.InputText(scenery_path, key='scenery'), sg.FolderBrowse(target='scenery', initial_folder=scenery_path)],
+                [sg.Text('X-Plane scenery dir', size=(15,1)), sg.InputText(scenery_path, key='scenery'), sg.FolderBrowse(target='scenery', initial_folder=scenery_path)],
                 [sg.HorizontalSeparator(pad=5)],
                 [sg.Checkbox('Always show config menu', key='showconfig', default=self.showconfig)],
                 [sg.Text('Map type override'), sg.Combo(maptypes, default_value=maptype, key='maptype')],

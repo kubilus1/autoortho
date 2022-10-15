@@ -541,6 +541,7 @@ class Tile(object):
                 self.get_bytes(length)
             #elif offset < 16777344:
             #elif offset < 65536:
+            #elif offset < 16777000:
             elif offset < 131072:
                 log.debug("TILE: Middle of mipmap 0")
                 self.get_bytes(length + offset)
@@ -558,10 +559,10 @@ class Tile(object):
                         break
                     elif offset <= mipmap.startpos < (offset + length):
                         # Offset is before mipmap start, length is after start.  Check if retrieval is needed
-                        log.info(f"TILE: Detected spanning read for mipmap {mipmap.idx}.")
+                        log.debug(f"TILE: Detected spanning read for {self} mipmap {mipmap.idx}. Get prior mipmap")
                         #log.info(f"TILE: Retrieve mipmap {mipmap.idx - 1}")
-                        #self.get_mipmap(mipmap.idx-1)
-                        self.get_mipmap(mipmap.idx)
+                        self.get_mipmap(mipmap.idx-1)
+                        #self.get_mipmap(mipmap.idx)
                         # if not mipmap.retrieved:
                         #     log.info(f"TILE: Retrieve {mipmap.idx}")
                         #     self.get_mipmap(mipmap.idx)
