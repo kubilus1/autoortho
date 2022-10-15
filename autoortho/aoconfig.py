@@ -219,6 +219,7 @@ maptype_override =
 
         ortho_dirs = os.listdir(self.paths.orthos_path)
 
+        log.info("Preparing directory structures....")
 
         if platform.system() == 'Windows':
             #if 'Earth nav data' in ortho_dirs:
@@ -230,7 +231,7 @@ maptype_override =
 
             #if 'terrain' in ortho_dirs:
             dest = os.path.join(z_autoortho_path, 'terrain')
-            if not os.path.exists(os.path.join(z_autoortho_path, 'terrain')):
+            if not os.path.exists(dest):
                 src = os.path.join(self.paths.orthos_path, 'terrain')
                 #subprocess.check_call(f'New-Item -ItemType Junction -Path "{dest}" -Target "{src}"', shell=True)
                 subprocess.check_call(f'mklink /J "{dest}" "{src}"', shell=True)
@@ -248,19 +249,20 @@ maptype_override =
             if not os.path.exists(os.path.join(z_autoortho_path, 'Earth nav data')):
                 os.symlink(
                     os.path.join(self.paths.orthos_path, 'Earth nav data'),
-                    os.path.join(z_autoortho_path, 'Earth nav data'),
-                    target_is_directory=True
+                    os.path.join(z_autoortho_path, 'Earth nav data')
                 )
 
             #if 'terrain' in ortho_dirs:
-            if not os.path.exists(os.path.join(z_autoortho_path, 'terrain')):
-                os.symlink(
-                    os.path.join(self.paths.orthos_path, 'terrain'),
-                    os.path.join(z_autoortho_path, 'terrain'),
-                    target_is_directory=True
-                )
+            src = os.path.join(self.paths.orthos_path, 'terrain')
+            dest = os.path.join(z_autoortho_path, 'terrain')
+
+            # Symlink won't work with XP11 due to relative pathing from terrain directory to textures 
+            subprocess.check_call(f"rsync -a '{src}' '{z_autoortho_path}'", shell=True)
+            
             if not os.path.exists(os.path.join(z_autoortho_path, 'textures')):
                 os.makedirs(os.path.join(z_autoortho_path, 'textures'))
+
+        log.info("Diretories are ready!")
 
         self.root = os.path.join(self.paths.orthos_path, 'textures')
         self.mountpoint = os.path.join(z_autoortho_path, 'textures')
