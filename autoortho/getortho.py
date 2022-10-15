@@ -182,8 +182,9 @@ class Chunk(object):
         self.row = row
         self.zoom = zoom
         self.maptype = maptype
+        
         # Hack override maptype
-        self.maptype = "BI"
+        #self.maptype = "BI"
 
         if not priority:
             self.priority = zoom
@@ -276,7 +277,7 @@ class Tile(object):
     col = -1
     maptype = None
     zoom = -1
-    min_zoom = 11
+    min_zoom = 12
     cache_dir = './cache'
     width = 16
     height = 16
@@ -309,7 +310,7 @@ class Tile(object):
             self.cache_dir = cache_dir
         
         # Hack override maptype
-        self.maptype = "BI"
+        #self.maptype = "BI"
 
 
         #self._find_cached_tiles()

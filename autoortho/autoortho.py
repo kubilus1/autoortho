@@ -8,6 +8,7 @@ import re
 import sys
 import time
 import math
+import types
 import errno
 import random
 import psutil
@@ -16,11 +17,14 @@ import platform
 import argparse
 import threading
 import itertools
-import configparser
+
+from functools import wraps
 
 import logging
-logging.basicConfig()
+#logging.basicConfig()
+logging.basicConfig(filename='autoortho.log')
 log = logging.getLogger('log')
+log.addHandler(logging.StreamHandler())
 
 if os.environ.get('AO_DEBUG'):
     log.setLevel(logging.DEBUG)
@@ -30,6 +34,7 @@ else:
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 
 import getortho
+import aoconfig
 
 from xp_udp import DecodePacket, RequestDataRefs
 import socket
@@ -53,6 +58,16 @@ def tilemeters(lat_deg, zoom):
 
 MEMTRACE=False
 
+
+def locked(fn):
+    @wraps(fn)
+    def wrapped(self, *args, **kwargs):
+        with self._lock:
+            result = fn(self, *args, **kwargs)
+        return result
+    return wrapped
+
+
 class TileCacher(object):
     min_zoom = 13
     max_zoom = 18
@@ -61,6 +76,15 @@ class TileCacher(object):
 
     hits = 0
     misses = 0
+
+    def __init__(self, cache_dir='.cache', maptype_override=None):
+        if MEMTRACE:
+            tracemalloc.start()
+        self.maptype_override = maptype_override
+        self.tile_lock = threading.Lock()
+        self.cache_dir = cache_dir
+        self.clean_t = threading.Thread(target=self.clean, daemon=True)
+        self.clean_t.start()
 
     def clean(self):
         memlimit = pow(2,30) * 2
@@ -93,26 +117,22 @@ class TileCacher(object):
 
             time.sleep(15)
 
-    def __init__(self, cache_dir='.cache'):
-        if MEMTRACE:
-            tracemalloc.start()
-        self.tile_lock = threading.Lock()
-        self.cache_dir = cache_dir
-        self.clean_t = threading.Thread(target=self.clean, daemon=True)
-        self.clean_t.start()
-
     def _get_tile(self, row, col, map_type, zoom):
+        if self.maptype_override:
+            map_type = self.maptype_override
+
         idx = f"{row}_{col}_{map_type}_{zoom}"
         with self.tile_lock:
             tile = self.tiles.get(idx)
-            if not tile:
-                self.misses += 1
+        if not tile:
+            self.misses += 1
+            with self.tile_lock:
                 tile = getortho.Tile(col, row, map_type, zoom, cache_dir =
                     self.cache_dir)
                 self.tiles[idx] = tile
-            elif tile.refs <= 0:
-                # Only in this case would this cache have made a difference
-                self.hits += 1
+        elif tile.refs <= 0:
+            # Only in this case would this cache have made a difference
+            self.hits += 1
 
         return tile
 
@@ -130,16 +150,21 @@ class AutoOrtho(Operations):
     default_uid = 0
     default_gid = 0
 
-    def __init__(self, root, cache_dir='.cache'):
+    def __init__(self, root, cache_dir='.cache', maptype_override=None):
         log.info(f"ROOT: {root}")
         self.dds_re = re.compile(".*/(\d+)[-_](\d+)[-_]((?!ZL)\D*)(\d+).dds")
-        self.dsf_re = re.compile(".*/\+\d+[-+]\d+.dsf")
+        self.dsf_re = re.compile(".*/[-+]\d+[-+]\d+.dsf")
+        self.ter_re = re.compile(".*/\d+[-_]\d+[-_](\D*)(\d+).ter")
         self.root = root
         self.cache_dir = cache_dir
-        self.tc = TileCacher(cache_dir)
+        self.maptype_override = maptype_override
+
+        self.tc = TileCacher(cache_dir, maptype_override)
     
         self.path_condition = threading.Condition()
         self.read_lock = threading.Lock()
+        self._lock = threading.RLock()
+
 
     # Helpers
     # =======
@@ -186,37 +211,17 @@ class AutoOrtho(Operations):
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
-                #'st_gid': 1000,
                 'st_gid': self.default_gid,
                 'st_uid': self.default_uid,
                 'st_mode': 33204,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
                 'st_size': 22369744, 
-                #'st_uid': 1000, 
-                #'st_blksize': 262144
-                #'st_blksize': 32768
-                'st_blksize': 16384
+                'st_blksize': 32768
+                #'st_blksize': 16384
                 #'st_blksize': 8192
                 #'st_blksize': 4096
             }
-        # elif not exists:
-        #     attrs = {
-        #         'st_atime': 1653275838.0, 
-        #         'st_ctime': 1653275838.0, 
-        #         'st_btime': 1653275838.0, 
-        #         'st_gid': self.default_gid,
-        #         'st_uid': self.default_uid,
-        #         #'st_gid': 11, 
-        #         'st_mode': 16877, 
-        #         'st_mtime': 1653275838.0,
-        #         'st_nlink': 2,
-        #         'st_size': 0, 
-        #         #'st_uid': -1,
-        #         #'st_blksize': 262144
-        #         'st_blksize': 16384
-        #     }
-
         else:
             full_path = self._full_path(path)
             st = os.lstat(full_path)
@@ -314,6 +319,7 @@ class AutoOrtho(Operations):
     # ============
 
 
+    #@locked
     def open(self, path, flags):
         #h = self.fh 
         #self.fh += 1
@@ -323,9 +329,11 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
 
-        m = self.dds_re.match(path)
-        if m:
-            row, col, maptype, zoom = m.groups()
+        #dsf_m = self.dsf_re.match(path)
+        #ter_m = self.ter_re.match(path)
+        dds_m = self.dds_re.match(path)
+        if dds_m:
+            row, col, maptype, zoom = dds_m.groups()
             row = int(row)
             col = int(col)
             zoom = int(zoom)
@@ -342,7 +350,7 @@ class AutoOrtho(Operations):
         else:
             h = os.open(full_path, flags)
 
-        log.info(f"FH: {h}")
+        #log.info(f"FH: {h}")
         return h
 
     def _create(self, path, mode, fi=None):
@@ -361,8 +369,9 @@ class AutoOrtho(Operations):
         #log.debug(f"FULL PATH: {full_path}")
         #exists = os.path.exists(full_path)
         
-        m = self.dds_re.match(path)
-        if m:
+        #ter_m = self.ter_re.match(path)
+        dds_m = self.dds_re.match(path)
+        if dds_m:
             # with self.path_condition:
             #     while path in self.read_paths:
             #         log.debug(f"WAIT ON READ: DDS file {path}")
@@ -371,13 +380,12 @@ class AutoOrtho(Operations):
             #     # Add current path we are reading
             #     self.read_paths.append(path)
 
-            row, col, maptype, zoom = m.groups()
+            row, col, maptype, zoom = dds_m.groups()
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            log.debug(f"READ: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
+            log.debug(f"READ: DDS file {path}, offset {offset}, length {length} (%s) " % str(dds_m.groups()))
             
-            #with self.read_lock:
             t = self.tc._get_tile(row, col, maptype, zoom) 
             data = t.read_dds_bytes(offset, length)
         
@@ -385,6 +393,7 @@ class AutoOrtho(Operations):
             # with self.path_condition:
             #     self.read_paths.remove(path)
             #     self.path_condition.notify_all()
+            return data
 
         if not data:
             os.lseek(fh, offset, os.SEEK_SET)
@@ -411,17 +420,19 @@ class AutoOrtho(Operations):
         else:
             return os.fsync(fh)
 
-
     def _releasedir(self, path, fh):
         log.debug(f"RELEASEDIR: {path}")
         return 0
 
+    #@locked
     def release(self, path, fh):
         log.debug(f"RELEASE: {path}")
-        m = self.dds_re.match(path)
-        if m:
+        #dsf_m = self.dsf_re.match(path)
+        #ter_m = self.ter_re.match(path)
+        dds_m = self.dds_re.match(path)
+        if dds_m:
             log.debug(f"RELEASE: {path}")
-            row, col, maptype, zoom = m.groups()
+            row, col, maptype, zoom = dds_m.groups()
             row = int(row)
             col = int(col)
             zoom = int(zoom)
@@ -446,32 +457,6 @@ class AutoOrtho(Operations):
         return 0
 
 
-def configure(force=False):
-    config = configparser.ConfigParser()
-
-    conf_file = os.path.join(os.path.expanduser("~"), (".autoortho"))
-    if os.path.isfile(conf_file) and not force:
-        log.info(f"Config file found {conf_file} reading...") 
-        config.read(conf_file)
-        root = config['paths']['root']
-        mountpoint = config['paths']['mountpoint']
-    else:
-        log.info("-"*28)
-        log.info(f"Running setup!")
-        log.info("-"*28)
-        root = input("Enter path to your OrthoPhoto files: ")
-        mountpoint = input("Enter path to mount point in X-Plane 11 custom_scenery directory: ")
-        config['paths'] = {}
-        config['paths']['root'] = root
-        config['paths']['mountpoint'] = mountpoint
-        with open(conf_file, 'w') as h:
-            config.write(h)
-        log.info(f"Wrote config file: {conf_file}")
-
-    return root, mountpoint
-
-
-
 def run(ao, mountpoint, nothreads=False):
     FUSE(
         ao,
@@ -479,6 +464,9 @@ def run(ao, mountpoint, nothreads=False):
         nothreads=nothreads, 
         foreground=True, 
         allow_other=True,
+        #auto_cache=True,
+        #max_read=16384,
+        #kernel_cache=True,
         #uid=-1,
         #gid=-1,
         #debug=True,
@@ -494,10 +482,9 @@ def run(ao, mountpoint, nothreads=False):
         #kernel_cache=False,
         #max_readahead=0,
         #sync_read=True,
-        #async_read=True,
+        #async_read=False,
         #max_readahead=8192,
         #max_readahead=0,
-        #max_read=16384,
         #max_read=262144,
         #default_permissions=True,
         #direct_io=True
@@ -526,27 +513,43 @@ def main():
         action="store_true",
         help = "Run the configuration setup again."
     )
+    parser.add_argument(
+        "-H",
+        "--headless",
+        default=False,
+        action="store_true",
+        help = "Run in headless mode."
+    )
 
     args = parser.parse_args()
-    if args.configure:
-        root, mountpoint = configure(force=True)
-    elif not args.root or args.mountpoint:
-        root, mountpoint = configure()
-    else:
-        root = args.root
-        mountpoint = args.mountpoint
+
+    aoc = aoconfig.AOConfig(headless=args.headless)
+    if (not aoc.ready) or args.configure or aoc.showconfig:
+        aoc.setup()
+
+    aoc.verify()
+    aoc.prepdirs()
+
+    root = aoc.root
+    mountpoint = aoc.mountpoint
+
 
     print("root:", root)
     print("mountpoint:", mountpoint)
 
 
     if platform.system() == 'Windows':
-        nothreads=False
-        if os.path.exists(mountpoint):
-            log.error("Mountpoint cannot already exist.  Please remove this or specify a different mountpoint.")
-            time.sleep(5)
-            sys.exit(1)
+        log.info("Running in Windows WinFSP mode.")
+        import autoortho_winfsp
+        autoortho_winfsp.main(root, mountpoint,
+                maptype_override=aoc.autoortho.maptype_override)
+        #nothreads=False
+        #if os.path.exists(mountpoint):
+        #    #log.error("Mountpoint cannot already exist.  Please remove this or specify a different mountpoint.")
+        #    time.sleep(5)
+        #    sys.exit(1)
     else:
+        log.info("Logging in FUSE mode.")
         root = os.path.expanduser(root)
         mountpoint = os.path.expanduser(mountpoint)
         nothreads=False
@@ -556,11 +559,11 @@ def main():
             log.error(f"WARNING: {mountpoint} is not a directory.  Exiting.")
             sys.exit(1)
 
-    #nothreads=True
-    nothreads=False
+        #nothreads=True
+        nothreads=False
 
-    log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-    run(AutoOrtho(root), mountpoint, nothreads)
+        log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
+        run(AutoOrtho(root, maptype_override=aoc.autoortho.maptype_override), mountpoint, nothreads)
 
 if __name__ == '__main__':
     main()

@@ -1,3 +1,3 @@
-@echo off
-py -m pip install -r requirements.txt
+@echo on
+py -m pip install -r requirements-win.txt
 py autoortho

@@ -4,5 +4,8 @@ autoortho.pyz:
 	python3 -m pip install -U -r ./build/autoortho/build-reqs.txt --target ./build/autoortho
 	cd build && python3 -m zipapp -p "/usr/bin/env python3" autoortho
 
+%.txt: %.in
+	pip-compile $<
+
 clean:
 	rm -rf build

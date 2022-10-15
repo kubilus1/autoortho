@@ -819,7 +819,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
 
 def create_file_system(
-    root, mountpoint, label="memfs", prefix="", verbose=True, debug=False, testing=False
+    root, mountpoint, label="autoortho", prefix="", verbose=True, debug=False, testing=False, maptype_override=None
 ):
     if debug:
         enable_debug_log()
@@ -833,7 +833,7 @@ def create_file_system(
     mountpoint = Path(mountpoint)
     is_drive = mountpoint.parent == mountpoint
     reject_irp_prior_to_transact0 = not is_drive and not testing
-    tc = autoortho.TileCacher(".cache")
+    tc = autoortho.TileCacher(".cache", maptype_override=maptype_override)
     operations = AutoorthoOperations(str(root), label, tc)
     fs = FileSystem(
         str(mountpoint),
@@ -860,8 +860,8 @@ def create_file_system(
     return fs
 
 
-def main(root, mountpoint, label, prefix, verbose, debug):
-    fs = create_file_system(root, mountpoint, label, prefix, verbose, debug)
+def main(root, mountpoint, label="autoorotho", prefix="", verbose=False, debug=False, maptype_override=None):
+    fs = create_file_system(root, mountpoint, label, prefix, verbose, debug, maptype_override)
     try:
         print("Starting FS")
         fs.start()
