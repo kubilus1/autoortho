@@ -10,25 +10,26 @@ the imagery that we need on the fly.
 
 [![Video](https://img.youtube.com/vi/seuguds8GX0/hqdefault.jpg)](https://www.youtube.com/watch?v=seuguds8GX0)
 
+
 ## Quick start
+
+### *nix Setup
 Assumptions:
-* You are running on Linux
 * You have installed X-Plane 11.50+
-* You have setup a mount point in your custom scenery and added it to the end
-  of your `scenery_packs.ini` file
+* You have a recent version of Python and pip installed
+* You have a reasonably fast CPU and broadband internet 
 
-```
-git clone https://github.com/kubilus1/autoortho
-cd autoortho
-python3 -m pip install -U -r requirements.txt
-python3 autoortho <my orthophoto directory> <mount point in custom scenery>
-```
+Steps:
+1. Download the most recent release of this project: https://github.com/kubilus1/autoortho/releases
+2. Extract to a convenient location
+3. Enter the directory you extracted
+4. Install all pre-reqs with `python3 -m pip install -r requirements.txt`
+5. Run the project with `python3 autoortho`
+6. Configure your Orthophotos dir to point to the location of your orthos (see https://github.com/kubilus1/autoortho/releases/download/0.0.5/utah.zip as an example)
+7. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 
-### Experimental Windows Setup
 
-:warning: 
-*THIS PROBABLY WON'T WORK.  THIS IS COMPLETELY EXPERIMENTAL AT THIS POINT.  See [this issue.](https://github.com/kubilus1/autoortho/issues/1)* 
-:warning:
+### Windows Setup
 
 Assumptions:
 * You are running 64bit Windows 10+
@@ -36,11 +37,13 @@ Assumptions:
 * You have setup and configured [WinFSP](https://github.com/winfsp/winfsp)
 * You have installed a recent version of [Python](https://www.python.org/downloads/)
 
-Setup:
-* Grab the latest release zip (https://github.com/kubilus1/autoortho/releases)
-  and extract somewhere
-* Execute the `run.bat` file
-* On first run answer the prompts.  Subsequent runs will preserve this config.
+Steps:
+1. Download the most recent release of this project: https://github.com/kubilus1/autoortho/releases
+2. Extract to a convenient location
+3. Enter the directory you extracted
+4. Run the project by executing `run.bat`
+5. Configure your Orthophotos dir to point to the location of your orthos (see https://github.com/kubilus1/autoortho/releases/download/0.0.5/utah.zip as an example)
+6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 
 NOTES:
 * WinFSP has a quirk where the mount point you choose cannot be a directory
