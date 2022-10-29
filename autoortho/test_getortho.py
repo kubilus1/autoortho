@@ -161,26 +161,26 @@ def test_tile_close(tmpdir):
     close_mem = process.memory_info().rss
     print(f"S: {start_mem} G: {get_mem} C: {close_mem}.  Diff {close_mem-start_mem}")
 
-def test_map(tmpdir):
-    m = getortho.Map(cache_dir=tmpdir)
-    ret = m.get_tiles(2176, 3232, 'EOX', 13)
-    assert ret
+#def test_map(tmpdir):
+#    m = getortho.Map(cache_dir=tmpdir)
+#    ret = m.get_tiles(2176, 3232, 'EOX', 13)
+#    assert ret
 
-def test_map_background(tmpdir):
-    m = getortho.Map(cache_dir=tmpdir)
-    start_c = 2176
-    start_r = 3232
-    num_c = 2
-    num_r = 1
-    for c in range(start_c, (start_c + num_c*16), 16):
-        for r in range(start_r, (start_r + num_r*16), 16):
-            ret = m.get_tiles(c, r, 'EOX', 13, background=True)
-    
-    for t in m.tiles:
-        print(f"Waiting on {t}")
-        ret = t.ready.wait(600)
-        assert ret == True
-        assert len(t.chunks[13]) == 256
-
-    files = os.listdir(tmpdir)
-    assert len(m.tiles) == len(files)
+# def test_map_background(tmpdir):
+#     m = getortho.Map(cache_dir=tmpdir)
+#     start_c = 2176
+#     start_r = 3232
+#     num_c = 2
+#     num_r = 1
+#     for c in range(start_c, (start_c + num_c*16), 16):
+#         for r in range(start_r, (start_r + num_r*16), 16):
+#             ret = m.get_tiles(c, r, 'EOX', 13, background=True)
+#     
+#     for t in m.tiles:
+#         print(f"Waiting on {t}")
+#         ret = t.ready.wait(600)
+#         assert ret == True
+#         assert len(t.chunks[13]) == 256
+# 
+#     files = os.listdir(tmpdir)
+#     assert len(m.tiles) == len(files)

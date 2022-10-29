@@ -112,53 +112,6 @@ class FileObj(BaseFileObj):
         self.attributes |= FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE
         assert not self.attributes & FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY
 
-    # @property
-    # def allocation_size(self):
-    #     return len(self.data)
-
-    # def set_allocation_size(self, allocation_size):
-    #     if allocation_size < self.allocation_size:
-    #         self.data = self.data[:allocation_size]
-    #     if allocation_size > self.allocation_size:
-    #         self.data += bytearray(allocation_size - self.allocation_size)
-    #     assert self.allocation_size == allocation_size
-    #     self.file_size = min(self.file_size, allocation_size)
-
-    # def adapt_allocation_size(self, file_size):
-    #     units = (file_size + self.allocation_unit - 1) // self.allocation_unit
-    #     self.set_allocation_size(units * self.allocation_unit)
-
-    # def set_file_size(self, file_size):
-    #     if file_size < self.file_size:
-    #         zeros = bytearray(self.file_size - file_size)
-    #         self.data[file_size : self.file_size] = zeros
-    #     if file_size > self.allocation_size:
-    #         self.adapt_allocation_size(file_size)
-    #     self.file_size = file_size
-
-    # def read(self, offset, length):
-    #     if offset >= self.file_size:
-    #         raise NTStatusEndOfFile()
-    #     end_offset = min(self.file_size, offset + length)
-    #     return self.data[offset:end_offset]
-
-    # def write(self, buffer, offset, write_to_end_of_file):
-    #     if write_to_end_of_file:
-    #         offset = self.file_size
-    #     end_offset = offset + len(buffer)
-    #     if end_offset > self.file_size:
-    #         self.set_file_size(end_offset)
-    #     self.data[offset:end_offset] = buffer
-    #     return len(buffer)
-
-    # def constrained_write(self, buffer, offset):
-    #     if offset >= self.file_size:
-    #         return 0
-    #     end_offset = min(self.file_size, offset + len(buffer))
-    #     transferred_length = end_offset - offset
-    #     self.data[offset:end_offset] = buffer[:transferred_length]
-    #     return transferred_length
-
 
 class FolderObj(BaseFileObj):
     def __init__(self, path, attributes, security_descriptor):
@@ -208,24 +161,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
         # Do lots of locking
         self.biglock = True
-    # Debugging helpers
 
-#     def _create_directory(self, path):
-#         path = self._root_path / path
-#         obj = FolderObj(
-#             path, FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY, self._root_obj.security_descriptor,
-#         )
-#         self._entries[path] = obj
-# 
-#     def _import_files(self, file_path):
-#         file_path = Path(file_path)
-#         path = self._root_path / file_path.name
-#         obj = FileObj(
-#             path, FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE, self._root_obj.security_descriptor,
-#         )
-#         self._entries[path] = obj
-#         obj.write(file_path.read_bytes(), 0, False)
-# 
     # Winfsp operations
 
     #@operation
@@ -248,59 +184,12 @@ class AutoorthoOperations(BaseFileSystemOperations):
         else:
             file_obj = self.add_obj(file_name, self._root_path, False)
 
-        # Retrieve file
-        #try:
-        #    file_obj = self._entries[file_name]
-        #except KeyError:
-        #    raise NTStatusObjectNameNotFound()
-
         return (
             file_obj.attributes,
             file_obj.security_descriptor.handle,
             file_obj.security_descriptor.size,
         )
 
-    # @operation
-    # def _create(
-    #     self,
-    #     file_name,
-    #     create_options,
-    #     granted_access,
-    #     file_attributes,
-    #     security_descriptor,
-    #     allocation_size,
-    # ):
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     file_name = PureWindowsPath(file_name)
-
-    #     # `granted_access` is already handle by winfsp
-    #     # `allocation_size` useless for us
-
-    #     # Retrieve file
-    #     try:
-    #         parent_file_obj = self._entries[file_name.parent]
-    #         if isinstance(parent_file_obj, FileObj):
-    #             raise NTStatusNotADirectory()
-    #     except KeyError:
-    #         raise NTStatusObjectNameNotFound()
-
-    #     # File/Folder already exists
-    #     if file_name in self._entries:
-    #         raise NTStatusObjectNameCollision()
-
-    #     if create_options & CREATE_FILE_CREATE_OPTIONS.FILE_DIRECTORY_FILE:
-    #         file_obj = self._entries[file_name] = FolderObj(
-    #             file_name, file_attributes, security_descriptor
-    #         )
-    #     else:
-    #         file_obj = self._entries[file_name] = FileObj(
-    #             file_name, file_attributes, security_descriptor, allocation_size,
-    #         )
-
-    #     print(self._entries)
-    #     return OpenedObj(file_obj)
 
     @operation
     def add_obj(self, file_name, parent, isdir):
@@ -348,64 +237,14 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
     #@operation
     def get_security(self, file_context):
-        #print(f"GET_SECURITY: {file_context}")
         #print(file_context.file_obj.security_descriptor)
         return file_context.file_obj.security_descriptor
-
-    # @operation
-    # def _set_security(self, file_context, security_information, modification_descriptor):
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     new_descriptor = file_context.file_obj.security_descriptor.evolve(
-    #         security_information, modification_descriptor
-    #     )
-    #     file_context.file_obj.security_descriptor = new_descriptor
-
-    # @operation
-    # def _rename(self, file_context, file_name, new_file_name, replace_if_exists):
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     file_name = PureWindowsPath(file_name)
-    #     new_file_name = PureWindowsPath(new_file_name)
-
-    #     # Retrieve file
-    #     try:
-    #         file_obj = self._entries[file_name]
-
-    #     except KeyError:
-    #         raise NTStatusObjectNameNotFound()
-
-    #     if new_file_name in self._entries:
-    #         # Case-sensitive comparison
-    #         if new_file_name.name != self._entries[new_file_name].path.name:
-    #             pass
-    #         elif not replace_if_exists:
-    #             raise NTStatusObjectNameCollision()
-    #         elif not isinstance(file_obj, FileObj):
-    #             raise NTStatusAccessDenied()
-
-    #     for entry_path in list(self._entries):
-    #         try:
-    #             relative = entry_path.relative_to(file_name)
-    #             new_entry_path = new_file_name / relative
-    #             entry = self._entries.pop(entry_path)
-    #             entry.path = new_entry_path
-    #             self._entries[new_entry_path] = entry
-    #         except ValueError:
-    #             continue
 
     @operation
     def open(self, file_name, create_options, granted_access):
         #print(f"OPEN: {file_name} {create_options} {granted_access}")
         file_name = PureWindowsPath(file_name)
         # Retrieve file
-#         try:
-#             file_obj = self._entries[file_name]
-#         except KeyError:
-#             raise NTStatusObjectNameNotFound()
-# 
 
         path = str(file_name)
         full_path = self._full_path(path)
@@ -418,11 +257,6 @@ class AutoorthoOperations(BaseFileSystemOperations):
         m = self.dds_re.match(path)
         if m:
             #print(f"MATCH! {path}")
-            # file_attributes = FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE
-            # security_descriptor = self._root_obj.security_descriptor
-            # file_obj = FileObj(
-            #     file_name, file_attributes, security_descriptor
-            # )
             row, col, maptype, zoom = m.groups()
             row = int(row)
             col = int(col)
@@ -444,36 +278,9 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
         elif os.path.isdir(full_path):
             file_obj = self.add_obj(path, self._root_path, True)
-            #tobj = {"file_name": path, **file_obj.get_file_info()}
-            #if not file_obj:
-            #    file_attributes = FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY
-            #    security_descriptor = self._root_obj.security_descriptor
-            #    file_obj = FolderObj(
-            #        file_name, file_attributes, security_descriptor
-            #    )
-            #    self._entries[path] = file_obj
-            # `granted_access` is already handle by winfsp
         else:
-            #h = os.open(full_path,  os.O_RDONLY)
             file_obj = self.add_obj(path, self._root_path, False)
-            #if file_obj.h == -1:
-            #    print(f"OPEN: Nahhh dog. This file is already open.")
-            #    time.sleep(5)
             h = open(full_path, "rb")
-            #file_obj.h = h
-            print(f"OPEN: {path} {h}") 
-            #file_obj.set_file_size(st.st_size)
-            #tobj = {"file_name": path, **file_obj.get_file_info()}
-            #if not file_obj:
-            #    file_attributes = FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE
-            #    security_descriptor = self._root_obj.security_descriptor
-            #     file_obj = FileObj(
-            #         file_name, file_attributes, security_descriptor
-            #     )
-            #     file_obj.h = h
-            #     self._entries[path] = file_obj
-            # else:
-            #     file_obj.h = h
         return OpenedObj(file_obj, h)
 
     @operation
@@ -501,8 +308,6 @@ class AutoorthoOperations(BaseFileSystemOperations):
     #@operation
     def get_file_info(self, file_context):
         #print(f"GET_FILE_INFO: {file_context}")
-        #print(file_context.file_obj.get_file_info())
-        #return file_context.file_obj.get_file_info()
         path = str(file_context.file_obj.path)
         full_path = self._full_path(path)
         #{'file_attributes': 32, 'allocation_size': 0, 'file_size': 0, 'creation_time': 133091265506258958, 'last_access_time': 133091265506258958, 'last_write_time': 133091265506258958, 'change_time': 133091265506258958, 'index_number': 0}
@@ -512,86 +317,14 @@ class AutoorthoOperations(BaseFileSystemOperations):
         m = self.dds_re.match(path)
         if m:
             #print(f"MATCH: Set file size")
-            #file_context.file_obj.set_file_size(22369744)
             file_context.file_obj.file_size = 22369744
         elif exists:
             #print(st)
             if os.path.isfile(full_path):
                 st = os.lstat(full_path)
                 file_context.file_obj.file_size = st.st_size
-            #    fileattrs = 16
-            #else:
-            #    #file_context.file_obj.set_file_size(st.st_size)
-            #     fileattrs = 32
-            # stats = {
-            #     'file_attributes': fileattrs, 
-            #     'allocation_size': st.st_size, 
-            #     'file_size': st.st_size, 
-            #     'creation_time': st.st_ctime_ns, 
-            #     'last_access_time': st.st_atime_ns, 
-            #     'last_write_time': st.st_mtime_ns, 
-            #     'change_time': st.st_mtime_ns, 
-            #     'index_number': 0
-            # }
-        #print(stats)
         return file_context.file_obj.get_file_info()
-        #return stats
 
-    # @operation
-    # def _set_basic_info(
-    #     self,
-    #     file_context,
-    #     file_attributes,
-    #     creation_time,
-    #     last_access_time,
-    #     last_write_time,
-    #     change_time,
-    #     file_info,
-    # ) -> dict:
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     file_obj = file_context.file_obj
-    #     if file_attributes != FILE_ATTRIBUTE.INVALID_FILE_ATTRIBUTES:
-    #         file_obj.attributes = file_attributes
-    #     if creation_time:
-    #         file_obj.creation_time = creation_time
-    #     if last_access_time:
-    #         file_obj.last_access_time = last_access_time
-    #     if last_write_time:
-    #         file_obj.last_write_time = last_write_time
-    #     if change_time:
-    #         file_obj.change_time = change_time
-
-    #     return file_obj.get_file_info()
-
-    # @operation
-    # def _set_file_size(self, file_context, new_size, set_allocation_size):
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     if set_allocation_size:
-    #         file_context.file_obj.set_allocation_size(new_size)
-    #     else:
-    #         file_context.file_obj.set_file_size(new_size)
-
-    # @operation
-    # def _can_delete(self, file_context, file_name: str) -> None:
-    #     file_name = PureWindowsPath(file_name)
-
-    #     # Retrieve file
-    #     try:
-    #         file_obj = self._entries[file_name]
-    #     except KeyError:
-    #         raise NTStatusObjectNameNotFound
-
-    #     if isinstance(file_obj, FolderObj):
-    #         for entry in self._entries.keys():
-    #             try:
-    #                 if entry.relative_to(file_name).parts:
-    #                     raise NTStatusDirectoryNotEmpty()
-    #             except ValueError:
-    #                 continue
 
     #@operation
     def read_directory(self, file_context, marker):
@@ -624,21 +357,14 @@ class AutoorthoOperations(BaseFileSystemOperations):
         for r in dirents:
             #print(r)
             tpath = os.path.join(path, r)
-            #if tpath in self._entries:
-            #    obj = self._entries.get(tpath)
-            #    tobj = {"file_name": os.path.basename(tpath), **obj.get_file_info()}
-            #else:
-                #path = os.path.join(full_path, r)
             if os.path.isdir(os.path.join(full_path, r)):
                 obj = self.add_obj(tpath, self._root_path, True)
                 tobj = {"file_name": r, **obj.get_file_info()}
             else:
                 st = os.lstat(full_path)
                 obj = self.add_obj(tpath, self._root_path, False)
-                #obj.set_file_size(st.st_size)
                 obj.file_size = st.st_size
                 tobj = {"file_name": r, **obj.get_file_info()}
-                #self._entries[tpath] = obj
 
             #print(tobj)
             entries.append(tobj)
@@ -686,132 +412,28 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
     ##@operation
     def read(self, file_context, offset, length):
-        #fh = file_context.file_obj.h
-        #print(f"READ: {file_context}  FH: {fh}")
         #print(f"READ: P:{file_context.file_obj.path} O:{offset} L:{length}")
-        #print(file_context)
         data = None
 
         path = str(file_context.file_obj.path)
         m = self.dds_re.match(path)
         if m:
             #print(f"READ MATCH: {path}")
-            #row, col, maptype, zoom = m.groups()
-            #row = int(row)
-            #col = int(col)
-            #zoom = int(zoom)
-            #print(f"READ: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
-            #t = self.tc._get_tile(row, col, maptype, zoom) 
             data = file_context.file_obj.tile.read_dds_bytes(offset, length)
             #print(f"READ: {len(data)} bytes")
         
         if not data:
-            #if fh == -1:
-            #    print(f"READ: Attempting read of closed file: {file_context} {offset} {length}")
-            #    return b""
-
             fh = file_context.handle
             fh.seek(offset)
             data = fh.read(length)
-        #os.lseek(fh, offset, os.SEEK_SET)
-        #data = os.read(fh, length)
         #print(f"LEN DATA: {len(data)}")
         return data
         #return file_context.file_obj.read(offset, length)
-
-    # @operation
-    # def _write(self, file_context, buffer, offset, write_to_end_of_file, constrained_io):
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     if constrained_io:
-    #         return file_context.file_obj.constrained_write(buffer, offset)
-    #     else:
-    #         return file_context.file_obj.write(buffer, offset, write_to_end_of_file)
 
     #@operation
     def cleanup(self, file_context, file_name, flags) -> None:
         #print(f"CLEANUP: {file_context} {file_name} {flags}")
         return
-   #     path = str(file_context.file_obj.path)
-   #     m = self.dds_re.match(path)
-   #     if m:
-   #         file_context.file_obj.refs -= 1
-   #         print(f"CLEANUP: {file_context.file_obj.tile} REFS: {file_context.file_obj.refs}")
-   #         if file_context.file_obj.refs <= 0:
-   #             print(f"CLEANUP: No refs.  Closing {file_context.file_obj.tile}!")
-   #             file_context.file_obj.tile.close()
-   #             file_context.file_obj.tile = None
-
-   #     if self.read_only:
-   #         raise NTStatusMediaWriteProtected()
-
-   #     # TODO: expose FspCleanupDelete & friends
-   #     FspCleanupDelete = 0x01
-   #     FspCleanupSetAllocationSize = 0x02
-   #     FspCleanupSetArchiveBit = 0x10
-   #     FspCleanupSetLastAccessTime = 0x20
-   #     FspCleanupSetLastWriteTime = 0x40
-   #     FspCleanupSetChangeTime = 0x80
-   #     file_obj = file_context.file_obj
-
-   #     # Delete
-   #     if flags & FspCleanupDelete:
-
-   #         # Check for non-empty direcory
-   #         if any(key.parent == file_obj.path for key in self._entries):
-   #             return
-
-   #         # Delete immediately
-   #         try:
-   #             del self._entries[file_obj.path]
-   #         except KeyError:
-   #             raise NTStatusObjectNameNotFound()
-
-   #     # Resize
-   #     if flags & FspCleanupSetAllocationSize:
-   #         file_obj.adapt_allocation_size(file_obj.file_size)
-
-   #     # Set archive bit
-   #     if flags & FspCleanupSetArchiveBit and isinstance(file_obj, FileObj):
-   #         file_obj.attributes |= FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE
-
-   #     # Set last access time
-   #     if flags & FspCleanupSetLastAccessTime:
-   #         file_obj.last_access_time = filetime_now()
-
-   #     # Set last access time
-   #     if flags & FspCleanupSetLastWriteTime:
-   #         file_obj.last_write_time = filetime_now()
-
-   #     # Set last access time
-   #     if flags & FspCleanupSetChangeTime:
-   #         file_obj.change_time = filetime_now()
-
-    # @operation
-    # def _overwrite(
-    #     self, file_context, file_attributes, replace_file_attributes: bool, allocation_size: int
-    # ) -> None:
-    #     if self.read_only:
-    #         raise NTStatusMediaWriteProtected()
-
-    #     file_obj = file_context.file_obj
-
-    #     # File attributes
-    #     file_attributes |= FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE
-    #     if replace_file_attributes:
-    #         file_obj.attributes = file_attributes
-    #     else:
-    #         file_obj.attributes |= file_attributes
-
-    #     # Allocation size
-    #     file_obj.set_allocation_size(allocation_size)
-
-    #     # Set times
-    #     now = filetime_now()
-    #     file_obj.last_access_time = now
-    #     file_obj.last_write_time = now
-    #     file_obj.change_time = now
 
     #@operation
     def flush(self, file_context) -> None:

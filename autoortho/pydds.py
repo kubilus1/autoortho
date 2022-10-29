@@ -196,7 +196,8 @@ class DDS(Structure):
                 #if mipmap.retrieved:
                 log.debug(f"Writing {mipmap.startpos}")
                 h.seek(mipmap.startpos)
-                h.write(mipmap.databuffer.getbuffer())
+                if mipmap.databuffer is not None:
+                    h.write(mipmap.databuffer.getbuffer())
                 log.debug(f"Wrote {h.tell()-mipmap.startpos} bytes")
 
             # Make sure we complete the full file size
