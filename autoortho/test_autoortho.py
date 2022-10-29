@@ -18,16 +18,18 @@ logging.basicConfig()
 log = logging.getLogger('log')
 log.setLevel(logging.DEBUG)
 
-
+ao = None
 
 def runmount(mountdir, cachedir):
+    global ao
     ao = autoortho.AutoOrtho('./testfiles', cachedir)
     #if os.path.isdir(ao.cache_dir):
     #    print("Removing cache dir")
     #    shutil.rmtree(ao.cache_dir)
     #shutil.rmtree(ao.cache_dir)
     #ao.cache_dir = os.path.join(mountdir, "cache")
-    autoortho.FUSE(ao, mountdir, nothreads=True, foreground=True, allow_other=True)
+    #autoortho.FUSE(ao, mountdir, nothreads=True, foreground=True, allow_other=True, max_readahead=0)
+    autoortho.run(ao, mountdir, True)
     print("Exiting FUSE mount")
     print("Shutting down mount fixture")
     #if os.path.isdir(ao.cache_dir):
@@ -164,7 +166,59 @@ def _test_read_mip1(mount, tmpdir):
 
     assert True == False
 
-def test_middle_read(mount, tmpdir):
+def test_mip_4_read(mount, tmpdir):
+    global ao
+    testfile = os.path.join(mount, "24832_12416_BI16.dds")
+    with open(testfile, "rb") as h:
+        time.sleep(0.5)
+        log.info("-"*32)
+        log.info("First read the header:")
+        header = h.read(128)
+
+
+
+        time.sleep(0.5)
+        log.info("-"*32)
+        log.info("Now seek to mipmap4")
+        h.seek(22282368)
+        time.sleep(1)
+        log.info("-"*32)
+        log.info("Tell:")
+        pos = h.tell()
+        log.debug(f"TEST TELL(): {pos}")
+        time.sleep(1)
+        log.info("-"*32)
+        log.info("Read mipmap 4")
+        data1 = h.read(65536)
+        print(data1[0:20])
+        time.sleep(0.5)
+        log.info("-"*32)
+        log.info("Close")
+        time.sleep(0.5)
+
+    log.info(f"Tiles: {len(ao.tc.tiles)}")
+    for k,v in ao.tc.tiles.items():
+        log.info(f"{k} {v}")
+        log.info(f"Chunks: {len(v.chunks)}")
+        log.info(v.dds.mipmap_list)
+
+
+#     with open(testfile, "rb") as h:
+#         data = h.read(101000)
+#         print(data[100000:20])
+#         print(data[129:149])
+# 
+#     assert len(testdata) == len(data)
+#     assert testdata[100000:100020] == data[100000:100020]
+#     assert testdata[0:128] == data[0:128]
+#     assert testdata[128:150] == data[128:150]
+# 
+#     assert hashlib.md5(testdata).hexdigest() == hashlib.md5(data).hexdigest()
+    assert True == False
+    
+
+
+def _test_middle_read(mount, tmpdir):
     testfile = os.path.join(mount, "24832_12416_BI16.dds")
     # rc = subprocess.call(
     #     f"identify -verbose {testfile}", 
@@ -201,7 +255,7 @@ def test_middle_read(mount, tmpdir):
     assert testdata[128:150] == data[128:150]
 
     assert hashlib.md5(testdata).hexdigest() == hashlib.md5(data).hexdigest()
-    #assert True == False
+    assert True == False
 
 def _test_multi_read(mount, tmpdir):
     testfile = f"{mount}/24832_12416_BI16.dds"
