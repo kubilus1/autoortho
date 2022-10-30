@@ -50,46 +50,46 @@ STB_DXT_DITHER = 1
 STB_DXT_HIGHQUAL = 2
 
 
-def do_compress(img):
-
-    width, height = img.size
-
-    if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
-        log.debug("Compressed images must have dimensions that are multiples of 4.")
-        return None
-
-    if img.mode == "RGB":
-        img = img.convert("RGBA")
-    
-    data = img.tobytes()
-
-    is_rgba = True
-    blocksize = 16
-
-    dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
-    outdata = create_string_buffer(dxt_size)
-
-    _dxt.compress_pixels.argtypes = (
-            c_char_p,
-            c_char_p, 
-            c_uint64, 
-            c_uint64, 
-            c_bool)
-
-    result = _dxt.compress_pixels(
-            outdata,
-            c_char_p(data),
-            c_uint64(width), 
-            c_uint64(height), 
-            c_bool(is_rgba))
-
-    if not result:
-        log.debug("Failed to compress")
-
-    return (dxt_size, outdata)
-
-def get_size(width, height):
-    return ((width+3) >> 2) * ((height+3) >> 2) * 16
+# def do_compress(img):
+# 
+#     width, height = img.size
+# 
+#     if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
+#         log.debug("Compressed images must have dimensions that are multiples of 4.")
+#         return None
+# 
+#     if img.mode == "RGB":
+#         img = img.convert("RGBA")
+#     
+#     data = img.tobytes()
+# 
+#     is_rgba = True
+#     blocksize = 16
+# 
+#     dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
+#     outdata = create_string_buffer(dxt_size)
+# 
+#     _dxt.compress_pixels.argtypes = (
+#             c_char_p,
+#             c_char_p, 
+#             c_uint64, 
+#             c_uint64, 
+#             c_bool)
+# 
+#     result = _dxt.compress_pixels(
+#             outdata,
+#             c_char_p(data),
+#             c_uint64(width), 
+#             c_uint64(height), 
+#             c_bool(is_rgba))
+# 
+#     if not result:
+#         log.debug("Failed to compress")
+# 
+#     return (dxt_size, outdata)
+#
+#def get_size(width, height):
+#    return ((width+3) >> 2) * ((height+3) >> 2) * 16
 
 
 class MipMap(object):
@@ -179,6 +179,7 @@ class DDS(Structure):
             log.debug(m)
         #log.debug(self.mipmap_list)
         log.debug(self.pitchOrLinearSize)
+        print(self.pitchOrLinearSize)
         log.debug(self.mipMapCount)
 
         self.lock = threading.Lock()
@@ -203,7 +204,8 @@ class DDS(Structure):
             # Make sure we complete the full file size
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
-                h.seek(self.pitchOrLinearSize+126)
+                #h.seek(self.pitchOrLinearSize+126)
+                h.seek(self.pitchOrLinearSize-2)
                 h.write(b'x\00')
 
 
@@ -261,8 +263,9 @@ class DDS(Structure):
                         # No buffer, return nulls
                         #log.warning(f"PYDDS: No buffer for {mipmap.idx}, Attempt to fill {remaining_mipmap_len} bytes")
                         log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
-                        data = b''
-                        #data += b'\x88' * remaining_mipmap_len
+                        #data = b''
+                        data = b'\x00' * remaining_mipmap_len
+                        log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes.")
                     else:    
                         # We don't have enough length in current mipmap
                         mipmap.databuffer.seek(mipmap_pos)
