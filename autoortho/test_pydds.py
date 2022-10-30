@@ -46,9 +46,11 @@ def test_empty_dds(tmpdir):
     actualbytes = os.path.getsize(outpath)
     assert expectedbytes == actualbytes
 
-    # Sparse file should have allocated space smaller than filesize
-    ondisk_size = file_disksize(outpath)
-    assert ondisk_size < expectedbytes
+    # Windows doesn't support sparse files well, unfortunately.
+    if not platform.system().lower() == 'windows':
+        # Sparse file should have allocated space smaller than filesize
+        ondisk_size = file_disksize(outpath)
+        assert ondisk_size < expectedbytes
 
 
 def test_mid_dds(tmpdir):
