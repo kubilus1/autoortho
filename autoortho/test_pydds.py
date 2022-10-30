@@ -1,11 +1,26 @@
 #!/usr/bin/env python3
 
 import os
-import pytest
+import ctypes
+import platform
+
 import pydds
 
+import pytest
 from PIL import Image
 TESTPNG=os.path.join('testfiles', 'test_tile.png')
+
+
+def file_disksize(path):
+    if platform.system().lower() == 'windows':
+        filesizehigh = ctypes.c_ulonglong(0) # not sure about this... something about files >4gb
+        ondisk_size = ctypes.windll.kernel32.GetCompressedFileSizeW(ctypes.c_wchar_p(path),ctypes.pointer(filesizehigh))
+    else:
+        ondisk_size = os.stat(path).st_blocks*512
+
+    return ondisk_size
+
+
 
 def test_dds_conv(tmpdir):
     timg = Image.open(TESTPNG)
@@ -17,10 +32,9 @@ def test_dds_conv(tmpdir):
 
     assert expectedbytes == actualbytes
     
-    stat = os.stat(outpath)
-    print(stat)
     # We should have blocks to cover the full size of the image
-    assert stat.st_blocks*512 >= expectedbytes
+    ondisk_size = file_disksize(outpath)
+    assert ondisk_size >= expectedbytes
 
 
 def test_empty_dds(tmpdir):
@@ -32,10 +46,9 @@ def test_empty_dds(tmpdir):
     actualbytes = os.path.getsize(outpath)
     assert expectedbytes == actualbytes
 
-    stat = os.stat(outpath)
-    print(stat)
     # Sparse file should have allocated space smaller than filesize
-    assert stat.st_blocks*512 < expectedbytes
+    ondisk_size = file_disksize(outpath)
+    assert ondisk_size < expectedbytes
 
 
 def test_mid_dds(tmpdir):
