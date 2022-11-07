@@ -233,6 +233,9 @@ class DDS(Structure):
             #    continue
 
             if mipmap.endpos > self.position >= mipmap.startpos:
+                #
+                # Requested read starts before end of this mipmap and before or equal to the starting position
+                #
                 log.debug(f"PYDDS: We are reading from mipmap {mipmap.idx}")
                 
                 log.debug(f"PYDDS: {mipmap} , Pos: {self.position} , Len: {length}")
@@ -243,38 +246,48 @@ class DDS(Structure):
 
                 log.debug(f"Len: {length}, remain: {remaining_mipmap_len}, mipmap_pos {mipmap_pos}")
                 if length <= remaining_mipmap_len: 
-                    # We have remaining length in current mipmap
-                    log.debug("We have a mipmap and remaining length")
+                    #
+                    # Mipmap has more than enough remaining length for request
+                    # ~We have remaining length in current mipmap~
+                    #
+                    log.debug("We have a mipmap and adequated remaining length")
                     mipmap.databuffer.seek(mipmap_pos)
                     data = mipmap.databuffer.read(length)
                     ret_len = length - len(data)
                     if ret_len != 0:
-                        log.warning(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        # This should be impossible
+                        log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len}i for {mipmap.idx}")
                         data += b'\xFF' * ret_len
-                
+                            
                     outdata += data
                     self.position += length
                     break
 
                 elif length > remaining_mipmap_len:
+                    #
+                    # Requested length is greater than what's available in this mipmap
+                    #
                     log.debug(f"PYDDS: In mipmap {mipmap.idx} not enough length")
 
-                    if mipmap.databuffer is None:
-                        # No buffer, return nulls
+                    if not mipmap.retrieved:
+                        # 
+                        # Mipmap not fully retrieved.  Mimpamp buffer may exist for partially retreived mipmap 0, but
+                        # we *must* make sure the full size is available.
+                        # 
                         #log.warning(f"PYDDS: No buffer for {mipmap.idx}, Attempt to fill {remaining_mipmap_len} bytes")
                         log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
                         #data = b''
                         data = b'\x00' * remaining_mipmap_len
-                        log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes.")
+                        log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
                     else:    
-                        # We don't have enough length in current mipmap
+                        # Mipmap is retrieved
                         mipmap.databuffer.seek(mipmap_pos)
                         data = mipmap.databuffer.read(remaining_mipmap_len)
                     
                     # Make sure we retrieved all the expected data from the mipmap we can.
                     ret_len = remaining_mipmap_len - len(data)
                     if ret_len != 0:
-                        log.error(f"PYDDS: ERROR! Didn't retrieve full length of mipmap!")
+                        log.error(f"PYDDS: ERROR! Didn't retrieve full length of mipmap for {mipmap.idx}!")
                         #log.error(f"PYDDS: Didn't retrieve full length.  Fill empty bytes {ret_len}")
                         # Pretty sure this causes visual corruption
                         #data += b'\x88' * ret_len
