@@ -30,7 +30,6 @@ from winfspy import (
 from winfspy.plumbing.win32_filetime import filetime_now
 from winfspy.plumbing.security_descriptor import SecurityDescriptor
 
-import autoortho
 import getortho
 
 def operation(fn):
@@ -455,7 +454,7 @@ def create_file_system(
     mountpoint = Path(mountpoint)
     is_drive = mountpoint.parent == mountpoint
     reject_irp_prior_to_transact0 = not is_drive and not testing
-    tc = autoortho.TileCacher(".cache", maptype_override=maptype_override)
+    tc = getortho.TileCacher(".cache", maptype_override=maptype_override)
     operations = AutoorthoOperations(str(root), label, tc)
     fs = FileSystem(
         str(mountpoint),
