@@ -19,7 +19,7 @@ jobs:
           python3 -m pip install -U -r requirements.txt
 
     - name: Test
-      run: cd autoortho && pytest test_getortho.py 
+      run: cd autoortho && pytest test_getortho.py test_pydds.py 
 
 
   test-windows:
@@ -39,4 +39,4 @@ jobs:
           py -m pip install -U -r requirements.txt
 
     - name: Test
-      run: cd autoortho && py -m pytest test_getortho.py 
+      run: cd autoortho && py -m pytest test_getortho.py test_pydds.py

@@ -50,46 +50,46 @@ STB_DXT_DITHER = 1
 STB_DXT_HIGHQUAL = 2
 
 
-def do_compress(img):
-
-    width, height = img.size
-
-    if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
-        log.debug("Compressed images must have dimensions that are multiples of 4.")
-        return None
-
-    if img.mode == "RGB":
-        img = img.convert("RGBA")
-    
-    data = img.tobytes()
-
-    is_rgba = True
-    blocksize = 16
-
-    dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
-    outdata = create_string_buffer(dxt_size)
-
-    _dxt.compress_pixels.argtypes = (
-            c_char_p,
-            c_char_p, 
-            c_uint64, 
-            c_uint64, 
-            c_bool)
-
-    result = _dxt.compress_pixels(
-            outdata,
-            c_char_p(data),
-            c_uint64(width), 
-            c_uint64(height), 
-            c_bool(is_rgba))
-
-    if not result:
-        log.debug("Failed to compress")
-
-    return (dxt_size, outdata)
-
-def get_size(width, height):
-    return ((width+3) >> 2) * ((height+3) >> 2) * 16
+# def do_compress(img):
+# 
+#     width, height = img.size
+# 
+#     if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
+#         log.debug("Compressed images must have dimensions that are multiples of 4.")
+#         return None
+# 
+#     if img.mode == "RGB":
+#         img = img.convert("RGBA")
+#     
+#     data = img.tobytes()
+# 
+#     is_rgba = True
+#     blocksize = 16
+# 
+#     dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
+#     outdata = create_string_buffer(dxt_size)
+# 
+#     _dxt.compress_pixels.argtypes = (
+#             c_char_p,
+#             c_char_p, 
+#             c_uint64, 
+#             c_uint64, 
+#             c_bool)
+# 
+#     result = _dxt.compress_pixels(
+#             outdata,
+#             c_char_p(data),
+#             c_uint64(width), 
+#             c_uint64(height), 
+#             c_bool(is_rgba))
+# 
+#     if not result:
+#         log.debug("Failed to compress")
+# 
+#     return (dxt_size, outdata)
+#
+#def get_size(width, height):
+#    return ((width+3) >> 2) * ((height+3) >> 2) * 16
 
 
 class MipMap(object):
@@ -179,6 +179,7 @@ class DDS(Structure):
             log.debug(m)
         #log.debug(self.mipmap_list)
         log.debug(self.pitchOrLinearSize)
+        print(self.pitchOrLinearSize)
         log.debug(self.mipMapCount)
 
         self.lock = threading.Lock()
@@ -203,7 +204,8 @@ class DDS(Structure):
             # Make sure we complete the full file size
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
-                h.seek(self.pitchOrLinearSize+126)
+                #h.seek(self.pitchOrLinearSize+126)
+                h.seek(self.pitchOrLinearSize-2)
                 h.write(b'x\00')
 
 
@@ -231,6 +233,9 @@ class DDS(Structure):
             #    continue
 
             if mipmap.endpos > self.position >= mipmap.startpos:
+                #
+                # Requested read starts before end of this mipmap and before or equal to the starting position
+                #
                 log.debug(f"PYDDS: We are reading from mipmap {mipmap.idx}")
                 
                 log.debug(f"PYDDS: {mipmap} , Pos: {self.position} , Len: {length}")
@@ -241,37 +246,48 @@ class DDS(Structure):
 
                 log.debug(f"Len: {length}, remain: {remaining_mipmap_len}, mipmap_pos {mipmap_pos}")
                 if length <= remaining_mipmap_len: 
-                    # We have remaining length in current mipmap
-                    log.debug("We have a mipmap and remaining length")
+                    #
+                    # Mipmap has more than enough remaining length for request
+                    # ~We have remaining length in current mipmap~
+                    #
+                    log.debug("We have a mipmap and adequated remaining length")
                     mipmap.databuffer.seek(mipmap_pos)
                     data = mipmap.databuffer.read(length)
                     ret_len = length - len(data)
                     if ret_len != 0:
-                        log.warning(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        # This should be impossible
+                        log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len}i for {mipmap.idx}")
                         data += b'\xFF' * ret_len
-                
+                            
                     outdata += data
                     self.position += length
                     break
 
                 elif length > remaining_mipmap_len:
+                    #
+                    # Requested length is greater than what's available in this mipmap
+                    #
                     log.debug(f"PYDDS: In mipmap {mipmap.idx} not enough length")
 
-                    if mipmap.databuffer is None:
-                        # No buffer, return nulls
+                    if not mipmap.retrieved:
+                        # 
+                        # Mipmap not fully retrieved.  Mimpamp buffer may exist for partially retreived mipmap 0, but
+                        # we *must* make sure the full size is available.
+                        # 
                         #log.warning(f"PYDDS: No buffer for {mipmap.idx}, Attempt to fill {remaining_mipmap_len} bytes")
                         log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
-                        data = b''
-                        #data += b'\x88' * remaining_mipmap_len
+                        #data = b''
+                        data = b'\x00' * remaining_mipmap_len
+                        log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
                     else:    
-                        # We don't have enough length in current mipmap
+                        # Mipmap is retrieved
                         mipmap.databuffer.seek(mipmap_pos)
                         data = mipmap.databuffer.read(remaining_mipmap_len)
                     
                     # Make sure we retrieved all the expected data from the mipmap we can.
                     ret_len = remaining_mipmap_len - len(data)
                     if ret_len != 0:
-                        log.error(f"PYDDS: ERROR! Didn't retrieve full length of mipmap!")
+                        log.error(f"PYDDS: ERROR! Didn't retrieve full length of mipmap for {mipmap.idx}!")
                         #log.error(f"PYDDS: Didn't retrieve full length.  Fill empty bytes {ret_len}")
                         # Pretty sure this causes visual corruption
                         #data += b'\x88' * ret_len
