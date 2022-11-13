@@ -279,7 +279,7 @@ class Tile(object):
     col = -1
     maptype = None
     zoom = -1
-    min_zoom = 12
+    min_zoom = 11
     cache_dir = './cache'
     width = 16
     height = 16
@@ -554,6 +554,13 @@ class Tile(object):
                     log.debug(f"TILE: mip start: {mipmap.startpos}, mip end: {mipmap.endpos}, offset: {offset}, len: {length}")
                     if mipmap.startpos <= offset and (offset + length) < mipmap.endpos:
                         # Offset seek is in middle of mipmap.  Check if retrieval needed"
+                        #
+                        # The requested offset is equal to or after this mipmap's starting position
+                        # AND the offset + length is before the end.
+                        #
+                        # This should be a read in the middle of a mipmap somewhere.  Fetch if needed.
+                        #
+
                         log.debug(f"TILE: Detected middle read for mipmap {mipmap.idx}")
                         if not mipmap.retrieved:
                             log.debug(f"TILE: Retrieve {mipmap.idx}")
@@ -561,10 +568,19 @@ class Tile(object):
                         break
                     elif offset <= mipmap.startpos < (offset + length):
                         # Offset is before mipmap start, length is after start.  Check if retrieval is needed
-                        log.debug(f"TILE: Detected spanning read for {self} mipmap {mipmap.idx}. Get prior mipmap")
+                        #
+                        # The requested offset is equal to or before this mipmap's starting position
+                        # AND the offset + length is after the starting position.
+                        #
+                        # This indicates a read that starts before this mimap and continues somewhere into this
+                        # mipmap.  Fetch if needed.
+
+
+                        #log.debug(f"TILE: Detected spanning read for {self} mipmap {mipmap.idx}. Get prior mipmap")
                         #log.info(f"TILE: Retrieve mipmap {mipmap.idx - 1}")
-                        self.get_mipmap(mipmap.idx-1)
-                        #self.get_mipmap(mipmap.idx)
+                        #self.get_mipmap(mipmap.idx-1)
+                        log.debug(f"TILE: Detected spanning read for {self} mipmap {mipmap.idx}. Get mipmap")
+                        self.get_mipmap(mipmap.idx)
                         # if not mipmap.retrieved:
                         #     log.info(f"TILE: Retrieve {mipmap.idx}")
                         #     self.get_mipmap(mipmap.idx)
