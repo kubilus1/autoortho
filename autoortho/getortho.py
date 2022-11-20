@@ -24,8 +24,10 @@ if os.environ.get('AO_DEBUG'):
 else:
     log.setLevel(logging.INFO)
 
-
+import psutil
 from PIL import Image
+
+MEMTRACE = False
 
 #from memory_profiler import profile
 
@@ -722,3 +724,73 @@ class Map(object):
         else:
             ret = t.get(quick_zoom)
         return ret
+
+
+class TileCacher(object):
+    min_zoom = 13
+    max_zoom = 18
+
+    tiles = {}
+
+    hits = 0
+    misses = 0
+
+    def __init__(self, cache_dir='.cache', maptype_override=None):
+        if MEMTRACE:
+            tracemalloc.start()
+        self.maptype_override = maptype_override
+        self.tile_lock = threading.Lock()
+        self.cache_dir = cache_dir
+        self.clean_t = threading.Thread(target=self.clean, daemon=True)
+        self.clean_t.start()
+
+    def clean(self):
+        memlimit = pow(2,30) * 2
+        log.info(f"Started tile clean thread.  Mem limit {memlimit}")
+        while True:
+            process = psutil.Process(os.getpid())
+            cur_mem = process.memory_info().rss
+            log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+            while len(self.tiles) >= 90 and cur_mem > memlimit:
+                log.info("Hit cache limit.  Remove oldest 20")
+                with self.tile_lock:
+                    for i in list(self.tiles.keys())[:20]:
+                        t = self.tiles.get(i)
+                        if t.refs <= 0:
+                            t = self.tiles.pop(i)
+                            t.close()
+                            t = None
+                            del(t)
+                cur_mem = process.memory_info().rss
+            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+
+
+            if MEMTRACE:
+                snapshot = tracemalloc.take_snapshot()
+                top_stats = snapshot.statistics('lineno')
+
+                log.info("[ Top 10 ]")
+                for stat in top_stats[:10]:
+                        log.info(stat)
+
+            time.sleep(15)
+
+    def _get_tile(self, row, col, map_type, zoom):
+        if self.maptype_override:
+            map_type = self.maptype_override
+
+        idx = f"{row}_{col}_{map_type}_{zoom}"
+        with self.tile_lock:
+            tile = self.tiles.get(idx)
+        if not tile:
+            self.misses += 1
+            with self.tile_lock:
+                tile = getortho.Tile(col, row, map_type, zoom, cache_dir =
+                    self.cache_dir)
+                self.tiles[idx] = tile
+        elif tile.refs <= 0:
+            # Only in this case would this cache have made a difference
+            self.hits += 1
+
+        return tile
+
