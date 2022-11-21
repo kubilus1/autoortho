@@ -34,7 +34,7 @@ def tile(tmpdir):
 
 def test_get_bytes(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    ret = tile.get_bytes(131073)
+    ret = tile.get_bytes(0, 131073)
     assert ret
     
     testfile = tile.write()
@@ -44,6 +44,61 @@ def test_get_bytes(tmpdir):
 
     assert data != b'\x00'*8
    
+
+def test_get_bytes_mip1(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    #ret = tile.get_bytes(16777344, 4194304)
+    ret = tile.get_bytes(16777344, 1024)
+    assert ret
+    
+    testfile = tile.write()
+    with open(testfile, 'rb') as h:
+        h.seek(16777344)
+        data = h.read(8)
+
+    assert data != b'\x00'*8
+
+
+def test_get_bytes_mip_end(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    #ret = tile.get_bytes(16777344, 4194304)
+    ret = tile.get_bytes(20970000, 1024)
+    assert ret
+    
+    testfile = tile.write()
+    with open(testfile, 'rb') as h:
+        #h.seek(20709504)
+        h.seek(20971640)
+        data = h.read(8)
+
+    assert data != b'\x00'*8
+
+
+def test_get_bytes_mip_span(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    #ret = tile.get_bytes(16777344, 4194304)
+    ret = tile.get_bytes(17825792, 4096)
+    assert ret
+    
+    testfile = tile.write()
+    with open(testfile, 'rb') as h:
+        h.seek(17825792)
+        data = h.read(8)
+
+    assert data != b'\x00'*8
+
+
+def test_find_mipmap_pos():
+    tile = getortho.Tile(2176, 3232, 'Null', 13)
+
+    m = tile.find_mipmap_pos(129)
+    assert m == 0
+
+    m = tile.find_mipmap_pos(16777344)
+    assert m == 1
+
+    m = tile.find_mipmap_pos(20971650)
+    assert m == 2
 
 
 def test_read_bytes(tmpdir):
@@ -76,7 +131,7 @@ def test_get_mipmap(tmpdir):
 
 def test_get_bytes_all(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    ret = tile.get_bytes(131072)
+    ret = tile.get_bytes(0, 131072)
     ret = tile.get()
     testfile = tile.write()
     assert ret

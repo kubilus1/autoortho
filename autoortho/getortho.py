@@ -470,67 +470,60 @@ class Tile(object):
         return self.cache_file[1]
 
 
-    def get_bytes(self, length):
-        if self.dds.mipmap_list[0].retrieved:
-            log.info(f"We already have mipmap 0 for {self}")
+    def find_mipmap_pos(self, offset):
+
+
+        for m in self.dds.mipmap_list:
+            if offset < m.endpos:
+                return m.idx
+
+
+    def get_bytes(self, offset, length):
+
+        mipmap = self.find_mipmap_pos(offset)
+        log.info(f"Get_bytes for mipmap {mipmap} ...")
+        if mipmap > 4:
+            # Just get the entire mipmap
+            self.get_mipmap(4)
             return True
 
-        log.info(f"Retrieving {length} bytes from mipmap 0")
+        
+        # Exit if already retrieved
+        if self.dds.mipmap_list[mipmap].retrieved:
+            log.info(f"We already have mipmap {mipmap} for {self}")
+            return True
 
-        numrows = length >> 20 # Divide by 1048576
-        #log.debug(f"BYTES: {pydds.get_size(256,256)}")
-        if length % 1048576:
-            numrows += 1
+        log.info(f"Retrieving {length} bytes from mipmap {mipmap} offset {offset}")
 
-        numchunks = 16*numrows
+        bytes_per_row = 1048576 >> mipmap
+        rows_per_mipmap = 16 >> mipmap
 
-        #with self.tile_condition:
-        with self.tile_lock:
-            self._create_chunks()
-            #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
-            
-            # Determine height based on number of rows we will retrieve
-            height = math.ceil(numchunks/self.width)
-            new_im = Image.new('RGBA', (256*self.width,256*height), (250,0,0))
+        # how deep are we in a mipmap
+        mm_offset = max(0, offset - self.dds.mipmap_list[mipmap].startpos)
+        log.info(f"MM_offset: {mm_offset}  Offset {offset}.  Startpos {self.dds.mipmap_list[mipmap]}")
 
-            data_updated = False
-            for chunk in self.chunks[self.zoom][0:numchunks]:
-                if not chunk.ready.is_set():
-                    data_updated = True
-                    chunk_getter.submit(chunk)
+        # Calculate which row 'offset' is in
+        startrow = mm_offset >> (20 - mipmap)
+        # Calculate which row 'offset+length' is in
+        endrow = (mm_offset + length) >> (20 - mipmap)
+       
+        log.info(f"Startrow: {startrow} Endrow: {endrow}")
+        
+        new_im = self.get_img(mipmap, startrow, endrow)
+        if not new_im:
+            log.debug("No updates, so no image generated")
+            return True
 
-            if not data_updated:
-                log.info("No updates to bytes.  Exit.")
-                return True
+        self.ready.clear()
+        #log.info(new_im.size)
+        try:
+            self.dds.gen_mipmaps(new_im, mipmap, 1)
+        finally:
+            new_im.close()
 
-            for chunk in self.chunks[self.zoom][0:numchunks]:
-                ret = chunk.ready.wait()
-                if not ret:
-                    log.error("Failed to get chunk")
-
-                start_x = int((chunk.width) * (chunk.col - self.col))
-                start_y = int((chunk.height) * (chunk.row - self.row))
-                new_im.paste(
-                    #chunk.img, 
-                    Image.open(BytesIO(chunk.data)).convert("RGBA"),
-                    (
-                        start_x,
-                        start_y
-                    )
-                )
-
-            self.ready.clear()
-
-            #new_im = new_im.convert("RGBA")
-            log.info(new_im.size)
-            try:
-                self.dds.gen_mipmaps(new_im, 0, 1)
-            finally:
-                new_im.close()
-
-            # We haven't fully retrieved so unset flag
-            self.dds.mipmap_list[0].retrieved = False
-            self.ready.set()
+        # We haven't fully retrieved so unset flag
+        self.dds.mipmap_list[mipmap].retrieved = False
+        self.ready.set()
 
         return True
 
@@ -540,13 +533,13 @@ class Tile(object):
             if offset == 0:
                 # If offset = 0, read the header
                 log.debug("TILE: Read header")
-                self.get_bytes(length)
+                self.get_bytes(0, length)
             #elif offset < 16777344:
             #elif offset < 65536:
             #elif offset < 16777000:
             elif offset < 131072:
                 log.debug("TILE: Middle of mipmap 0")
-                self.get_bytes(length + offset)
+                self.get_bytes(0, length + offset)
             else:
                 log.debug("TILE: Read full mipmap ...")
                 # For first mipmap.startpos in range of offset and offset + length, get mipmap and return data
@@ -580,6 +573,9 @@ class Tile(object):
                         #log.info(f"TILE: Retrieve mipmap {mipmap.idx - 1}")
                         #self.get_mipmap(mipmap.idx-1)
                         log.debug(f"TILE: Detected spanning read for {self} mipmap {mipmap.idx}. Get mipmap")
+
+                        self.get_bytes(offset, length)
+
                         self.get_mipmap(mipmap.idx)
                         # if not mipmap.retrieved:
                         #     log.info(f"TILE: Retrieve {mipmap.idx}")
@@ -611,54 +607,79 @@ class Tile(object):
         return outfile
 
 
-    #@profile
-    def get_mipmap(self, mipmap=0):
-        
+    def get_img(self, mipmap, startrow=0, endrow=None):
+        #
+        # Get an image for a particular mipmap
+        #
+
         zoom = self.zoom - mipmap
         log.info(f"Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
         col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom)
         log.debug(f"Will use:  Zoom: {zoom},  Mipmap: {mipmap}")
 
-        #mipmap = min(mipmap, 4)
-
+    
         log.debug(self.dds.mipmap_list)
         if self.dds.mipmap_list[mipmap].retrieved:
             log.info(f"We already have mipmap {mipmap} for {self}")
             return
 
+        startchunk = 0
+        endchunk = None
+        # Determine start and end chunk
+        chunks_per_row = 16 >> mipmap
+        if startrow:
+            startchunk = startrow * chunks_per_row
+        if endrow is not None:
+            endchunk = (endrow * chunks_per_row) + chunks_per_row
+
+
         self._create_chunks(zoom)
+        chunks = self.chunks[zoom][startchunk:endchunk]
+        log.info(f"Start chunk: {startchunk}  End chunk: {endchunk}  Chunklen {len(self.chunks[zoom])}")
 
-        log.info(f"TILE: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
-        data_updated = False
-        for chunk in self.chunks[zoom]:
-            if not chunk.ready.is_set():
-                chunk_getter.submit(chunk)
-                data_updated = True
+        with self.tile_lock:
+            log.info(f"TILE: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
+            data_updated = False
+            for chunk in chunks:
+                if not chunk.ready.is_set():
+                    chunk_getter.submit(chunk)
+                    data_updated = True
 
-        if not data_updated:
-            log.info("No updates to chunks.  Exit.")
-            return True
+            if not data_updated:
+                log.info("No updates to chunks.  Exit.")
+                return False
 
-        #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
-        #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
-        log.info(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
-        new_im = Image.new('RGBA', (256*width,256*height), (0,0,250))
-        log.info(f"NUM CHUNKS: {len(self.chunks[zoom])}")
-        for chunk in self.chunks[zoom]:
-            ret = chunk.ready.wait()
-            if not ret:
-                log.error("Failed to get chunk.")
+            #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
+            #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
+            log.info(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
+            new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
+            log.info(f"NUM CHUNKS: {len(chunks)}")
+            for chunk in chunks:
+                ret = chunk.ready.wait()
+                if not ret:
+                    log.error("Failed to get chunk.")
 
-            start_x = int((chunk.width) * (chunk.col - col))
-            start_y = int((chunk.height) * (chunk.row - row))
-            new_im.paste(
-                #chunk.img, 
-                Image.open(BytesIO(chunk.data)).convert("RGBA"),
-                (
-                    start_x,
-                    start_y
+                start_x = int((chunk.width) * (chunk.col - col))
+                start_y = int((chunk.height) * (chunk.row - row))
+                new_im.paste(
+                    #chunk.img, 
+                    Image.open(BytesIO(chunk.data)).convert("RGBA"),
+                    (
+                        start_x,
+                        start_y
+                    )
                 )
-            )
+        
+        return new_im
+
+
+    #@profile
+    def get_mipmap(self, mipmap=0):
+        
+        new_im = self.get_img(mipmap)
+        if not new_im:
+            log.debug("No updates, so no image generated")
+            return True
 
         self.ready.clear()
         try:
@@ -668,8 +689,6 @@ class Tile(object):
             new_im.close()
 
         self.ready.set()
-       
-
 
         if mipmap == 0:
             log.debug("Will close all chunks.")
