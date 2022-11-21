@@ -217,6 +217,14 @@ maptype_override =
         if not os.path.exists(z_autoortho_path):
             os.makedirs(z_autoortho_path)
 
+        self.root = os.path.join(z_autoortho_path, '_textures')
+        self.mountpoint = os.path.join(z_autoortho_path, 'textures')
+        return
+
+        z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
+        if not os.path.exists(z_autoortho_path):
+            os.makedirs(z_autoortho_path)
+
         ortho_dirs = os.listdir(self.paths.orthos_path)
 
         log.info("Preparing directory structures....")

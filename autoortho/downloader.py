@@ -47,7 +47,11 @@ class OrthoRegion(object):
         return f"OrthoRegion({self.region_id})"
 
     def check_local(self):
-        info_dict_path = os.path.join(self.extract_dir, f"{self.region_id}_info.json")
+        info_dict_path = os.path.join(
+            self.extract_dir,
+            "z_autoortho",
+            f"{self.region_id}_info.json"
+        )
         if os.path.exists(info_dict_path):
             with open(info_dict_path) as h:
                 info = json.loads(h.read())
@@ -163,7 +167,12 @@ class OrthoRegion(object):
             with zipfile.ZipFile(zipfile_out) as zf:
                 zf.extractall(self.extract_dir)
         
+
+        z_autoortho_path = os.path.join(self.extract_dir, "z_autoortho")
+        if not os.path.exists(z_autoortho_path):
+            os.makedirs(z_autoortho_path)
         
+
         # Normal zips
         for o in ortho_paths:
             if os.path.exists(o) and o.endswith('.zip'):
@@ -177,8 +186,18 @@ class OrthoRegion(object):
 
                 for d in orthodirs_extracted:
                     shutil.copytree(
-                        d,
-                        os.path.join(self.extract_dir, "z_autoortho"),
+                        os.path.join(d, "Earth nav data"),
+                        os.path.join(z_autoortho_path, "Earth nav data"),
+                        dirs_exist_ok=True
+                    )
+                    shutil.copytree(
+                        os.path.join(d, "terrain"),
+                        os.path.join(z_autoortho_path, "terrain"),
+                        dirs_exist_ok=True
+                    )
+                    shutil.copytree(
+                        os.path.join(d, "textures"),
+                        os.path.join(z_autoortho_path, "_textures"),
                         dirs_exist_ok=True
                     )
                     shutil.rmtree(d)
@@ -202,9 +221,11 @@ class OrthoRegion(object):
 
         # Save metadata
         self.info_dict['ver'] = self.latest_version
-        with open(os.path.join(self.extract_dir,
-            f"{self.region_id}_info.json"), 'w') as h:
-
+        with open(os.path.join(
+                self.extract_dir,
+                "z_autoortho",
+                f"{self.region_id}_info.json"
+            ), 'w') as h:
                 h.write(json.dumps(self.info_dict))
 
 
@@ -303,7 +324,7 @@ class Downloader(object):
 
 
 if __name__ == "__main__":
-    d = Downloader("./Custom Scenery")
+    d = Downloader(os.path.expanduser("~/X-Plane 12/Custom Scenery"))
     d.find_releases()
 
     action = sys.argv[1]
@@ -312,7 +333,7 @@ if __name__ == "__main__":
         region = sys.argv[2]
         d.download_region(region)
         d.extract(region)
-        d.cleanup(region)
+        #d.cleanup(region)
 
     elif action == 'list':
         for r in d.regions.values():
