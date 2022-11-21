@@ -277,7 +277,7 @@ class DDS(Structure):
                         #log.warning(f"PYDDS: No buffer for {mipmap.idx}, Attempt to fill {remaining_mipmap_len} bytes")
                         log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
                         #data = b''
-                        data = b'\x00' * remaining_mipmap_len
+                        data = b'\x88' * remaining_mipmap_len
                         log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
                     else:    
                         # Mipmap is retrieved
