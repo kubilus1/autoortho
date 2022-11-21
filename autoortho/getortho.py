@@ -574,9 +574,12 @@ class Tile(object):
                         #self.get_mipmap(mipmap.idx-1)
                         log.debug(f"TILE: Detected spanning read for {self} mipmap {mipmap.idx}. Get mipmap")
 
+                        # Get bytes prior to this mipmap
                         self.get_bytes(offset, length)
 
-                        self.get_mipmap(mipmap.idx)
+                        # Get the entire current mipmap
+                        if not mipmap.retrieved:
+                            self.get_mipmap(mipmap.idx)
                         # if not mipmap.retrieved:
                         #     log.info(f"TILE: Retrieve {mipmap.idx}")
                         #     self.get_mipmap(mipmap.idx)

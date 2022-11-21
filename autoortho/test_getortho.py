@@ -77,6 +77,25 @@ def test_get_bytes_mip_end(tmpdir):
 def test_get_bytes_mip_span(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     #ret = tile.get_bytes(16777344, 4194304)
+    ret = tile.get_bytes(20955264, 32768)
+    assert ret
+    
+    testfile = tile.write()
+    with open(testfile, 'rb') as h:
+        #h.seek(20709504)
+
+        h.seek(20955264)
+        data0 = h.read(8)
+        h.seek(20971648)
+        data1 = h.read(8)
+
+    assert data0 != b'\x00'*8
+    assert data1 == b'\x00'*8
+
+
+def test_get_bytes_row_span(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    #ret = tile.get_bytes(16777344, 4194304)
     ret = tile.get_bytes(17825792, 4096)
     assert ret
     
