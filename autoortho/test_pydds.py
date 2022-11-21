@@ -102,7 +102,7 @@ def test_read_mid(tmpdir):
     assert data1[0:384] == data2[128:512]
 
     # The beginning portion should be empty
-    assert data2[:128] == b'\x00'*128
+    assert data2[:128] == b'\x88'*128
 
     dds.write(outpath)
     expectedbytes = 22369744
