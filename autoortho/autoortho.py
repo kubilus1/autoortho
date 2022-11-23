@@ -55,12 +55,15 @@ def main():
     if (not aoc.ready) or args.configure or aoc.showconfig:
         aoc.setup()
 
-    aoc.verify()
-    aoc.prepdirs()
+    if not args.root or not args.mountpoint:
+        aoc.verify()
+        aoc.prepdirs()
 
-    root = aoc.root
-    mountpoint = aoc.mountpoint
-
+        root = aoc.root
+        mountpoint = aoc.mountpoint
+    else:
+        root = args.root
+        mountpoint = args.mountpoint
 
     print("root:", root)
     print("mountpoint:", mountpoint)

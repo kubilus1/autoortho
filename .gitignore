@@ -2,3 +2,5 @@
 *.swp
 __pycache__
 autoortho.log
+out.dds
+/cache

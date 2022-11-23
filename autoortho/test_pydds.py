@@ -8,7 +8,8 @@ import pydds
 
 import pytest
 from PIL import Image
-TESTPNG=os.path.join('testfiles', 'test_tile.png')
+#TESTPNG=os.path.join('testfiles', 'test_tile.png')
+TESTJPG=os.path.join('testfiles', 'test_tile2.jpg')
 
 
 def file_disksize(path):
@@ -23,7 +24,7 @@ def file_disksize(path):
 
 
 def test_dds_conv(tmpdir):
-    timg = Image.open(TESTPNG)
+    timg = Image.open(TESTJPG)
     outpath = os.path.join(tmpdir, 'test_tile.dds')
     pydds.to_dds(timg, outpath)
     
@@ -55,7 +56,7 @@ def test_empty_dds(tmpdir):
 
 def test_mid_dds(tmpdir):
     outpath = os.path.join(tmpdir, 'test_empty.dds')
-    timg = Image.open(TESTPNG)
+    timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
     dds.gen_mipmaps(timg, 4)
     
@@ -69,9 +70,11 @@ def test_mid_dds(tmpdir):
 
 def test_read_mm0(tmpdir):
     outpath = os.path.join(tmpdir, 'test_mm0.dds')
-    timg = Image.open(TESTPNG)
+    timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
 
+    if timg.mode == "RGB":
+        timg = timg.convert("RGBA")
     dds.gen_mipmaps(timg)
 
     data = dds.read(1024)
@@ -80,7 +83,7 @@ def test_read_mm0(tmpdir):
 
 def test_read_mid(tmpdir):
     outpath = os.path.join(tmpdir, 'test_read_mid.dds')
-    timg = Image.open(TESTPNG)
+    timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
 
     dds.gen_mipmaps(timg, 4)
