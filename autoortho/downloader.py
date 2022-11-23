@@ -9,6 +9,7 @@ import json
 import shutil
 import zipfile
 import argparse
+import platform
 from urllib.request import urlopen, Request
 
 def do_url(url, headers={}, ):
@@ -168,10 +169,13 @@ class OrthoRegion(object):
                 zf.extractall(self.extract_dir)
         
 
-        z_autoortho_path = os.path.join(self.extract_dir, "z_autoortho")
-        if not os.path.exists(z_autoortho_path):
-            os.makedirs(z_autoortho_path)
-        
+        central_textures_path = os.path.join(
+                self.extract_dir, 
+                "z_autoortho",
+                "textures"
+        )
+        if not os.path.exists(central_textures_path):
+            os.makedirs(central_textures_path)
 
         # Normal zips
         for o in ortho_paths:
@@ -179,28 +183,43 @@ class OrthoRegion(object):
                 print(f"Extracting {o}")
                 with zipfile.ZipFile(o) as zf:
                     zf.extractall(self.extract_dir)
-            
-                orthodirs_extracted = glob.glob(
-                    os.path.join(self.extract_dir, f"z_{self.region_id}_*")
-                )
+        
+        # Arrange paths
+        orthodirs_extracted = glob.glob(
+            os.path.join(self.extract_dir, f"z_{self.region_id}_*")
+        )
 
-                for d in orthodirs_extracted:
-                    shutil.copytree(
-                        os.path.join(d, "Earth nav data"),
-                        os.path.join(z_autoortho_path, "Earth nav data"),
-                        dirs_exist_ok=True
+        print(orthodirs_extracted)
+        for d in orthodirs_extracted:
+            cur_textures_path = os.path.join(d, "textures")
+
+            print(f"Copy {cur_textures_path} to {central_textures_path}")
+
+            if os.path.isdir(cur_textures_path):
+                
+                # Move all textures into a single directory
+                shutil.copytree(
+                    cur_textures_path,
+                    central_textures_path,
+                    dirs_exist_ok=True
+                )
+                shutil.rmtree(cur_textures_path)
+
+                texture_link_dir = os.path.join(
+                    "..", "z_autoortho", "textures"
+                )
+                # Setup links for texture dirs
+                if platform.system() == "Windows":
+                    subprocess.check_call(
+                        f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
+                        shell=True
                     )
-                    shutil.copytree(
-                        os.path.join(d, "terrain"),
-                        os.path.join(z_autoortho_path, "terrain"),
-                        dirs_exist_ok=True
+                else:
+                    os.symlink(
+                        texture_link_dir,
+                        cur_textures_path
                     )
-                    shutil.copytree(
-                        os.path.join(d, "textures"),
-                        os.path.join(z_autoortho_path, "_textures"),
-                        dirs_exist_ok=True
-                    )
-                    shutil.rmtree(d)
+
 
         for o in overlay_paths:
             if os.path.exists(o) and o.endswith('.zip'):
@@ -324,20 +343,64 @@ class Downloader(object):
 
 
 if __name__ == "__main__":
-    d = Downloader(os.path.expanduser("~/X-Plane 12/Custom Scenery"))
+
+    available_regions = ["eur", "na", "aus_pac"]
+
+    parser = argparse.ArgumentParser(
+        description = "AutoOrtho Scenery Downloader"
+    )
+    subparser = parser.add_subparsers(help="command", dest="command")
+
+    parser.add_argument(
+        "--scenerydir",
+        "-c",
+        default = "Custom Scenery",
+        help = "Path to X-Plane 'Custom Scenery' directory or other install path"
+    )
+    parser.add_argument(
+        "--noclean",
+        "-n",
+        action = "store_true",
+        help = "Disable cleaning of files after extraction."
+    )
+    parser.add_argument(
+        "--downloadonly",
+        "-d",
+        action = "store_true",
+        help = "Download only, don't extract files."
+    )
+
+
+    parser_list = subparser.add_parser('list')
+    parser_fetch = subparser.add_parser('fetch')
+
+    parser_fetch.add_argument(
+        "region",
+        nargs = "?",
+        choices = available_regions,
+        help = "Which region to download and setup."
+    )
+
+    args = parser.parse_args()
+
+    d = Downloader(os.path.expanduser(args.scenerydir))
     d.find_releases()
 
-    action = sys.argv[1]
-
-    if action == 'fetch':
-        region = sys.argv[2]
+    if args.command == 'fetch':
+        region = args.region
         d.download_region(region)
-        d.extract(region)
-        #d.cleanup(region)
+        if not args.downloadonly:
+            d.extract(region)
+        if not args.noclean:
+            d.cleanup(region)
 
-    elif action == 'list':
+    elif args.command == 'list':
         for r in d.regions.values():
             print(f"{r} current version {r.local_version}")
             if r.pending_update:
                 print(f"    Available update ver: {r.latest_version}, size: {r.size/1048576:.2f} MB, downloads: {r.download_count}")
+    else:
+        parser.print_help()
+        sys.exit(1)
 
+    sys.exit(0)
