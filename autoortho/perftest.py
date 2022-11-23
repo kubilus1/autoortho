@@ -37,32 +37,6 @@ def test_pydds_mm(inimg, outfile, mm):
     inimg = inimg.convert("RGBA")
     dds.gen_mipmaps(inimg, mm)
 
-
-def test_pydds_mm3(inimg, outfile):
-    dds = pydds.DDS(4096, 4096)
-    inimg = inimg.convert("RGBA")
-    #dds.gen_mipmaps(inimg, 1)
-    #dxtdata = dds.compress(256, 256, inimg.tobytes())
-    #dds.mipmaps.append(dxtdata)
-    #dds.mipMapCount = 1
-    
-    # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
-    #dds.pitchOrLinearSize = 22369616
-    #dds.mipMapCount = 11
-    #dds.write(outfile)
-
-    #writtensize = pydds.get_size(4096, 4096)
-    #with open(outfile, 'ba') as h:
-    #    h.write(b'\x00' * (dds.pitchOrLinearSize - writtensize))
-
-    #dds.pitchOrLinearSize = 22369616
-    #dds.buffer.seek(128)
-    #dds.buffer.write(b'\x00' * dds.pitchOrLinearSize)
-    dds.gen_mipmaps(inimg, 3)
-    #dds.mipMapCount = 11
-    #dds.pitchOrLinearSize = 22369616
-    #dds.write(outfile)
-
 def test_nvcompress(inimg, outfile):
     testimg.save('/tmp/temp.jpg', "JPEG")
     subprocess.check_call(
@@ -85,7 +59,6 @@ def test_pydds_nomm(inimg, outfile):
     dds = pydds.DDS(4096, 4096)
     inimg = inimg.convert("RGBA")
     dds.gen_mipmaps(inimg, 0, 1)
-
 
 def test_wand(inimg, outfile):
     inimg.compress = 'dxt5'
@@ -111,6 +84,8 @@ def main():
     print(f"PYDDS NOMM: total {t}  per {t/NUMRUNS}")
     t = timeit.timeit("test_nvcompress_nomm(testimg, 'out.dds')", setup='from __main__ import test_nvcompress_nomm, testimg', number=NUMRUNS)
     print(f"NVCOMPRESS NOMM: total {t}  per {t/NUMRUNS}")
+
+    # Wand is super slow, don't bother
     #t = timeit.timeit("test_wand(wand_img, 'out.dds')", setup='from __main__ import test_wand, wand_img', number=NUMRUNS)
     #print(f"WAND: {t}")
 
