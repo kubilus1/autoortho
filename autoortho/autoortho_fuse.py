@@ -80,6 +80,7 @@ class AutoOrtho(Operations):
     def __init__(self, root, cache_dir='.cache', maptype_override=None):
         log.info(f"ROOT: {root}")
         self.dds_re = re.compile(".*/(\d+)[-_](\d+)[-_]((?!ZL)\D*)(\d+).dds")
+        self.ktx2_re = re.compile(".*/(\d+)[-_](\d+)[-_]((?!ZL)\D*)(\d+).ktx2")
         self.dsf_re = re.compile(".*/[-+]\d+[-+]\d+.dsf")
         self.ter_re = re.compile(".*/\d+[-_]\d+[-_](\D*)(\d+).ter")
         self.root = root
@@ -88,8 +89,8 @@ class AutoOrtho(Operations):
 
         self.tc = getortho.TileCacher(cache_dir, maptype_override)
     
-        self.path_condition = threading.Condition()
-        self.read_lock = threading.Lock()
+        #self.path_condition = threading.Condition()
+        #self.read_lock = threading.Lock()
         self._lock = threading.RLock()
 
 
@@ -126,15 +127,12 @@ class AutoOrtho(Operations):
     def getattr(self, path, fh=None):
         log.debug(f"GETATTR {path}")
 
-        full_path = self._full_path(path)
-        exists = os.path.exists(full_path)
-        log.debug(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
         m = self.dds_re.match(path)
         #if m and not exists:
         if m:
-            #log.info(f"{path}: MATCH!")
-            row, col, maptype, zoom = m.groups()
-            log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
+            log.debug(f"GETATTR: {path}: MATCH!")
+            #row, col, maptype, zoom = m.groups()
+            #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -151,6 +149,9 @@ class AutoOrtho(Operations):
             }
         else:
             full_path = self._full_path(path)
+            exists = os.path.exists(full_path)
+            log.debug(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
+            full_path = self._full_path(path)
             st = os.lstat(full_path)
             #log.info(st)
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
@@ -165,17 +166,22 @@ class AutoOrtho(Operations):
         #attrs['st_mode'] = 33204
 
         #log.info(f"GETATTR: FH: {fh}")
-        log.debug(attrs)
+        log.debug(f"GETATTR: {path}: {attrs}")
 
         return attrs
 
     def readdir(self, path, fh):
         log.debug(f"READDIR: {path}")
-        full_path = self._full_path(path)
 
-        dirents = ['.', '..']
-        if os.path.isdir(full_path):
-            dirents.extend(os.listdir(full_path))
+        if path not in self.path_dict:
+            full_path = self._full_path(path)
+            dirents = ['.', '..']
+            if os.path.isdir(full_path):
+                dirents.extend(os.listdir(full_path))
+            #self.path_dict[path] = dirents
+        else:
+            dirents = self.path_dict.get(path)
+
         for r in dirents:
             yield r
 
@@ -256,6 +262,9 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
 
+        dsf_m = self.dsf_re.match(path)
+        if dsf_m:
+            log.info(f"OPEN: Detected DSF open: {path}")
         #dsf_m = self.dsf_re.match(path)
         #ter_m = self.ter_re.match(path)
         dds_m = self.dds_re.match(path)
@@ -356,6 +365,9 @@ class AutoOrtho(Operations):
         log.debug(f"RELEASE: {path}")
         #dsf_m = self.dsf_re.match(path)
         #ter_m = self.ter_re.match(path)
+        dsf_m = self.dsf_re.match(path)
+        if dsf_m:
+            log.info(f"RELEASE: Detected DSF close: {path}")
         dds_m = self.dds_re.match(path)
         if dds_m:
             log.debug(f"RELEASE: {path}")

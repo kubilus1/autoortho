@@ -179,7 +179,7 @@ class DDS(Structure):
             log.debug(m)
         #log.debug(self.mipmap_list)
         log.debug(self.pitchOrLinearSize)
-        print(self.pitchOrLinearSize)
+        #print(self.pitchOrLinearSize)
         log.debug(self.mipMapCount)
 
         self.lock = threading.Lock()
@@ -269,7 +269,8 @@ class DDS(Structure):
                     #
                     log.debug(f"PYDDS: In mipmap {mipmap.idx} not enough length")
 
-                    if not mipmap.retrieved:
+                    #if not mipmap.retrieved:
+                    if mipmap.databuffer is None:
                         # 
                         # Mipmap not fully retrieved.  Mimpamp buffer may exist for partially retreived mipmap 0, but
                         # we *must* make sure the full size is available.
@@ -389,6 +390,7 @@ class DDS(Structure):
                     try:
                         dxtdata = self.compress(width, height, imgdata)
                     finally:
+                        pass
                         timg.close()
                         del(imgdata)
                         imgdata = None
