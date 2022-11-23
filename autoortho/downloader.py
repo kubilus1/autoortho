@@ -172,10 +172,15 @@ class OrthoRegion(object):
         central_textures_path = os.path.join(
                 self.extract_dir, 
                 "z_autoortho",
-                "textures"
+                "_textures"
         )
         if not os.path.exists(central_textures_path):
             os.makedirs(central_textures_path)
+            os.makedirs(os.path.join(
+                self.extract_dir,
+                "z_autoortho"
+                "textures"
+            ))
 
         # Normal zips
         for o in ortho_paths:
