@@ -133,13 +133,14 @@ class Getter(object):
 
             self.count += 1
 
-            try:
+            #try:
+            if True:
                 if not self.get(obj, *args, **kwargs):
                     log.warning(f"Failed getting: {obj} {args} {kwargs}, re-submit.")
                     self.submit(obj, *args, **kwargs)
-            except Exception as err:
-                log.error(f"ERROR {err} getting: {obj} {args} {kwargs}, re-submit.")
-                self.submit(obj, *args, **kwargs)
+            #except Exception as err:
+            #    log.error(f"ERROR {err} getting: {obj} {args} {kwargs}, re-submit.")
+            #    self.submit(obj, *args, **kwargs)
 
     def get(obj, *args, **kwargs):
         raise NotImplementedError
