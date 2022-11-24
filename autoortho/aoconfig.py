@@ -78,8 +78,7 @@ maptype_override =
         showconfig = self.showconfig
         maptype = self.autoortho.maptype_override
 
-        #maptypes = [None, 'BI', 'Arc', 'EOX', 'GO2', 'USGS'] 
-        maptypes = [None, 'BI', 'Arc', 'EOX', 'USGS'] 
+        maptypes = [None, 'BI', 'Arc', 'EOX', 'GO2', 'USGS'] 
 
         if self.gui:
             sg.theme('DarkAmber')
