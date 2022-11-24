@@ -275,7 +275,6 @@ class Chunk(object):
             #self.img.load()
             self.data = resp.read()
         finally:
-            pass
             resp.close()
 
         self.save_cache()
