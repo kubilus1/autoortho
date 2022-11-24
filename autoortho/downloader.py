@@ -10,6 +10,7 @@ import shutil
 import zipfile
 import argparse
 import platform
+import subprocess
 from urllib.request import urlopen, Request
 
 def do_url(url, headers={}, ):
