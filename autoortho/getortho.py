@@ -133,14 +133,13 @@ class Getter(object):
 
             self.count += 1
 
-            #try:
-            if True:
+            try:
                 if not self.get(obj, *args, **kwargs):
                     log.warning(f"Failed getting: {obj} {args} {kwargs}, re-submit.")
                     self.submit(obj, *args, **kwargs)
-            #except Exception as err:
-            #    log.error(f"ERROR {err} getting: {obj} {args} {kwargs}, re-submit.")
-            #    self.submit(obj, *args, **kwargs)
+            except Exception as err:
+                log.error(f"ERROR {err} getting: {obj} {args} {kwargs}, re-submit.")
+                self.submit(obj, *args, **kwargs)
 
     def get(obj, *args, **kwargs):
         raise NotImplementedError
@@ -187,6 +186,8 @@ class Chunk(object):
     width = 256
     height = 256
     cache_dir = 'cache'
+    attempt = 0
+
 
     ready = None
     data = None
@@ -261,6 +262,9 @@ class Chunk(object):
                 "user-agent": "curl/7.68.0"
         }
         
+        time.sleep((self.attempt/10))
+        self.attempt += 1
+
         req = Request(url, headers=header)
         resp = 0
         try:
