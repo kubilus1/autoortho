@@ -259,14 +259,14 @@ class Chunk(object):
         header = {
                 "user-agent": "curl/7.68.0"
         }
+        
+        req = Request(url, headers=header)
         try:
-            req = Request(url, headers=header)
             resp = urlopen(req, timeout=5)
-            self.data = resp.read()
-
             if resp.status != 200:
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
+            self.data = resp.read()
         except Exception as err:
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
             return False
