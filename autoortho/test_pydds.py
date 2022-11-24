@@ -58,6 +58,8 @@ def test_mid_dds(tmpdir):
     outpath = os.path.join(tmpdir, 'test_empty.dds')
     timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
+    if timg.mode == "RGB":
+        timg = timg.convert("RGBA")
     dds.gen_mipmaps(timg, 4)
     
     for m in dds.mipmap_list:
@@ -85,6 +87,8 @@ def test_read_mid(tmpdir):
     outpath = os.path.join(tmpdir, 'test_read_mid.dds')
     timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
+    if timg.mode == "RGB":
+        timg = timg.convert("RGBA")
 
     dds.gen_mipmaps(timg, 4)
 

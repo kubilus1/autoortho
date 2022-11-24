@@ -29,6 +29,10 @@ from PIL import Image
 
 MEMTRACE = False
 
+# Use ispc for compression instead of stb
+ISPC = True
+
+
 #from memory_profiler import profile
 
 def do_url(url, headers={}):
@@ -335,7 +339,7 @@ class Tile(object):
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
 
-        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=True)
+        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=ISPC)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
 
 

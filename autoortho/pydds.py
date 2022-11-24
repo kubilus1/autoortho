@@ -20,22 +20,20 @@ if os.environ.get('AO_DEBUG'):
 else:
     log.setLevel(logging.INFO)
 
-
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
     print("Linux detected")
-    _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','lib_stb_dxt.so')
+    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','lib_stb_dxt.so')
     _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','libispc_texcomp.so')
-    #_dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib_stb_dxt.so')
 elif platform.system().lower() == 'windows':
     print("Windows detected")
-    _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
+    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
     _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','ispc_texcomp.dll')
 else:
     print("System is not supported")
     exit()
-#_dxt_path = os.path.join('./foo','lib_stb_dxt.so')
-_dxt = CDLL(_dxt_path)
+
+_stb = CDLL(_stb_path)
 _ispc = CDLL(_ispc_path)
 
 DDSD_CAPS = 0x00000001          # dwCaps/dwCaps2 is enabled. 
@@ -72,14 +70,14 @@ STB_DXT_HIGHQUAL = 2
 #     dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
 #     outdata = create_string_buffer(dxt_size)
 # 
-#     _dxt.compress_pixels.argtypes = (
+#     _stb.compress_pixels.argtypes = (
 #             c_char_p,
 #             c_char_p, 
 #             c_uint64, 
 #             c_uint64, 
 #             c_bool)
 # 
-#     result = _dxt.compress_pixels(
+#     result = _stb.compress_pixels(
 #             outdata,
 #             c_char_p(data),
 #             c_uint64(width), 
@@ -144,7 +142,7 @@ class DDS(Structure):
     ]
 
 
-    def __init__(self, width, height, ispc=False):
+    def __init__(self, width, height, ispc=True):
         self.magic = b"DDS "  
         self.size = 124
         self.flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_MIPMAPCOUNT | DDSD_LINEARSIZE
@@ -359,14 +357,15 @@ class DDS(Structure):
             )
             result = True
         else:
-            _dxt.compress_pixels.argtypes = (
+            #print("Will use stb")
+            _stb.compress_pixels.argtypes = (
                     c_char_p,
                     c_char_p, 
                     c_uint64, 
                     c_uint64, 
                     c_bool)
 
-            result = _dxt.compress_pixels(
+            result = _stb.compress_pixels(
                     outdata,
                     c_char_p(data),
                     c_uint64(width), 
