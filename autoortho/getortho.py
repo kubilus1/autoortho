@@ -164,7 +164,7 @@ class ChunkGetter(Getter):
         #log.debug(f"{obj}, {args}, {kwargs}")
         return obj.get(*args, **kwargs)
 
-chunk_getter = ChunkGetter(32)
+chunk_getter = ChunkGetter(64)
 
 #class TileGetter(Getter):
 #    def get(self, obj, *args, **kwargs):
@@ -186,8 +186,11 @@ class Chunk(object):
     width = 256
     height = 256
     cache_dir = 'cache'
+    
     attempt = 0
 
+    startime = 0
+    fetchtime = 0
 
     ready = None
     data = None
@@ -242,6 +245,9 @@ class Chunk(object):
             self.ready.set()
             return True
 
+        if not self.starttime:
+            self.startime = time.time()
+
         server_num = idx%(len(self.serverlist))
         server = self.serverlist[server_num]
         quadkey = _gtile_to_quadkey(self.col, self.row, self.zoom)
@@ -279,6 +285,8 @@ class Chunk(object):
         finally:
             if resp:
                 resp.close()
+
+        self.fetchtime = time.time() - self.starttime
 
         self.save_cache()
         self.ready.set()
@@ -670,8 +678,9 @@ class Tile(object):
         # Get an image for a particular mipmap
         #
 
+        # Get effective zoom
         zoom = self.zoom - mipmap
-        log.info(f"Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
+        log.debug(f"Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
         col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom)
         log.debug(f"Will use:  Zoom: {zoom},  Mipmap: {mipmap}")
 
@@ -693,11 +702,11 @@ class Tile(object):
 
         self._create_chunks(zoom)
         chunks = self.chunks[zoom][startchunk:endchunk]
-        log.info(f"Start chunk: {startchunk}  End chunk: {endchunk}  Chunklen {len(self.chunks[zoom])}")
+        log.debug(f"Start chunk: {startchunk}  End chunk: {endchunk}  Chunklen {len(self.chunks[zoom])}")
 
         #if True:
         with self.tile_lock:
-            log.info(f"TILE: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
+            log.debug(f"TILE: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
             data_updated = False
             for chunk in chunks:
                 if not chunk.ready.is_set():
@@ -712,7 +721,7 @@ class Tile(object):
 
             #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
             #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
-            log.info(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
+            log.debug(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
             new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
             #log.info(f"NUM CHUNKS: {len(chunks)}")
             for chunk in chunks:
@@ -758,8 +767,8 @@ class Tile(object):
         mm_counts[mipmap] = mm_counts.get(mipmap, 0) + 1
         mm_fetch_times.setdefault(mipmap, collections.deque(maxlen=25)).append(tile_time)
         mm_averages[mipmap] = sum(mm_fetch_times.get(mipmap))/len(mm_fetch_times.get(mipmap))
-        log.info(f"Fetched MM {mipmap} for ZL {zoom} in {tile_time} seconds")
-        log.info(f"Average Fetch times: {mm_averages}")
+        log.info(f"Compress MM {mipmap} for ZL {zoom} in {tile_time} seconds")
+        log.info(f"Average compress times: {mm_averages}")
         log.info(f"MM counts: {mm_counts}")
 
         if mipmap == 0:
@@ -842,7 +851,7 @@ class TileCacher(object):
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
             log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
-            while len(self.tiles) >= 90 and cur_mem > memlimit:
+            while len(self.tiles) >= 40 and cur_mem > memlimit:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
