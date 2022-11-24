@@ -262,18 +262,14 @@ class Chunk(object):
         try:
             req = Request(url, headers=header)
             resp = urlopen(req, timeout=5)
+            self.data = resp.read()
+
+            if resp.status != 200:
+                log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
+                return False
         except Exception as err:
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
             return False
-       
-        if resp.status != 200:
-            log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
-            return False
-    
-        try:
-            #self.img = Image.open(resp).convert("RGBA")
-            #self.img.load()
-            self.data = resp.read()
         finally:
             resp.close()
 
