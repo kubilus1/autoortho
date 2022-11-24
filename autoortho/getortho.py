@@ -262,8 +262,8 @@ class Chunk(object):
         try:
             req = Request(url, headers=header)
             resp = urlopen(req, timeout=5)
-        except:
-            log.warning(f"Failed to get chunk {self} on server {server}.")
+        except Exception as err:
+            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
             return False
        
         if resp.status != 200:
