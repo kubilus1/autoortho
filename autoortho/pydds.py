@@ -30,6 +30,7 @@ if platform.system().lower() == 'linux':
 elif platform.system().lower() == 'windows':
     print("Windows detected")
     _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
+    _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','ispc_texcomp.dll')
 else:
     print("System is not supported")
     exit()

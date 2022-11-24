@@ -71,7 +71,7 @@ def test_wand(inimg, outfile):
 
 
 def main():
-    NUMRUNS=25
+    NUMRUNS=20
 
     #t = timeit.timeit("test_conv(testimg, 'out.dds')", setup='from __main__ import test_conv, testimg', number=NUMRUNS)
     #print(f"SOIL2: {t}")
