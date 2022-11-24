@@ -212,7 +212,7 @@ class OrthoRegion(object):
                 shutil.rmtree(cur_textures_path)
 
                 texture_link_dir = os.path.join(
-                    "..", "z_autoortho", "textures"
+                    self.extract_dir, "z_autoortho", "textures"
                 )
                 # Setup links for texture dirs
                 if platform.system() == "Windows":
