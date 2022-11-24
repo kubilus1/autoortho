@@ -335,7 +335,7 @@ class Tile(object):
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
 
-        self.dds = pydds.DDS(self.width*256, self.height*256)
+        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=True)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
 
 
