@@ -262,6 +262,7 @@ class Chunk(object):
         }
         
         req = Request(url, headers=header)
+        resp = 0
         try:
             resp = urlopen(req, timeout=5)
             if resp.status != 200:
@@ -272,7 +273,8 @@ class Chunk(object):
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
             return False
         finally:
-            resp.close()
+            if resp:
+                resp.close()
 
         self.save_cache()
         self.ready.set()
