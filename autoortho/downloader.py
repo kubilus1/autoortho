@@ -22,7 +22,8 @@ def do_url(url, headers={}, ):
 
 
 class OrthoRegion(object):
-    
+   
+    release_id = 0
     region_id = None
     latest_version = 0
     ortho_size = 0
@@ -37,16 +38,59 @@ class OrthoRegion(object):
 
     size = 0
     download_count = 0
+    
+    base_url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
 
-    def __init__(self, region_id):
+    def __init__(self, region_id, release_id):
         self.region_id = region_id
         self.ortho_urls = []
         self.overlay_urls = []
         self.info_dict = {}
+        self.ortho_dirs = []
+
+        self.rel_url = f"{self.base_url}/{release_id}"
+        self.get_rel_info()
+        self.check_local()
 
 
     def __repr__(self):
         return f"OrthoRegion({self.region_id})"
+
+
+    def get_rel_info(self):
+        resp = do_url(
+            self.rel_url,
+            headers = {"Accept": "application/vnd.github+json"}
+        )
+        data = json.loads(resp)
+
+        self.latest_version = data.get('name')
+
+        for a in data.get('assets'):
+            asset_name = a.get('name')
+            #print(f"Add asset {asset_name}")
+            #print(a.get('name'))
+            if asset_name.endswith("_info.json"):
+                resp = do_url(a.get('browser_download_url'))
+                info = json.loads(resp)
+                self.info_dict = info
+                #print(info)
+            elif asset_name.startswith("z_"):
+                # Found orthos
+                self.ortho_size += int(a.get('size'))
+                self.ortho_urls.append(a.get('browser_download_url'))
+            elif asset_name.startswith("y_"):
+                # Found overlays
+                self.overlay_size += int(a.get('size'))
+                self.overlay_urls.append(a.get('browser_download_url')) 
+            else:
+                print(f"Unknown file {asset_name}")
+            
+            self.size += a.get('size')
+
+            if a.get('download_count') >= self.download_count:
+                self.download_count = a.get('download_count')
+
 
     def check_local(self):
         info_dict_path = os.path.join(
@@ -177,11 +221,6 @@ class OrthoRegion(object):
         )
         if not os.path.exists(central_textures_path):
             os.makedirs(central_textures_path)
-            os.makedirs(os.path.join(
-                self.extract_dir,
-                "z_autoortho"
-                "textures"
-            ))
 
         # Normal zips
         for o in ortho_paths:
@@ -194,8 +233,8 @@ class OrthoRegion(object):
         orthodirs_extracted = glob.glob(
             os.path.join(self.extract_dir, f"z_{self.region_id}_*")
         )
+        self.ortho_dirs = orthodirs_extracted
 
-        print(orthodirs_extracted)
         for d in orthodirs_extracted:
             cur_textures_path = os.path.join(d, "textures")
 
@@ -221,6 +260,11 @@ class OrthoRegion(object):
                         shell=True
                     )
                 else:
+                    os.makedirs(os.path.join(
+                        self.extract_dir,
+                        "z_autoortho",
+                        "textures"
+                    ))
                     os.symlink(
                         texture_link_dir,
                         cur_textures_path
@@ -244,8 +288,12 @@ class OrthoRegion(object):
                 os.path.join(self.extract_dir, f"y_{self.region_id}")
             )
 
+        self.save_metadata()
+
+    def save_metadata(self):
         # Save metadata
         self.info_dict['ver'] = self.latest_version
+        self.info_dict['ortho_dirs'] = self.ortho_dirs
         with open(os.path.join(
                 self.extract_dir,
                 "z_autoortho",
@@ -281,51 +329,24 @@ class Downloader(object):
         )
 
         data = json.loads(resp)
+
         for item in data:
             v = item.get('name')
+            rel_id = item.get('id')
             found_regions = [ 
                 re.match('(.*)_info.json', x.get('name')).groups()[0] for x in item.get('assets') if x.get('name','').endswith('_info.json') 
             ]
-            
-            for r in [f for f in found_regions if f not in self.regions]:
+           
+            for r in [f for f in found_regions if f not in self.regions and f in self.region_list]:
                 print(f"Found region {r} version {v}")
 
                 if r not in self.regions:
-                
                     #print(f"Create region object for {r}")
-                    region = OrthoRegion(r)
-                    region.latest_version = v
+                    region = OrthoRegion(r, rel_id)
                     region.download_dir = self.download_dir
                     region.extract_dir = self.extract_dir
 
-                    for a in item.get('assets'):
-                        asset_name = a.get('name')
-                        #print(f"Add asset {asset_name}")
-                        #print(a.get('name'))
-                        if asset_name.endswith("_info.json"):
-                            resp = do_url(a.get('browser_download_url'))
-                            info = json.loads(resp)
-                            region.info_dict = info
-                            region.check_local()
-                            #print(info)
-                        elif asset_name.startswith("z_"):
-                            # Found orthos
-                            region.ortho_size += int(a.get('size'))
-                            region.ortho_urls.append(a.get('browser_download_url'))
-                        elif asset_name.startswith("y_"):
-                            # Found overlays
-                            region.overlay_size += int(a.get('size'))
-                            region.overlay_urls.append(a.get('browser_download_url')) 
-                        else:
-                            print(f"Unknown file {asset_name}")
-                        
-                        region.size += a.get('size')
-
-                        if a.get('download_count') >= region.download_count:
-                            region.download_count = a.get('download_count')
-
                     self.regions[r] = region
-                    #print(region)
 
             if len(self.regions) == len(self.region_list):
                 break
