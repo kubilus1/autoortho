@@ -189,7 +189,7 @@ class Chunk(object):
     
     attempt = 0
 
-    startime = 0
+    starttime = 0
     fetchtime = 0
 
     ready = None
@@ -258,8 +258,9 @@ class Chunk(object):
         MAPTYPES = {
             "EOX": f"https://{server}.s2maps-tiles.eu/wmts/?layer={MAPID}&style=default&tilematrixset={MATRIXSET}&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={self.zoom}&TileCol={self.col}&TileRow={self.row}",
             "BI": f"http://r{server_num}.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=136",
-            "GO2": f"http://mt{server_num}.google.com/vt/lyrs=s&x={self.col}&y={self.row}&z={self.zoom}",
+            "GO2": f"http://khms{server_num}.google.com/kh/v=934?x={self.col}&y={self.row}&z={self.zoom}"
             "ARC": f"http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
+            "NAIP": f"http://naip.maptiles.arcgis.com/arcgis/rest/services/NAIP/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "USGS": f"https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{self.zoom}/{self.row}/{self.col}"
         }
         url = MAPTYPES[self.maptype.upper()]
@@ -303,7 +304,7 @@ class Tile(object):
     col = -1
     maptype = None
     zoom = -1
-    min_zoom = 11
+    min_zoom = 12
     cache_dir = './cache'
     width = 16
     height = 16
@@ -368,7 +369,8 @@ class Tile(object):
 
                 for r in range(row, row+height):
                     for c in range(col, col+width):
-                        chunk = Chunk(c, r, self.maptype, zoom, priority=self.priority)
+                        #chunk = Chunk(c, r, self.maptype, zoom, priority=self.priority)
+                        chunk = Chunk(c, r, self.maptype, zoom)
                         self.chunks[zoom].append(chunk)
 
     def _find_cache_file(self):
@@ -390,7 +392,7 @@ class Tile(object):
             # Max difference in steps this tile can support
             max_diff = min((self.zoom - int(quick_zoom)), 4)
             # Minimum zoom level allowed
-            min_zoom = self.zoom - max_diff
+            min_zoom = max((self.zoom - max_diff), self.min_zoom)
             
             # Effective zoom level we will use 
             quick_zoom = max(int(quick_zoom), min_zoom)
