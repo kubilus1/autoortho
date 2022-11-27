@@ -1,21 +1,30 @@
 import os
 import sys
+import time
 import types
+import queue
 import pathlib
 import platform
+import threading
 import subprocess
 import configparser
+
 
 import logging
 logging.basicConfig()
 log = logging.getLogger('log')
 
 import PySimpleGUI as sg
+#print = sg.Print
+
+import downloader
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 class AOConfig(object):
    
+    status = None
+
     warnings = []
     errors = []
 
@@ -43,6 +52,7 @@ maptype_override =
     def __init__(self, headless=False):
         # Always load initially
         self.ready = self.load()
+        self.dl = downloader.Downloader(self.paths.scenery_path)
 
         if headless:
             # Always disable GUI if set on as a CLI switch
@@ -50,6 +60,9 @@ maptype_override =
 
         if self.gui:
             sg.theme('DarkAmber')
+
+        self.running = True
+        self.scenery_q = queue.Queue()
 
 
     def _check_ortho_dir(self, path):
@@ -73,33 +86,67 @@ maptype_override =
 
     def setup(self):
 
-        orthos_path = self.paths.orthos_path
-        scenery_path= self.paths.scenery_path
+        scenery_path = self.paths.scenery_path
         showconfig = self.showconfig
         maptype = self.autoortho.maptype_override
 
-        maptypes = [None, 'BI', 'Arc', 'EOX', 'GO2', 'USGS'] 
+        maptypes = [None, 'BI', 'Arc', 'EOX', 'GO2', 'USGS', 'NAIP'] 
 
         if self.gui:
             sg.theme('DarkAmber')
 
-            layout = [
+            setup = [
                 [sg.Text('AutoOrtho setup\n')],
                 [sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=2)],
                 [sg.HorizontalSeparator(pad=5)],
-                [sg.Text('Orthophoto dir', size=(15,1)), sg.InputText(orthos_path, key='orthos'), sg.FolderBrowse(target='orthos', initial_folder=orthos_path)],
-                [sg.Text('X-Plane scenery dir', size=(15,1)), sg.InputText(scenery_path, key='scenery'), sg.FolderBrowse(target='scenery', initial_folder=scenery_path)],
+                [sg.Text('X-Plane scenery dir', size=(18,1)), sg.InputText(scenery_path, key='scenery'), sg.FolderBrowse(target='scenery', initial_folder=scenery_path)],
                 [sg.HorizontalSeparator(pad=5)],
                 [sg.Checkbox('Always show config menu', key='showconfig', default=self.showconfig)],
                 [sg.Text('Map type override'), sg.Combo(maptypes, default_value=maptype, key='maptype')],
                 [sg.HorizontalSeparator(pad=5)],
-                [sg.Button('Fly'), sg.Button('Quit')]
             ]
+
+            scenery = [
+            ]
+            self.dl.find_releases()
+            for r in self.dl.regions.values():
+                scenery.append([sg.Text(f"{r.info_dict.get('name', r)} current version {r.local_version}")])
+                if r.pending_update:
+                    scenery.append([sg.Text(f"    Available update ver: {r.latest_version}, size: {r.size/1048576:.2f} MB, downloads: {r.download_count}", key=f"updates-{r.region_id}"), sg.Button('Install', key=f"scenery-{r.region_id}")])
+                else:
+                    scenery.append([sg.Text(f"    {r.region_id} is up to date!")])
+                scenery.append([sg.HorizontalSeparator()])
+
+            #scenery.append([sg.Output(size=(80,10))])
+            #scenery.append([sg.Multiline(size=(80,10), key="output")])
+            scenery.append([sg.Text(key='-EXPAND-', font='ANY 1', pad=(0,0))])
+            scenery.append([sg.StatusBar("...", size=(74,3), key="status", auto_size_text=True, expand_x=True)])
+
+            logs = [
+            ]
+
+            layout = [
+                [sg.TabGroup(
+                    [[sg.Tab('Setup', setup), sg.Tab('Scenery', scenery)]])
+                ],
+                #[sg.StatusBar("...", size=(80,3), key="status", auto_size_text=True, expand_x=True)],
+                [sg.Button('Fly'), sg.Button('Save'), sg.Button('Quit')]
+
+            ]
+
             font = ("Helventica", 14)
-            window = sg.Window('AutoOrtho Setup', layout, font=font)
+            self.window = sg.Window('AutoOrtho Setup', layout, font=font, finalize=True)
+
+
+            #print = lambda *args, **kwargs: window['output'].print(*args, **kwargs)
+            self.window['-EXPAND-'].expand(True, True, True)
+            self.status = self.window['status']
+
+            t = threading.Thread(target=self.scenery_setup)
+            t.start()
 
             while True:
-                event, values = window.read()
+                event, values = self.window.read(timeout=100)
                 #log.info(f'VALUES: {values}')
                 #print(f"VALUES {values}")
                 #print(f"EVENT: {event}")
@@ -108,12 +155,10 @@ maptype_override =
                     break
                 elif event == 'Quit':
                     print("Quiting ...")
-                    sys.exit(0)
                     break
                 elif event == "Fly":
                     print("Updating config.")
                     print(values)
-                    orthos_path = values.get('orthos', orthos_path)
                     scenery_path = values.get('scenery', scenery_path)
                     showconfig = values.get('showconfig', showconfig)
                     maptype = values.get('maptype', maptype)
@@ -125,19 +170,37 @@ maptype_override =
                     #     sg.popup(f"XPlane Custom Scenery directory {scenery_path} seems wrong.  This may cause issues.")
 
                     break
+                elif event == 'Save':
+                    print("Updating config.")
+                    print(values)
+                    scenery_path = values.get('scenery', scenery_path)
+                    showconfig = values.get('showconfig', showconfig)
+                    maptype = values.get('maptype', maptype)
+                    
+                    self.dl.extract_dir = scenery_path
+                    self.dl.find_releases
+                elif event.startswith("scenery-"):
+                    button = self.window[event]
+                    button.update(disabled=True)
+                    regionid = event.split("-")[1]
+                    self.scenery_q.put(regionid)
 
-            window.close()
+                self.window.refresh()
+
+            print("Exiting ...")
+            self.running = False
+            t.join()
+            self.window.close()
+            sys.exit(0)
 
         else:
 
             log.info("-"*28)
             log.info(f"Running setup!")
             log.info("-"*28)
-            orthos_path = input(f"Enter path to your OrthoPhoto files ({orthos_path}) : ") or orthos_path
             scenery_path = input(f"Enter path to X-Plane 11 custom_scenery directory ({scenery_path}) : ") or scenery_path
 
         
-        self.config['paths']['orthos_path'] = orthos_path
         self.config['paths']['scenery_path'] = scenery_path
         self.config['general']['showconfig'] = str(showconfig)
         self.config['autoortho']['maptype_override'] = maptype
@@ -145,8 +208,47 @@ maptype_override =
         self.save()
         self.load()
 
+    def scenery_setup(self):
+
+        while self.running:
+            try:
+                regionid = self.scenery_q.get(timeout=2)
+            except:
+                continue
+
+            self.scenery_dl = True
+            t = threading.Thread(target=self.region_progress, args=(regionid,))
+            t.start()
+            try:
+                button = self.window[f"scenery-{regionid}"]
+                button.update("Working")
+                
+                self.dl.download_region(regionid)
+                self.dl.extract(regionid)
+                self.dl.cleanup(regionid)
+                
+                button.update(visible=False)
+                updates = self.window[f"updates-{regionid}"]
+                updates.update("Updated!")
+
+            except Exception as err:
+                self.status.update(err)
+            finally:
+                self.scenery_dl = False
+            t.join()
+
+    
+    def region_progress(self, regionid):
+        r = self.dl.regions.get(regionid)
+        while self.scenery_dl:
+            status = r.cur_activity.get('status')
+            pcnt_done = r.cur_activity.get('pcnt_done', 0)
+            MBps = r.cur_activity.get('MBps', 0)
+            self.status.update(f"{status}")
+            time.sleep(1)
+        
+
     def verify(self):
-        self._check_ortho_dir(self.paths.orthos_path)
         self._check_xplane_dir(self.paths.scenery_path)
 
         msg = []
@@ -220,56 +322,10 @@ maptype_override =
         self.mountpoint = os.path.join(z_autoortho_path, 'textures')
         return
 
-        z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
-        if not os.path.exists(z_autoortho_path):
-            os.makedirs(z_autoortho_path)
 
-        ortho_dirs = os.listdir(self.paths.orthos_path)
 
-        log.info("Preparing directory structures....")
+if __name__ == "__main__":
 
-        if platform.system() == 'Windows':
-            #if 'Earth nav data' in ortho_dirs:
-            dest =  os.path.join(z_autoortho_path, 'Earth nav data')
-            if not os.path.exists(dest):
-                src = os.path.join(self.paths.orthos_path, 'Earth nav data')
-                #subprocess.check_call(f'New-Item -ItemType Junction -Path "{dest}" -Target "{src}"', shell=True)
-                subprocess.check_call(f'mklink /J "{dest}" "{src}"', shell=True)
-
-            #if 'terrain' in ortho_dirs:
-            dest = os.path.join(z_autoortho_path, 'terrain')
-            if not os.path.exists(dest):
-                src = os.path.join(self.paths.orthos_path, 'terrain')
-                #subprocess.check_call(f'New-Item -ItemType Junction -Path "{dest}" -Target "{src}"', shell=True)
-                subprocess.check_call(f'mklink /J "{dest}" "{src}"', shell=True)
-                #subprocess.check_call(f'cmd /c mklink /J "{src}" "{dest}"', shell=True)
-
-            # On Windows mount point cannot already exist
-            if os.path.exists(os.path.join(z_autoortho_path, 'textures')):
-                log.warning("Textures dir already exists.  This will likely break")
-                if self.gui:
-                    sg.popup("Textures dir already exists.  This will likely break")
-        else:
-            # On *nix mount point MUST already exist
-            
-            #if 'Earth nav data' in ortho_dirs:
-            if not os.path.exists(os.path.join(z_autoortho_path, 'Earth nav data')):
-                os.symlink(
-                    os.path.join(self.paths.orthos_path, 'Earth nav data'),
-                    os.path.join(z_autoortho_path, 'Earth nav data')
-                )
-
-            #if 'terrain' in ortho_dirs:
-            src = os.path.join(self.paths.orthos_path, 'terrain')
-            dest = os.path.join(z_autoortho_path, 'terrain')
-
-            # Symlink won't work with XP11 due to relative pathing from terrain directory to textures 
-            subprocess.check_call(f"rsync -a '{src}' '{z_autoortho_path}'", shell=True)
-            
-            if not os.path.exists(os.path.join(z_autoortho_path, 'textures')):
-                os.makedirs(os.path.join(z_autoortho_path, 'textures'))
-
-        log.info("Diretories are ready!")
-
-        self.root = os.path.join(self.paths.orthos_path, 'textures')
-        self.mountpoint = os.path.join(z_autoortho_path, 'textures')
+    aoc = AOConfig()
+    aoc.setup()
+    aoc.verify()

@@ -12,6 +12,7 @@ import argparse
 import platform
 import subprocess
 from urllib.request import urlopen, Request
+from datetime import datetime, timezone, timedelta
 
 def do_url(url, headers={}, ):
     req = Request(url, headers=headers)
@@ -40,9 +41,14 @@ class OrthoRegion(object):
     download_count = 0
     
     base_url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
+    cur_activity = {}
 
-    def __init__(self, region_id, release_id):
+
+    def __init__(self, region_id, release_id, extract_dir="Custom Scenery", download_dir="downloads", release_data={}):
         self.region_id = region_id
+        self.release_data = release_data
+        self.extract_dir = extract_dir
+        self.download_dir = download_dir
         self.ortho_urls = []
         self.overlay_urls = []
         self.info_dict = {}
@@ -52,17 +58,21 @@ class OrthoRegion(object):
         self.get_rel_info()
         self.check_local()
 
+        self.cur_activity['status'] = "Idle"
 
     def __repr__(self):
         return f"OrthoRegion({self.region_id})"
 
 
     def get_rel_info(self):
-        resp = do_url(
-            self.rel_url,
-            headers = {"Accept": "application/vnd.github+json"}
-        )
-        data = json.loads(resp)
+        if not self.release_data:
+            resp = do_url(
+                self.rel_url,
+                headers = {"Accept": "application/vnd.github+json"}
+            )
+            data = json.loads(resp)
+        else:
+            data = self.release_data
 
         self.latest_version = data.get('name')
 
@@ -109,8 +119,14 @@ class OrthoRegion(object):
                 print(f"We already have up to date {self.region_id}")
             else:
                 self.pending_update = True
+            
+            # Current detected ortho_dirs
+            self.ortho_dirs = info.get('ortho_dirs', [])
+
         else:
             self.pending_update = True
+
+
 
 
     def download(self):
@@ -151,6 +167,8 @@ class OrthoRegion(object):
         outpath = os.path.join(outdir, t_filename)
         destpath = os.path.join(outdir, filename)
 
+        self.cur_activity['status'] = f"Downloading {url}"
+        
         content_len = 0
         total_fetched = 0
         chunk_size = 1024*64
@@ -165,12 +183,15 @@ class OrthoRegion(object):
                     total_fetched += len(chunk)
                     pcnt_done = (total_fetched/content_len)*100
                     MBps = (total_fetched/1048576) / (time.time() - start_time)
+                    self.cur_activity['pcnt_done'] = pcnt_done
+                    self.cur_activity['MBps'] = MBps
                     print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
+                    self.cur_activity['status'] = f"Downloading {url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
                     chunk = d.read(chunk_size)
 
         os.rename(outpath, destpath)
+        self.cur_activity['status'] = f"DONE downloading {url}"
         print("  DONE!")
-
 
     def extract(self):
         self.check_local()
@@ -183,7 +204,15 @@ class OrthoRegion(object):
             print(f"Region {self.region_id} version {self.latest_version} not downloaded!")
             return
 
+
+        if self.ortho_dirs:
+            print(f"Detected existing scenery dirs for {self.region_id}.  Cleanup first")
+            self.cur_activity['status'] = f"Detected existing scenery dirs for {self.region_id}.  Cleanup first."
+            for o in self.ortho_dirs:
+                shutil.rmtree(o)
+
         print(f"Ready to extract archives for {self.region_id} v{self.latest_version}!")
+        self.cur_activity['status'] = f"Extracting archives for {self.region_id} v{self.latest_version}"
         
         ortho_paths = [ os.path.join(self.download_dir, os.path.basename(x))
                 for x in self.ortho_urls ]
@@ -226,7 +255,12 @@ class OrthoRegion(object):
         for o in ortho_paths:
             if os.path.exists(o) and o.endswith('.zip'):
                 print(f"Extracting {o}")
+                self.cur_activity['status'] = f"Extracting {o}"
                 with zipfile.ZipFile(o) as zf:
+                    zf_dir = os.path.dirname(zf.namelist()[0])
+                    if os.path.exists(os.path.join(self.extract_dir, zf_dir)):
+                        print(f"Dir already exists.  Clean first")
+                        shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
                     zf.extractall(self.extract_dir)
         
         # Arrange paths
@@ -260,11 +294,10 @@ class OrthoRegion(object):
                         shell=True
                     )
                 else:
-                    os.makedirs(os.path.join(
-                        self.extract_dir,
-                        "z_autoortho",
-                        "textures"
-                    ))
+                    if not os.path.exists(
+                        texture_link_dir
+                    ):
+                        os.makedirs(texture_link_dir)
                     os.symlink(
                         texture_link_dir,
                         cur_textures_path
@@ -274,6 +307,7 @@ class OrthoRegion(object):
         for o in overlay_paths:
             if os.path.exists(o) and o.endswith('.zip'):
                 print(f"Extracting {o}")
+                self.cur_activity['status'] = f"Extracting {o}"
                 with zipfile.ZipFile(o) as zf:
                     zf.extractall(self.extract_dir)
 
@@ -288,7 +322,15 @@ class OrthoRegion(object):
                 os.path.join(self.extract_dir, f"y_{self.region_id}")
             )
 
+
+        print("Done with extract")
+        self.cur_activity['status'] = f"Done extracting {self.region_id}"
+
+        self.local_version = self.latest_version
+        self.extracted = True
+        self.pending_update = False
         self.save_metadata()
+        self.check_local()
 
     def save_metadata(self):
         # Save metadata
@@ -303,14 +345,18 @@ class OrthoRegion(object):
 
 
     def cleanup(self):
+        self.cur_activity['status'] = f"Cleaning up downloaded files for {self.region_id}"
         for f in os.listdir(self.download_dir):
             os.remove(os.path.join(self.download_dir, f))
+        self.cur_activity['status'] = f"Done with cleanup for {self.region_id}"
 
 
 class Downloader(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
     regions = {}
     region_list = ['na', 'aus_pac', 'eur']
+    info_cache = ".release_info"
+    
 
     def __init__(self, extract_dir, download_dir="downloads"):
         self.download_dir = download_dir
@@ -319,14 +365,29 @@ class Downloader(object):
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
 
-
     def find_releases(self):
         print("Looking for regions ...")
+        
+        if os.path.exists(self.info_cache):
+            mtime = os.path.getmtime(self.info_cache)
+            last_updated_date = datetime.fromtimestamp(mtime)
+            print(f"Last release refresh time: {last_updated_date}")
+        else:
+            last_updated_date = datetime.fromtimestamp(0)
 
-        resp = do_url(
-            self.url,
-            headers = {"Accept": "application/vnd.github+json"}
-        )
+        if last_updated_date < (datetime.today() - timedelta(hours=1)):
+            print(f"Check for updates ...")
+
+            resp = do_url(
+                self.url,
+                headers = {"Accept": "application/vnd.github+json"}
+            )
+            with open(self.info_cache, "wb") as h:
+                h.write(resp)
+        else:
+            print(f"Using cache ...")
+            with open(self.info_cache, "rb") as h:
+                resp = h.read()
 
         data = json.loads(resp)
 
@@ -342,10 +403,7 @@ class Downloader(object):
 
                 if r not in self.regions:
                     #print(f"Create region object for {r}")
-                    region = OrthoRegion(r, rel_id)
-                    region.download_dir = self.download_dir
-                    region.extract_dir = self.extract_dir
-
+                    region = OrthoRegion(r, rel_id, self.extract_dir, self.download_dir, item)
                     self.regions[r] = region
 
             if len(self.regions) == len(self.region_list):
@@ -411,9 +469,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     d = Downloader(os.path.expanduser(args.scenerydir))
-    d.find_releases()
 
     if args.command == 'fetch':
+        d.find_releases()
         region = args.region
         d.download_region(region)
         if not args.downloadonly:
@@ -422,6 +480,7 @@ if __name__ == "__main__":
             d.cleanup(region)
 
     elif args.command == 'list':
+        d.find_releases()
         for r in d.regions.values():
             print(f"{r} current version {r.local_version}")
             if r.pending_update:
