@@ -37,6 +37,11 @@ def test_pydds_mm(inimg, outfile, mm):
     inimg = inimg.convert("RGBA")
     dds.gen_mipmaps(inimg, mm)
 
+def test_pydds_mm_ispc(inimg, outfile, mm):
+    dds = pydds.DDS(4096, 4096, ispc=True)
+    inimg = inimg.convert("RGBA")
+    dds.gen_mipmaps(inimg, mm)
+
 def test_nvcompress(inimg, outfile):
     testimg.save('/tmp/temp.jpg', "JPEG")
     subprocess.check_call(
@@ -66,7 +71,7 @@ def test_wand(inimg, outfile):
 
 
 def main():
-    NUMRUNS=15
+    NUMRUNS=20
 
     #t = timeit.timeit("test_conv(testimg, 'out.dds')", setup='from __main__ import test_conv, testimg', number=NUMRUNS)
     #print(f"SOIL2: {t}")
@@ -78,6 +83,12 @@ def main():
     print(f"PYDDS MM1: total {t}  per {t/NUMRUNS}")
     t = timeit.timeit("test_pydds_mm(testimg, 'out.dds', 3)", setup='from __main__ import test_pydds_mm, testimg', number=NUMRUNS)
     print(f"PYDDS MM3: total {t}  per {t/NUMRUNS}")
+    t = timeit.timeit("test_pydds_mm_ispc(testimg, 'out.dds', 0)", setup='from __main__ import test_pydds_mm_ispc, testimg', number=NUMRUNS)
+    print(f"PYDDS MM0 ISPC: total {t}  per {t/NUMRUNS}")
+    t = timeit.timeit("test_pydds_mm_ispc(testimg, 'out.dds', 1)", setup='from __main__ import test_pydds_mm_ispc, testimg', number=NUMRUNS)
+    print(f"PYDDS MM1 ISPC: total {t}  per {t/NUMRUNS}")
+    t = timeit.timeit("test_pydds_mm_ispc(testimg, 'out.dds', 3)", setup='from __main__ import test_pydds_mm_ispc, testimg', number=NUMRUNS)
+    print(f"PYDDS MM3 ISPC: total {t}  per {t/NUMRUNS}")
     t = timeit.timeit("test_nvcompress(testimg, 'out.dds')", setup='from __main__ import test_nvcompress, testimg', number=NUMRUNS)
     print(f"NVCOMPRESS: total {t}  per {t/NUMRUNS}")
     t = timeit.timeit("test_pydds_nomm(testimg, 'out.dds')", setup='from __main__ import test_pydds_nomm, testimg', number=NUMRUNS)
