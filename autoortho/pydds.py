@@ -20,20 +20,21 @@ if os.environ.get('AO_DEBUG'):
 else:
     log.setLevel(logging.INFO)
 
-
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
     print("Linux detected")
-    _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','lib_stb_dxt.so')
-    #_dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib_stb_dxt.so')
+    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','lib_stb_dxt.so')
+    _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','libispc_texcomp.so')
 elif platform.system().lower() == 'windows':
     print("Windows detected")
-    _dxt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
+    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
+    _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','ispc_texcomp.dll')
 else:
     print("System is not supported")
     exit()
-#_dxt_path = os.path.join('./foo','lib_stb_dxt.so')
-_dxt = CDLL(_dxt_path)
+
+_stb = CDLL(_stb_path)
+_ispc = CDLL(_ispc_path)
 
 DDSD_CAPS = 0x00000001          # dwCaps/dwCaps2 is enabled. 
 DDSD_HEIGHT = 0x00000002                # dwHeight is enabled. 
@@ -69,14 +70,14 @@ STB_DXT_HIGHQUAL = 2
 #     dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
 #     outdata = create_string_buffer(dxt_size)
 # 
-#     _dxt.compress_pixels.argtypes = (
+#     _stb.compress_pixels.argtypes = (
 #             c_char_p,
 #             c_char_p, 
 #             c_uint64, 
 #             c_uint64, 
 #             c_bool)
 # 
-#     result = _dxt.compress_pixels(
+#     result = _stb.compress_pixels(
 #             outdata,
 #             c_char_p(data),
 #             c_uint64(width), 
@@ -105,6 +106,16 @@ class MipMap(object):
     def __repr__(self):
         return f"MipMap({self.idx}, {self.startpos}, {self.endpos}, {self.length}, {self.retrieved}, {self.databuffer})"
 
+
+class rgba_surface(Structure):
+    _fields_ = [
+        ('data', c_char_p),
+        ('width', c_uint32),
+        ('height', c_uint32),
+        ('stride', c_uint32)
+    ]
+
+
 class DDS(Structure):
     _fields_ = [
         ('magic', c_char * 4),
@@ -131,7 +142,7 @@ class DDS(Structure):
     ]
 
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, ispc=True):
         self.magic = b"DDS "  
         self.size = 124
         self.flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_MIPMAPCOUNT | DDSD_LINEARSIZE
@@ -150,6 +161,7 @@ class DDS(Structure):
 
         self.header = BytesIO()
                 
+        self.ispc = ispc        
         self.mipmap_map = {}
 
         #[pow(2,x)*pow(2,x) for x in range(int(math.log(width,2)),1,-1) ]
@@ -326,19 +338,39 @@ class DDS(Structure):
         #bio.write(b'\x00'*dxt_size)
         #outdata = bio.getbuffer().tobytes()
 
-        _dxt.compress_pixels.argtypes = (
-                c_char_p,
-                c_char_p, 
-                c_uint64, 
-                c_uint64, 
-                c_bool)
 
-        result = _dxt.compress_pixels(
-                outdata,
-                c_char_p(data),
-                c_uint64(width), 
-                c_uint64(height), 
-                c_bool(is_rgba))
+        if self.ispc:
+            s = rgba_surface()
+            s.data = c_char_p(data)
+            s.width = c_uint32(width)
+            s.height = c_uint32(height)
+            s.stride = c_uint32(width * 4)
+            
+            #print("Will do ispc")
+            _ispc.CompressBlocksBC3.argtypes = (
+                POINTER(rgba_surface),
+                c_char_p
+            )
+
+            _ispc.CompressBlocksBC3(
+                s, outdata
+            )
+            result = True
+        else:
+            #print("Will use stb")
+            _stb.compress_pixels.argtypes = (
+                    c_char_p,
+                    c_char_p, 
+                    c_uint64, 
+                    c_uint64, 
+                    c_bool)
+
+            result = _stb.compress_pixels(
+                    outdata,
+                    c_char_p(data),
+                    c_uint64(width), 
+                    c_uint64(height), 
+                    c_bool(is_rgba))
 
 
         if not result:

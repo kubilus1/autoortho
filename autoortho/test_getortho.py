@@ -7,6 +7,7 @@ import pytest
 import psutil
 import getortho
 
+#getortho.ISPC = False
 
 @pytest.fixture
 def chunk():

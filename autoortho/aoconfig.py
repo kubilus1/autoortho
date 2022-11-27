@@ -79,7 +79,7 @@ maptype_override =
         maptype = self.autoortho.maptype_override
 
         #maptypes = [None, 'BI', 'Arc', 'EOX', 'GO2', 'USGS'] 
-        maptypes = [None, 'BI', 'Arc', 'EOX', 'USGS'] 
+        maptypes = [None, 'BI', 'NAIP', 'Arc', 'GO2', 'EOX', 'USGS'] 
 
         if self.gui:
             sg.theme('DarkAmber')
