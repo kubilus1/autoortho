@@ -179,6 +179,11 @@ maptype_override =
                     
                     self.dl.extract_dir = scenery_path
                     self.dl.find_releases
+                    self.config['paths']['scenery_path'] = scenery_path
+                    self.config['general']['showconfig'] = str(showconfig)
+                    self.config['autoortho']['maptype_override'] = maptype
+                    self.save()
+                    self.load()
                 elif event.startswith("scenery-"):
                     button = self.window[event]
                     button.update(disabled=True)
