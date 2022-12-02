@@ -30,20 +30,19 @@ def test_fetch(tmpdir):
     assert len(na.overlay_urls) == 1
     
     d.download_region('test')
-
-    assert os.listdir(dl_dir) == ['z_test_00.zip', 'y_test_overlays.zip.00']
+    downloads = os.listdir(dl_dir)
+    downloads.sort()
+    assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip']
 
     d.extract('test')
-    assert os.listdir(scenery_dir) == [
-            'yAutoOrtho_Overlays', 'z_test_00', 'z_autoortho'
+    extracts = os.listdir(scenery_dir)
+    extracts.sort()
+    assert extracts == [
+            'yAutoOrtho_Overlays', 'z_autoortho', 'z_test_00'
     ]
 
-    assert os.listdir(os.path.join(scenery_dir, "z_autoortho")) == ['textures', 'test_info.json', '_textures']
+    orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
+    orthodetails.sort()
+    assert orthodetails == ['_textures', 'test_info.json', 'textures']
 
-    
-    print(os.path.islink(os.path.join(scenery_dir, "z_test_00", "textures")))
-
-
-    
-
-    assert True == False
+    assert os.path.islink(os.path.join(scenery_dir, "z_test_00", "textures"))
