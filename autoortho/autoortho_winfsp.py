@@ -155,7 +155,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
         )
         self._entries = {self._root_path: self._root_obj}
         self._thread_lock = threading.RLock()
-        self.dds_re = re.compile(".*\\\(\d+)[-_](\d+)[-_]((?!ZL)\D*)(\d+).dds")
+        self.dds_re = re.compile(".*\\\(\d+)[-_](\d+)[-_]((?!ZL)\S*)(\d{2}).dds")
         self.tc = tile_cache
 
         # Do lots of locking
