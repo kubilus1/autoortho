@@ -43,6 +43,11 @@ def test_fetch(tmpdir):
 
     orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
     orthodetails.sort()
-    assert orthodetails == ['_textures', 'test_info.json', 'textures']
 
-    assert os.path.islink(os.path.join(scenery_dir, "z_test_00", "textures"))
+
+    if platform.system() == "Windows":
+        assert orthodetails == ['_textures', 'test_info.json']
+    else:
+        assert orthodetails == ['_textures', 'test_info.json', 'textures']
+        assert os.path.islink(os.path.join(scenery_dir, "z_test_00", "textures"))
+
