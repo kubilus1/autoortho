@@ -145,6 +145,8 @@ maptype_override =
             t = threading.Thread(target=self.scenery_setup)
             t.start()
 
+            close = False
+
             while True:
                 event, values = self.window.read(timeout=100)
                 #log.info(f'VALUES: {values}')
@@ -152,9 +154,11 @@ maptype_override =
                 #print(f"EVENT: {event}")
                 if event == sg.WIN_CLOSED:
                     print("Not saving changes ...")
+                    close = True
                     break
                 elif event == 'Quit':
                     print("Quiting ...")
+                    close = True
                     break
                 elif event == "Fly":
                     print("Updating config.")
@@ -196,7 +200,9 @@ maptype_override =
             self.running = False
             t.join()
             self.window.close()
-            sys.exit(0)
+
+            if close:
+                sys.exit(0)
 
         else:
 
