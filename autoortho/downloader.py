@@ -354,7 +354,7 @@ class OrthoRegion(object):
 class Downloader(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
     regions = {}
-    region_list = ['na', 'aus_pac', 'eur']
+    region_list = ['na', 'aus_pac', 'eur', 'test']
     info_cache = ".release_info"
     
 

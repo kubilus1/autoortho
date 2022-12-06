@@ -90,7 +90,7 @@ maptype_override =
         showconfig = self.showconfig
         maptype = self.autoortho.maptype_override
 
-        maptypes = [None, 'BI', 'NAIP', 'Arc', 'GO2', 'EOX', 'USGS', 'Firefly'] 
+        maptypes = [None, 'BI', 'NAIP', 'Arc', 'EOX', 'USGS', 'Firefly'] 
 
         if self.gui:
             sg.theme('DarkAmber')
@@ -257,7 +257,10 @@ maptype_override =
             MBps = r.cur_activity.get('MBps', 0)
             self.status.update(f"{status}")
             time.sleep(1)
-        
+       
+        self.status.update(f"Done!")
+
+
 
     def verify(self):
         self._check_xplane_dir(self.paths.scenery_path)
