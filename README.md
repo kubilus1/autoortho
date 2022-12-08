@@ -25,9 +25,9 @@ Steps:
 3. Enter the directory you extracted
 4. Install all pre-reqs with `python3 -m pip install -r requirements.txt`
 5. Run the project with `python3 autoortho`
-6. Configure your Orthophotos dir to point to the location of your orthos (see https://github.com/kubilus1/autoortho/releases/download/0.0.5/utah.zip as an example)
-7. Configure your X-Plane Custom Scenery directory to point to the appropriate location
-
+6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
+7. Download and setup an ortho set from the 'Scenery' tab.
+8. Configure your scenery_packs.ini file appropriately 
 
 ### Windows Setup
 
@@ -42,14 +42,44 @@ Steps:
 2. Extract to a convenient location
 3. Enter the directory you extracted
 4. Run the project by executing `run.bat`
-5. Configure your Orthophotos dir to point to the location of your orthos (see https://github.com/kubilus1/autoortho/releases/download/0.0.5/utah.zip as an example)
-6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
+5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
+6. Download and setup an ortho set from the 'Scenery' tab.
+7. Configure your scenery_packs.ini file appropriately 
 
-NOTES:
-* WinFSP has a quirk where the mount point you choose cannot be a directory
-  that already exists.
-* Windows support has been tested to the extent that unit tests run.  Feedback
-  on if this works at all within X-Plane one way or another would be good to hear.
+### Configuring scenery_packs.ini
+
+Any scenery added to XPlane requires being setup in the scenery_packs.ini file
+located in your installs 'Custom Scenery' directory.
+
+This file is order dependent where higher priority layers are towards the top
+of the file and lower priority items are towards the bottom.
+
+On initial run of XPlane after installing new scenery, these layers will
+automatically be added to your scenery_packs.ini file, but likely in an
+incorrect location.
+
+This can result in strange issues, such as having no roads, buildings, or
+trees when flying with XPlane.  If this is the case, double check the order of
+files in scenery_packs.init
+
+This tool will download and setup numerous directories in your 'Custom
+Scenery' folder of the form:  `z_<short name of scenery pack>_<number>` and a
+directory named `yAutoOrtho_Overlays`.  Typically these should be listed
+towards the bottom of your scenery_packs.ini file:
+
+```
+Landmarks, airports, etc
+simHeaven, special layers, etc
+yAutoOrtho_Overlays
+z_aus_pac_00
+z_aus_pac_01
+z_aus_pac_02
+z_aus_pac_03
+z_aus_pac_04
+z_aus_pac_05
+z_aus_pac_06
+zzz_global_scenery
+```
 
 
 ## Approach
@@ -113,32 +143,56 @@ Data is cached in memory until a memory limit is reached, at which time older
 data will be purged.
 
 
-## Usage
+## Expert Usage and Overriding Default
 
-Install python3 and pip if you haven't already done so.  Install the
-requirements:
+### Warning
+I highly recommend using the pre-packaged scenery packs provided with this
+tool.  
 
-```
-python3 -m pip install -r requirements.txt
-```
+However, it's entirely possible to use your own scenery, if you wish.  This
+could be useful for situations where you want an area I haven't gotten to
+packaging yet, or want a different zoom level that what is provided.
 
-Prepare any orthophotos ahead of time with Ortho4XP (or any existing scenery
-packs without the `.dds` files.).  These should be located *outside* your
-`Custom Scenery` folder!
+This should be considered an experts-only feature though and assumes:
+* You are very comfortable with the command line
+* You are very experienced using Ortho4XP and with installing custom scenery
+* You are very familiar with filesystem concepts and managing your Operating
+  System
 
-Create an empty directory in your `Custom Scenery` folder that you will use
-for this virtual file system.  You will probably want to edit your
-`scenery_packs.ini` file and add this to the appropriate location.
+If you don't have this experience, that's okay, but likely you will struggle
+adding your own custom created scenery.  I would recommend that you
+familiarize yourself with each of these listed items before proceeding.
 
-You will effectively now 'mount' your prepared orthophoto directory to your
-`Custom Scenery` folder using this program.  Go to the location of this tool
-and for example:
+### Adding your own created sceneries
 
-```
-python3 autoortho <my orthophoto directory> <mount point in custom scenery>
-```
+Ready to add your own sceneries? Great!
 
-Start X-Plane normally.  
+So as mentioned above, this tool effectively overrides the 'textures'
+directory that XPlane is pointing to in order to location satellite imagery
+that is referrenced by a scenery pack's terrain files.
+
+Due to how XPlane identifies terrain information, these directories have been
+split up into reasonable sized pieces, which is why each provided scenery pack
+has numerous numbered directories. 
+
+However, autoorotho only mounts a single directory, under `Custom
+Scenery/z_autoortho/textures`.  
+
+How does that work then?  Simple each scenery directory provided by autoortho
+just symlinks (on linux) or sets up a filesystem junction (on windows) to this
+mount point!
+
+However, sceneries that do not have satellite imagery, likely still have
+coastline PNG files that must be preserved.  These are simply moved to `Custom
+Scenery/z_autoortho/_textures`
+
+You can take advantage of this setup for your own scenery that you have
+packaged:
+* Place your scenery in `Custom Scenery` as per normal
+* Copy any existing texture files to `Custom Scenery/z_autoortho/_textures`
+* Symlink, or directoy junction your scenery to `Custom
+  Scenery/z_autoortho/textures`
+
 
 ## Ortho4XP Usage Tips
 
@@ -157,19 +211,15 @@ initially starting up flights.
 
 ## Requirements and Compatibility
 
-This tool leverages fusepy and should be
-compatible with any Operating System that is supported by fusepy.  
-
 This project requires python3.x and all pre-requisites in the
 `requirements.txt` file.  Also, a copy of X-Plane 11.50+ of course.
 
-All testing is done on Ubuntu 20.04.  Other Linux flavors ought to work as
+Most testing is done on Ubuntu 20.04 using FUSE.  Other Linux flavors ought to work as
 well.  MacOS very likely *should* work, but I have no way of testing it.
 
-I have done basic testing on Windows 10 with the
-[WinFSP](https://github.com/winfsp/winfsp) project.  So far this looks
-promising but I have no way of fully testing this with X-Plane so your mileage
-may vary.
+I have done testing on Windows 10 with the
+[WinFSP](https://github.com/winfsp/winfsp) project.  This does appear to work
+fine, but this is not how I use this project, so it's not my primary concern.
 
 ## Known issues and limits
 * Currently I try to limit the cache to 2GB of memory, though it's possible it
@@ -184,9 +234,9 @@ may vary.
 
 * ~See if this will work on Windows with WinFSP~ 
 * Re-introduce a file cache for tiles purged from memory
-* Allow for overriding the satellite source type.  Since this pulls on the
-  fly, we aren't stuck with what was setup initially with Ortho4XP.
-* Package a set of DSF files to get started with
+* ~Allow for overriding the satellite source type.  Since this pulls on the fly, we aren't stuck with what was setup initially with Ortho4XP.~
+* ~Package a set of DSF files to get started with~
+* See if we can auto-arrange scenery_packs.ini files
 
 ## Other projects and links
 * (Ortho4XP) [https://github.com/oscarpilote/Ortho4XP]
