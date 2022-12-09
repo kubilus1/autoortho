@@ -27,7 +27,9 @@ Steps:
 5. Run the project with `python3 autoortho`
 6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 7. Download and setup an ortho set from the 'Scenery' tab.
-8. Configure your scenery_packs.ini file appropriately 
+8. Click 'Fly' to run the program
+9. Configure your scenery_packs.ini file appropriately
+10. Run X-Plane and choose a location for an ortho set you have downloaded
 
 ### Windows Setup
 
@@ -44,7 +46,9 @@ Steps:
 4. Run the project by executing `run.bat`
 5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 6. Download and setup an ortho set from the 'Scenery' tab.
-7. Configure your scenery_packs.ini file appropriately 
+7. Click 'Fly' to run the program
+8. Configure your scenery_packs.ini file appropriately 
+9. Run X-Plane and choose a location for an ortho set you have downloaded
 
 ### Configuring scenery_packs.ini
 
