@@ -26,14 +26,14 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
-    container:
-      image: squidfunk/mkdocs-material:latest
+#container:
+#image: squidfunk/mkdocs-material:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Build docs
         run: |
-          build
+          docker run --rm -it -v `pwd`:/docs squidfunk/mkdocs-material build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
 # - name: Setup Pages
