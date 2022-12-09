@@ -50,6 +50,18 @@ Steps:
 8. Configure your scenery_packs.ini file appropriately 
 9. Run X-Plane and choose a location for an ortho set you have downloaded
 
+### Using provided sceneries
+
+*IMPORTANT*
+
+The scenery packs provided with this tool that you download should be setup via the configuration utility.  This does more than simply download and extract the files.
+
+If you do wish to manaually manipulate these scenery packs, you should review the source code (downloader.py in particular) and understand how symlinks and/or junctions work and the limitations of each.
+
+If you manually move things around outside of the configuration utility, things very well might break!
+
+*IMPORTANT*
+
 ### Configuring scenery_packs.ini
 
 Any scenery added to XPlane requires being setup in the scenery_packs.ini file
