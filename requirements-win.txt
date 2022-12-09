@@ -8,7 +8,7 @@ cffi==1.15.1
     # via winfspy
 pillow==9.2.0
     # via -r requirements-win.in
-psutil==5.9.2
+psutil==5.9.4
     # via -r requirements-win.in
 pycparser==2.21
     # via cffi
