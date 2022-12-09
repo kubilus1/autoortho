@@ -254,7 +254,10 @@ What's happening is that X-Plane has found a terrain file, but is not finding a 
 * AutoOrtho isn't running
 * You may have broken the links from your texture directories to the AutoOrtho mount location. Perhaps you manually moved around directories after downloading these from the configuration utility.
 * The directory AutoOrtho is configured to run from is now different from the directory links the scenery packs point to.
-Verify that all the directory links are correct, and consider simply cleaning up and reinstalling scenery from scratch, keeping a consistent 'Custom Scenery' directory configured.
+
+First verify that AutoOrtho is running and there are no obvious errors shown in a log.  If it is running then verify that all the directory links are correct, and consider simply cleaning up and reinstalling scenery from scratch, keeping a consistent 'Custom Scenery' directory configured.
+
+If in doubt, re-install the scenery packs.
 
 ### Something went wrong with scenery setup and I'd like to start again.  How do I reinstall?
 AutoOrtho checks for metadata for installed scenery packs in `Custom Scenery/z_autoorth/**_info.json`  Where '**' is a shortname for each scenery pack installed.  You can delete the corresponding .json file, and re-run the configuration utility and should be able to reinstall the scenery pack
