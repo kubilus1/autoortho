@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Build docs
         run: |
-          docker run --rm -it -v `pwd`:/docs squidfunk/mkdocs-material build
+          docker run --rm -v `pwd`:/docs squidfunk/mkdocs-material build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
 # - name: Setup Pages
