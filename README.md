@@ -265,6 +265,11 @@ AutoOrtho checks for metadata for installed scenery packs in `Custom Scenery/z_a
 ### I installed scenery, setup Custom Scenery, and clicked 'Fly' but X-Plane did not automatically startup
 You have to start X-Plane separately from this tool.  It's also best to start X-Plane _after_ starting autoortho so that all new files and directories are picked up.
 
+### When using Windows I see an error using the run.bat file such as ` note: This error originates from a subprocess, and is likely not a problem with pip.
+error: legacy-install-failure`
+
+This is likely due to having a very new version of Python and a package dependency that does not have a pre-built 'wheel' binary.  Further in that error you will see a link to visual studio build tools that can be installed.  You could also try downgrading your version of Python.  For instance try uninstalling Python 3.11 and install Python 3.10.
+
 ## TODOS
 
 * ~See if this will work on Windows with WinFSP~ 
