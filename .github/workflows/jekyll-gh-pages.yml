@@ -21,21 +21,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Build job
-  build:
-    runs-on: ubuntu-latest
+  # Setup
+  setup:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Setup Pages
-        uses: actions/configure-pages@v2
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
+
+
+  # Build job
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    container:
+      image: squidfunk/mkdocs-material:latest
+    steps:
+      - name: Build docs
+        run: |
+          build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
+# - name: Setup Pages
+#   uses: actions/configure-pages@v2
+# - name: Build with Jekyll
+#   uses: actions/jekyll-build-pages@v1
+#   with:
+#     source: ./
+#     destination: ./_site
 
   # Deployment job
   deploy:
