@@ -6,6 +6,7 @@ import queue
 import pathlib
 import platform
 import threading
+import traceback
 import subprocess
 import configparser
 
@@ -21,32 +22,49 @@ import downloader
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
+CFG = None
+
 class AOConfig(object):
    
     status = None
 
     warnings = []
     errors = []
+    show_errs = []
 
     config = configparser.ConfigParser(strict=False, allow_no_value=True, comment_prefixes='/')
-    conf_file = os.path.join(os.path.expanduser("~"), (".autoortho"))
+    conf_file = os.path.join(os.path.expanduser("~"), ".autoortho")
 
-    _defaults = """
+    _defaults = f"""
 [general]
 # Use GUI config at startup
 gui = True
 # Show config setup at startup everytime
 showconfig = True
+# Hide when running
+hide = True
 
 [paths]
-# Ortho photos path
-orthos_path =
 # X-Plane Custom Scenery path
 scenery_path =
+cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
 
 [autoortho]
 # Override map type with a different source
 maptype_override =
+# Minimum zoom level to allow
+min_zoom = 12
+
+[pydds]
+# ISPC or STB for dds file compression
+compressor = ISPC
+
+[fuse]
+# Enable or disable multi-threading when using FUSE
+threading = True
+
+[winfsp]
+
 """
 
     def __init__(self, headless=False):
@@ -92,6 +110,9 @@ maptype_override =
 
         maptypes = [None, 'BI', 'NAIP', 'Arc', 'EOX', 'USGS', 'Firefly'] 
 
+        if not os.path.exists(self.paths.cache_dir):
+            os.makedirs(self.paths.cache_dir)
+
         if self.gui:
             sg.theme('DarkAmber')
 
@@ -99,7 +120,16 @@ maptype_override =
                 [sg.Text('AutoOrtho setup\n')],
                 [sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=2)],
                 [sg.HorizontalSeparator(pad=5)],
-                [sg.Text('X-Plane scenery dir', size=(18,1)), sg.InputText(scenery_path, key='scenery'), sg.FolderBrowse(target='scenery', initial_folder=scenery_path)],
+                [
+                    sg.Text('X-Plane scenery dir', size=(18,1)), 
+                    sg.InputText(scenery_path, key='scenery'), 
+                    sg.FolderBrowse(key="scenery_b", target='scenery', initial_folder=scenery_path)
+                ],
+                [
+                    sg.Text('Image cache dir', size=(18,1)),
+                    sg.InputText(self.paths.cache_dir, key='cache'),
+                    sg.FolderBrowse(key="cache_b", target='cache', initial_folder=self.paths.cache_dir)
+                ],
                 [sg.HorizontalSeparator(pad=5)],
                 [sg.Checkbox('Always show config menu', key='showconfig', default=self.showconfig)],
                 [sg.Text('Map type override'), sg.Combo(maptypes, default_value=maptype, key='maptype')],
@@ -119,6 +149,8 @@ maptype_override =
 
             #scenery.append([sg.Output(size=(80,10))])
             #scenery.append([sg.Multiline(size=(80,10), key="output")])
+
+            # Hack to push the status bar to the bottom of the window
             scenery.append([sg.Text(key='-EXPAND-', font='ANY 1', pad=(0,0))])
             scenery.append([sg.StatusBar("...", size=(74,3), key="status", auto_size_text=True, expand_x=True)])
 
@@ -130,7 +162,7 @@ maptype_override =
                     [[sg.Tab('Setup', setup), sg.Tab('Scenery', scenery)]])
                 ],
                 #[sg.StatusBar("...", size=(80,3), key="status", auto_size_text=True, expand_x=True)],
-                [sg.Button('Fly'), sg.Button('Save'), sg.Button('Quit')]
+                [sg.Button('Run'), sg.Button('Save'), sg.Button('Quit')]
 
             ]
 
@@ -160,7 +192,7 @@ maptype_override =
                     print("Quiting ...")
                     close = True
                     break
-                elif event == "Fly":
+                elif event == "Run":
                     print("Updating config.")
                     print(values)
                     scenery_path = values.get('scenery', scenery_path)
@@ -193,6 +225,12 @@ maptype_override =
                     button.update(disabled=True)
                     regionid = event.split("-")[1]
                     self.scenery_q.put(regionid)
+
+                elif self.show_errs:
+                    font = ("Helventica", 14)
+                    sg.popup("\n".join(self.show_errs), title="ERROR!", font=font)
+                    self.show_errs.clear()
+
 
                 self.window.refresh()
 
@@ -230,8 +268,9 @@ maptype_override =
             self.scenery_dl = True
             t = threading.Thread(target=self.region_progress, args=(regionid,))
             t.start()
+            
+            button = self.window[f"scenery-{regionid}"]
             try:
-                button = self.window[f"scenery-{regionid}"]
                 button.update("Working")
                 
                 self.dl.download_region(regionid)
@@ -241,9 +280,16 @@ maptype_override =
                 button.update(visible=False)
                 updates = self.window[f"updates-{regionid}"]
                 updates.update("Updated!")
+                self.status.update(f"Done!")
 
             except Exception as err:
+                button.update("ERROR!")
+                tb = traceback.format_exc()
                 self.status.update(err)
+                self.warnings.append(f"Failed to setup scenery {regionid}")
+                self.warnings.append(str(err))
+                self.show_errs.append(str(tb))
+                log.error(tb)
             finally:
                 self.scenery_dl = False
             t.join()
@@ -258,7 +304,6 @@ maptype_override =
             self.status.update(f"{status}")
             time.sleep(1)
        
-        self.status.update(f"Done!")
 
 
 
@@ -284,6 +329,7 @@ maptype_override =
 
         font = ("Helventica", 14)
         if msg:
+            print(msg)
             if self.gui:
                 sg.popup("\n".join(msg), title="WARNING!", font=font)
 
@@ -309,11 +355,27 @@ maptype_override =
 
         self.paths = types.SimpleNamespace(**config_dict.get('paths'))
         self.autoortho = types.SimpleNamespace(**config_dict.get('autoortho'))
+        self.pydds = types.SimpleNamespace(**config_dict.get('pydds'))
+        self.fuse = types.SimpleNamespace(**config_dict.get('fuse'))
+        self.winfsp = types.SimpleNamespace(**config_dict.get('winfsp'))
+
+
         #self.general = types.SimpleNamespace(**config_dict.get('general'))
         self.gui = self.config.getboolean('general', 'gui')
         self.showconfig = self.config.getboolean('general', 'showconfig')
+        self.hide = self.config.getboolean('general', 'hide')
 
+        self.fuse.threading = self.config.getboolean('fuse', 'threading')
+
+        print(self.__dict__)
+        print(self.paths)
+
+        # Share the config object globaly  
+        global CFG
+        CFG=self
         return ret
+
+
 
 
     def save(self):
@@ -337,9 +399,7 @@ maptype_override =
         return
 
 
-
 if __name__ == "__main__":
-
     aoc = AOConfig()
     aoc.setup()
     aoc.verify()

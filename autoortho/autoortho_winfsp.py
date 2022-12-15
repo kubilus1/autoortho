@@ -31,6 +31,7 @@ from winfspy.plumbing.win32_filetime import filetime_now
 from winfspy.plumbing.security_descriptor import SecurityDescriptor
 
 import getortho
+from autoortho import CFG
 
 def operation(fn):
     """Decorator for file system operations.
@@ -440,7 +441,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
 
 def create_file_system(
-    root, mountpoint, label="autoortho", prefix="", verbose=True, debug=False, testing=False, maptype_override=None
+    root, mountpoint, label="autoortho", prefix="", verbose=True, debug=False, testing=False
 ):
     if debug:
         enable_debug_log()
@@ -454,7 +455,7 @@ def create_file_system(
     mountpoint = Path(mountpoint)
     is_drive = mountpoint.parent == mountpoint
     reject_irp_prior_to_transact0 = not is_drive and not testing
-    tc = getortho.TileCacher(".cache", maptype_override=maptype_override)
+    tc = getortho.TileCacher(".cache") 
     operations = AutoorthoOperations(str(root), label, tc)
     fs = FileSystem(
         str(mountpoint),
@@ -481,8 +482,8 @@ def create_file_system(
     return fs
 
 
-def main(root, mountpoint, label="autoorotho", prefix="", verbose=False, debug=False, maptype_override=None):
-    fs = create_file_system(root, mountpoint, label, prefix, verbose, debug, maptype_override)
+def main(root, mountpoint, label="autoorotho", prefix="", verbose=False, debug=False): 
+    fs = create_file_system(root, mountpoint, label, prefix, verbose, debug)
     try:
         print("Starting FS")
         fs.start()
