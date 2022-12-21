@@ -36,7 +36,7 @@ jobs:
 
     - name: Setup 
       run: |
-          wget https://github.com/winfsp/winfsp/releases/download/v1.12.22339/winfsp-1.12.22339.msi
+          C:\msys64\usr\bin\wget.exe https://github.com/winfsp/winfsp/releases/download/v1.12.22339/winfsp-1.12.22339.msi
           msiexec /i "winfsp-1.12.22339.msi"
           py -m pip install -U pytest 
           py -m pip install -U -r requirements-win.txt
