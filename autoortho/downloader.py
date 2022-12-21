@@ -14,6 +14,8 @@ import subprocess
 from urllib.request import urlopen, Request
 from datetime import datetime, timezone, timedelta
 
+TESTMODE=os.environ.get('AO_TESTMODE', False)
+
 def do_url(url, headers={}, ):
     req = Request(url, headers=headers)
     resp = urlopen(req, timeout=5)
@@ -44,7 +46,15 @@ class OrthoRegion(object):
     cur_activity = {}
 
 
-    def __init__(self, region_id, release_id, extract_dir="Custom Scenery", download_dir="downloads", release_data={}):
+    def __init__(
+            self, 
+            region_id, 
+            release_id, 
+            extract_dir="Custom Scenery", 
+            download_dir="downloads", 
+            release_data={},
+            noclean=False
+        ):
         self.region_id = region_id
         self.release_data = release_data
         self.extract_dir = extract_dir
@@ -53,6 +63,7 @@ class OrthoRegion(object):
         self.overlay_urls = []
         self.info_dict = {}
         self.ortho_dirs = []
+        self.noclean = noclean
 
         self.rel_url = f"{self.base_url}/{release_id}"
         self.get_rel_info()
@@ -193,6 +204,14 @@ class OrthoRegion(object):
         self.cur_activity['status'] = f"DONE downloading {url}"
         print("  DONE!")
 
+    def checkzip(self, zipfile):
+        ret = zipfile.testzip()
+        if ret:
+            print(f"Errors detected with zipfile {zipfile}\nFirst bad file: {ret}")
+            return False
+
+        return True
+
     def extract(self):
         self.check_local()
 
@@ -220,29 +239,6 @@ class OrthoRegion(object):
         overlay_paths = [ os.path.join(self.download_dir, os.path.basename(x))
                 for x in self.overlay_urls ]
 
-        # Split zips
-        split_zips = {}
-        for o in overlay_paths + ortho_paths:
-            m = re.match('(.*\.zip)\.[0-9]*', o)
-            if m:
-                print(f"Split zip detected for {m.groups()}")
-                zipname = m.groups()[0]
-                print(f"ZIPNAME {zipname}")
-                split_zips.setdefault(zipname, []).append(o)
-                
-        for zipfile_out, part_list in split_zips.items():
-            # alphanumeric sort could have limits for large number of splits
-            part_list.sort()
-            with open(zipfile_out, 'wb') as out_h:
-                for p in part_list:
-                    with open(p, 'rb') as in_h:
-                        out_h.write(in_h.read())
-
-            print(f"Extracting {zipfile_out}")
-            with zipfile.ZipFile(zipfile_out) as zf:
-                zf.extractall(self.extract_dir)
-        
-
         central_textures_path = os.path.join(
                 self.extract_dir, 
                 "z_autoortho",
@@ -251,19 +247,65 @@ class OrthoRegion(object):
         if not os.path.exists(central_textures_path):
             os.makedirs(central_textures_path)
 
-        # Normal zips
-        for o in ortho_paths:
-            if os.path.exists(o) and o.endswith('.zip'):
-                print(f"Extracting {o}")
-                self.cur_activity['status'] = f"Extracting {o}"
-                with zipfile.ZipFile(o) as zf:
+
+        zips = []
+
+        # Assemble split zips
+        split_zips = {}
+        for o in overlay_paths + ortho_paths:
+            m = re.match('(.*\.zip)\.[0-9]*', o)
+            if m:
+                print(f"Split zip detected for {m.groups()}")
+                zipname = m.groups()[0]
+                print(f"ZIPNAME {zipname}")
+                split_zips.setdefault(zipname, []).append(o)
+            elif os.path.exists(o) and o.endswith('.zip'):
+                zips.append(o)
+
+        for zipfile_out, part_list in split_zips.items():
+            # alphanumeric sort could have limits for large number of splits
+            part_list.sort()
+            with open(zipfile_out, 'wb') as out_h:
+                for p in part_list:
+                    with open(p, 'rb') as in_h:
+                        out_h.write(in_h.read())
+            
+            zips.append(zipfile_out)
+            if not self.noclean:
+                print(f"Cleaning up parts for {zipfile_out}")
+                for p in part_list:
+                    os.remove(p)
+
+
+        # Extract zips
+        for z in zips:
+            self.cur_activity['status'] = f"Extracting {z}"
+            try:
+                with zipfile.ZipFile(z) as zf:
                     zf_dir = os.path.dirname(zf.namelist()[0])
                     if os.path.exists(os.path.join(self.extract_dir, zf_dir)):
                         print(f"Dir already exists.  Clean first")
                         shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
-                    zf.extractall(self.extract_dir)
-        
+
+                    if self.checkzip(zf):
+                        zf.extractall(self.extract_dir)
+                    else:
+                        # Bad zip.  Clean and exit
+                        raise zipfile.BadZipFile("Errors detected.")
+            except zipfile.BadZipFile as err:
+                print(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
+                self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
+                #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
+                return False
+            finally:
+                if not self.noclean:
+                    print(f"Cleaning up parts for {z}")
+                    os.remove(z)
+
+
+        ###########################################333
         # Arrange paths
+        #
         orthodirs_extracted = glob.glob(
             os.path.join(self.extract_dir, f"z_{self.region_id}_*")
         )
@@ -303,14 +345,6 @@ class OrthoRegion(object):
                         cur_textures_path
                     )
 
-
-        for o in overlay_paths:
-            if os.path.exists(o) and o.endswith('.zip'):
-                print(f"Extracting {o}")
-                self.cur_activity['status'] = f"Extracting {o}"
-                with zipfile.ZipFile(o) as zf:
-                    zf.extractall(self.extract_dir)
-
         if overlay_paths:
             # Setup overlays
             shutil.copytree(
@@ -331,6 +365,9 @@ class OrthoRegion(object):
         self.pending_update = False
         self.save_metadata()
         self.check_local()
+
+        return True
+
 
     def save_metadata(self):
         # Save metadata
@@ -354,13 +391,17 @@ class OrthoRegion(object):
 class Downloader(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
     regions = {}
-    region_list = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi', 'test']
+    region_list = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi']
     info_cache = ".release_info"
     
 
-    def __init__(self, extract_dir, download_dir="downloads"):
+    def __init__(self, extract_dir, download_dir="downloads", noclean=False):
         self.download_dir = download_dir
         self.extract_dir = extract_dir
+        self.noclean = noclean
+
+        if TESTMODE:
+            self.region_list.append('test')
         
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
@@ -403,7 +444,8 @@ class Downloader(object):
 
                 if r not in self.regions:
                     #print(f"Create region object for {r}")
-                    region = OrthoRegion(r, rel_id, self.extract_dir, self.download_dir, item)
+                    region = OrthoRegion(r, rel_id, self.extract_dir,
+                            self.download_dir, item, noclean=self.noclean)
                     self.regions[r] = region
 
             if len(self.regions) == len(self.region_list):
@@ -420,11 +462,6 @@ class Downloader(object):
         print(f"Extracting {region_id}")
         r = self.regions.get(region_id)
         r.extract()
-
-    def cleanup(self, region_id):
-        print(f"Cleaning up {region_id}")
-        r = self.regions.get(region_id)
-        r.cleanup()
 
 
 if __name__ == "__main__":
@@ -468,7 +505,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    d = Downloader(os.path.expanduser(args.scenerydir))
+    d = Downloader(os.path.expanduser(args.scenerydir), noclean=args.noclean)
 
     if args.command == 'fetch':
         d.find_releases()
@@ -476,8 +513,6 @@ if __name__ == "__main__":
         d.download_region(region)
         if not args.downloadonly:
             d.extract(region)
-        if not args.noclean:
-            d.cleanup(region)
 
     elif args.command == 'list':
         d.find_releases()

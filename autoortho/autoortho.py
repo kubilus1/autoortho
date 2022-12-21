@@ -55,7 +55,7 @@ def main():
     #CFG = aoconfig.AOConfig(headless=args.headless)
     aoconfig.AOConfig(headless=args.headless)
     CFG = aoconfig.CFG
-    if (not CFG.ready) or args.configure or CFG.showconfig:
+    if (not CFG.ready) or args.configure or (CFG.showconfig and not args.headless):
         CFG.setup()
 
     if not args.root or not args.mountpoint:
