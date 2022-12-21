@@ -15,7 +15,7 @@ jobs:
     
     - name: Setup 
       run: |
-          apt-get update && apt-get install -y python3-tk
+          sudo apt-get update && sudo apt-get install -y python3-tk
           python3 -m pip install -U pytest  
           python3 -m pip install -U -r requirements.txt
 
