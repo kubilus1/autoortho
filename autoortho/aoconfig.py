@@ -22,8 +22,6 @@ import downloader
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
-CFG = None
-
 class AOConfig(object):
    
     status = None
@@ -408,6 +406,8 @@ threading = True
         self.mountpoint = os.path.join(z_autoortho_path, 'textures')
         return
 
+
+CFG = AOConfig()
 
 if __name__ == "__main__":
     aoc = AOConfig()
