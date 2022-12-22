@@ -4,3 +4,4 @@ __pycache__
 autoortho.log
 out.dds
 /cache
+.release_info
