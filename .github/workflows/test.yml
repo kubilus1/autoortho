@@ -12,7 +12,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    
+   
+    - name: Cache release info
+      uses: actions/cache@v3
+      with:
+        path: |
+          .release_info
+
     - name: Setup 
       run: |
           sudo apt-get update && sudo apt-get install -y python3-tk
@@ -30,6 +36,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
    
+    - name: Cache release info
+      uses: actions/cache@v3
+      with:
+        path: |
+          .release_info
+
     - uses: actions/setup-python@v3
       with:
         python-version: '3.x'
