@@ -68,6 +68,8 @@ threading = True
     def __init__(self, headless=False):
         # Always load initially
         self.ready = self.load()
+        # Save to update new defaults
+        self.save()
         self.dl = downloader.Downloader(self.paths.scenery_path)
 
         if headless:
@@ -381,8 +383,8 @@ threading = True
         print(self.paths)
 
         # Share the config object globaly  
-        global CFG
-        CFG=self
+        #global CFG
+        #CFG=self
         return ret
 
 
