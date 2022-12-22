@@ -16,8 +16,8 @@ jobs:
     - name: Cache release info
       uses: actions/cache@v3
       with:
-        path: |
-          .release_info
+        path: .release_info
+        key: test-build
 
     - name: Setup 
       run: |
@@ -39,8 +39,8 @@ jobs:
     - name: Cache release info
       uses: actions/cache@v3
       with:
-        path: |
-          .release_info
+        path: .release_info
+        key: test-build
 
     - uses: actions/setup-python@v3
       with:
