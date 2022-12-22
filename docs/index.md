@@ -2,11 +2,13 @@
 
 ## *nix Setup
 Assumptions:
+
 * You have installed X-Plane 11.50+
 * You have a recent version of Python and pip installed
 * You have a reasonably fast CPU and broadband internet 
 
 Steps:
+
 1. Download the most recent release of this project: https://github.com/kubilus1/autoortho/releases
 2. Extract to a convenient location
 3. Enter the directory you extracted
@@ -21,12 +23,14 @@ Steps:
 ## Windows Setup
 
 Assumptions:
+
 * You are running 64bit Windows 10+
 * You have install X-Plane 11.50+
 * You have setup and configured [WinFSP](https://github.com/winfsp/winfsp)
 * You have installed a recent version of [Python](https://www.python.org/downloads/)
 
 Steps:
+
 1. Download the most recent release of this project: https://github.com/kubilus1/autoortho/releases
 2. Extract to a convenient location
 3. Enter the directory you extracted
