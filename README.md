@@ -14,4 +14,3 @@ the imagery that we need on the fly.
 * FAQ: (https://kubilus1.github.io/autoortho/faq/)
 * Discussions and help: (https://github.com/kubilus1/autoortho/discussions)
 * Latest release: (https://github.com/kubilus1/autoortho/releases/latest)
-
