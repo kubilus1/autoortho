@@ -808,6 +808,7 @@ class TileCacher(object):
         self.tc_lock = threading.RLock()
         
         self.cache_dir = CFG.paths.cache_dir
+        log.info(f"Cache dir: {self.cache_dir}")
         self.min_zoom = CFG.autoortho.min_zoom
 
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
