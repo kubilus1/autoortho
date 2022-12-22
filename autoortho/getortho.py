@@ -329,7 +329,6 @@ class Tile(object):
     maptype = None
     zoom = -1
     min_zoom = 12
-    cache_dir = '.cache'
     width = 16
     height = 16
 
@@ -353,12 +352,12 @@ class Tile(object):
         self.cache_file = (-1, None)
         self.ready = threading.Event()
         self._lock = threading.RLock()
+        self.cache_dir = cache_dir
+
         #self.tile_condition = threading.Condition()
         if min_zoom:
             self.min_zoom = int(min_zoom)
 
-        if cache_dir:
-            self.cache_dir = cache_dir
         
         # Hack override maptype
         #self.maptype = "BI"
@@ -399,7 +398,7 @@ class Tile(object):
             for r in range(row, row+height):
                 for c in range(col, col+width):
                     #chunk = Chunk(c, r, self.maptype, zoom, priority=self.priority)
-                    chunk = Chunk(c, r, self.maptype, zoom)
+                    chunk = Chunk(c, r, self.maptype, zoom, cache_dir=self.cache_dir)
                     self.chunks[zoom].append(chunk)
 
     def _find_cache_file(self):
