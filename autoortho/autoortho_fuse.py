@@ -15,13 +15,14 @@ import platform
 import threading
 import itertools
 
+import flighttrack
+
 from functools import wraps
 
 import logging
 #logging.basicConfig()
 logging.basicConfig(filename='autoortho.log')
 log = logging.getLogger('log')
-log.addHandler(logging.StreamHandler())
 
 if os.environ.get('AO_DEBUG'):
     log.setLevel(logging.DEBUG)
@@ -38,6 +39,7 @@ import socket
 #from memory_profiler import profile
 import tracemalloc
 
+from aoconfig import CFG
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
@@ -77,7 +79,9 @@ class AutoOrtho(Operations):
     default_uid = 0
     default_gid = 0
 
-    def __init__(self, root, cache_dir='.cache', maptype_override=None):
+    startup = True
+
+    def __init__(self, root, cache_dir='.cache'):
         log.info(f"ROOT: {root}")
         self.dds_re = re.compile(".*/(\d+)[-_](\d+)[-_]((?!ZL)\S*)(\d{2}).dds")
         self.ktx2_re = re.compile(".*/(\d+)[-_](\d+)[-_]((?!ZL)\D*)(\d+).ktx2")
@@ -85,14 +89,14 @@ class AutoOrtho(Operations):
         self.ter_re = re.compile(".*/\d+[-_]\d+[-_](\D*)(\d+).ter")
         self.root = root
         self.cache_dir = cache_dir
-        self.maptype_override = maptype_override
 
-        self.tc = getortho.TileCacher(cache_dir, maptype_override)
+        self.tc = getortho.TileCacher(cache_dir)
     
         #self.path_condition = threading.Condition()
         #self.read_lock = threading.Lock()
         self._lock = threading.RLock()
 
+    
 
     # Helpers
     # =======
@@ -131,6 +135,12 @@ class AutoOrtho(Operations):
         #if m and not exists:
         if m:
             log.debug(f"GETATTR: {path}: MATCH!")
+            if self.startup:
+                # First matched file
+                log.info("First matched DDS file detected.  Start flight tracker.")
+                flighttrack.ft.start()
+                self.startup = False
+
             #row, col, maptype, zoom = m.groups()
             #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
             attrs = {
@@ -397,6 +407,12 @@ class AutoOrtho(Operations):
 
 
 def run(ao, mountpoint, nothreads=False):
+    appt = threading.Thread(
+        target=flighttrack.run,
+        daemon=True
+    )
+    appt.start()
+
     FUSE(
         ao,
         mountpoint, 
@@ -429,3 +445,4 @@ def run(ao, mountpoint, nothreads=False):
         #direct_io=True
     )
 
+    flighttrack.ft.stop()

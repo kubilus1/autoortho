@@ -1,0 +1,113 @@
+{% include 'header.html' %}
+<h3>AutoOrtho Stats</h3>
+
+<div class="container">
+    {% for graph in graphs %}
+    <div class="row">
+        <div class = "col-*-*">
+            {{ graph }}
+            <canvas id="{{ graph }}" style="width:100%;max-width:1200px;max-height:250px;"></canvas>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+
+<script>
+    var xValues = [];
+    var yValues = [];
+    var lastX = 0;
+
+    function randomColor() {
+        var color = Math.floor(Math.random() * 255);
+        return color;
+    }
+
+
+    {% for graph, data in graphs.items() %}
+    new Chart("{{ graph }}", {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [
+                {% if data is iterable and data is not string %}
+                    {% for item in data %}
+                        {
+                            label: "{{ item }}",
+                            fill: false,
+                            lineTension: 0,
+                            borderColor: "rgba("+randomColor()+","+randomColor()+","+randomColor() +",1.0)",
+                            data: []
+                        }, 
+                    {% endfor %}
+                {% else %}
+                    {
+                        label: "{{ graph }}",
+                        fill: false,
+                        lineTension: 0,
+                        backgroundColor: "rgba(0,0,255,1.0)",
+                        borderColor: "rgba(0,0,255,0.1)",
+                        data: []
+                    }   
+                {% endif %}
+            ]
+        },
+        options: {
+            legend: {display: false},
+            scales: {
+            yAxes: [{ticks: {min: 6, max:16}}],
+            }
+        }
+    });
+    {% endfor %}
+
+
+    function update_chart(chart_name, label, data) {
+        const curchart = Chart.getChart(chart_name);
+        //console.log(curchart.data);        
+        //console.log("Setting " + chart_name + " to " + label + " X " + data);
+
+        curchart.data.labels.push(label);
+        if ( data instanceof Object) {
+            //console.log("Iterable: " + chart_name + " data: " + data);
+            for (const item in data) {
+                //console.log("Setting data to " + data[item]);
+                curchart.data.datasets[item].data.push(data[item]);
+            }
+        } else {
+            //console.log("Setting data to " + data);
+            curchart.data.datasets.forEach((dataset) => {
+                dataset.data.push(data);
+            });
+        }
+        curchart.update();
+    }
+
+    function parse_metrics(data) {
+        //console.log(data);
+        lastX += 5;
+        for (const item in data) {
+            update_chart(item, lastX, data[item]);    
+        }
+    }
+
+    function get_metrics() {
+        $.ajax({
+            type: "GET",
+            url: "{{ url_for('metrics') }}",
+            async: true,
+            success: function(data) {
+                parse_metrics(data);
+                setTimeout(get_metrics, 5000);
+            },
+            error: function(data) {
+                setTimeout(get_metrics, 5000);
+            }
+
+        });
+    }
+
+    get_metrics();
+</script>
+
+{% include 'footer.html' %}

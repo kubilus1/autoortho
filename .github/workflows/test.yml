@@ -12,10 +12,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    
+   
+    - name: Cache release info
+      uses: actions/cache@v3
+      with:
+        path: |
+          .release_info
+          autoortho/.release_info
+        key: test-build
+
     - name: Setup 
       run: |
-          python3 -m pip install -U pytest 
+          sudo apt-get update && sudo apt-get install -y python3-tk
+          python3 -m pip install -U pytest  
           python3 -m pip install -U -r requirements.txt
 
     - name: Test
@@ -29,14 +38,24 @@ jobs:
     steps:
     - uses: actions/checkout@v3
    
+    - name: Cache release info
+      uses: actions/cache@v3
+      with:
+        path: |
+          .release_info
+          autoortho/.release_info
+        key: test-build
+
     - uses: actions/setup-python@v3
       with:
         python-version: '3.x'
 
     - name: Setup 
       run: |
+          #choco --yes install winfsp
           py -m pip install -U pytest 
-          py -m pip install -U -r requirements.txt
+          # Windows OS package install ecosystem is sketchy and broken.  Just test min stuff ...
+          py -m pip install -U -r requirements-win-test.txt
 
     - name: Test
       run: cd autoortho && py -m pytest -v test_getortho.py test_pydds.py test_downloader.py

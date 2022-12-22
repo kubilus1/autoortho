@@ -2,3 +2,4 @@ winfspy
 pillow >= 8.3.0
 psutil
 pysimplegui
+Flask
