@@ -216,32 +216,11 @@ class AutoOrtho(Operations):
     def statfs(self, path):
         log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
-        if platform.system() == 'Windows':
-            #stv = os.statvfs(full_path)
-            #log.info(stv)
-            stats = {
-                    'f_bavail':1024, 
-                    'f_bfree':1024,
-                    'f_blocks':1204, 
-                    'f_bsize':4096, 
-                    'f_favail':1024, 
-                    'f_ffree':1024, 
-                    'f_files':1024, 
-                    'f_flag':0,
-                    'f_frsize':1024, 
-                    'f_namemax':1024
-            }
-            return stats
-            # st = os.stat(full_path)
-            # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
-            #     'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
-            #     'f_frsize', 'f_namemax'))
-        elif platform.system() == 'Linux':
-            stv = os.statvfs(full_path)
-            #log.info(stv)
-            return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
-                'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
-                'f_frsize', 'f_namemax'))
+        stv = os.statvfs(full_path)
+        log.info(stv)
+        return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
+            'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
+            'f_frsize', 'f_namemax'))
 
     def unlink(self, path):
         return os.unlink(self._full_path(path))
