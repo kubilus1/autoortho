@@ -282,6 +282,9 @@ threading = True
                 
                 self.dl.download_region(regionid)
                 r = self.dl.regions.get(regionid)
+                # Make sure the region is using whatever the current scenery
+                # dir is set to at this moment
+                r.extract_dir = self.paths.scenery_dir
                 if not r.extract():
                     print("Errors detected!")
                     status = r.cur_activity.get('status')
