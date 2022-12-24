@@ -3,6 +3,7 @@ import sys
 import time
 import types
 import queue
+import pprint
 import pathlib
 import platform
 import threading
@@ -75,7 +76,6 @@ threading = True
         if headless:
             # Always disable GUI if set on as a CLI switch
             self.gui = False
-            
 
         if self.gui:
             sg.theme('DarkAmber')
@@ -142,13 +142,13 @@ threading = True
             [sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=2)],
             [sg.HorizontalSeparator(pad=5)],
             [
-                sg.Text('X-Plane scenery dir', size=(18,1)), 
-                sg.InputText(scenery_path, key='scenery'), 
+                sg.Text('X-Plane scenery dir:', size=(18,1)), 
+                sg.InputText(scenery_path, size=(45,1), key='scenery'), 
                 sg.FolderBrowse(key="scenery_b", target='scenery', initial_folder=scenery_path)
             ],
             [
-                sg.Text('Image cache dir', size=(18,1)),
-                sg.InputText(self.paths.cache_dir, key='cache'),
+                sg.Text('Image cache dir:', size=(18,1)),
+                sg.InputText(self.paths.cache_dir, size=(45,1), key='cache'),
                 sg.FolderBrowse(key="cache_b", target='cache', initial_folder=self.paths.cache_dir)
             ],
             [sg.HorizontalSeparator(pad=5)],
@@ -215,10 +215,12 @@ threading = True
                 break
             elif event == "Run":
                 print("Updating config.")
-                print(values)
-                scenery_path = values.get('scenery', scenery_path)
-                showconfig = values.get('showconfig', showconfig)
-                maptype = values.get('maptype', maptype)
+                self.read_ui_settings()
+                
+                #print(values)
+                #scenery_path = values.get('scenery', scenery_path)
+                #showconfig = values.get('showconfig', showconfig)
+                #maptype = values.get('maptype', maptype)
 
                 # if not self._check_ortho_dir(orthos_path):
                 #     sg.popup(f"Orthophoto dir {orthos_path} seems wrong.  This may cause issues.")
@@ -229,19 +231,14 @@ threading = True
                 break
             elif event == 'Save':
                 print("Updating config.")
-                print(values)
-                scenery_path = values.get('scenery', scenery_path)
-                showconfig = values.get('showconfig', showconfig)
-                maptype = values.get('maptype', maptype)
-                
-                self.dl.extract_dir = scenery_path
-                self.dl.find_releases
-                self.config['paths']['scenery_path'] = scenery_path
-                self.config['general']['showconfig'] = str(showconfig)
-                self.config['autoortho']['maptype_override'] = maptype
+                #print(values)
+                self.read_ui_settings()
+                #self.dl.extract_dir = scenery_path
+                #self.dl.find_releases
                 self.save()
                 self.load()
             elif event.startswith("scenery-"):
+                self.read_ui_settings()
                 button = self.window[event]
                 button.update(disabled=True)
                 regionid = event.split("-")[1]
@@ -251,7 +248,6 @@ threading = True
                 font = ("Helventica", 14)
                 sg.popup("\n".join(self.show_errs), title="ERROR!", font=font)
                 self.show_errs.clear()
-
 
             self.window.refresh()
 
@@ -284,7 +280,8 @@ threading = True
                 r = self.dl.regions.get(regionid)
                 # Make sure the region is using whatever the current scenery
                 # dir is set to at this moment
-                r.extract_dir = self.paths.scenery_dir
+                r.extract_dir = self.paths.scenery_path
+                print(f"Setting extract dir to {self.paths.scenery_path}")
                 if not r.extract():
                     print("Errors detected!")
                     status = r.cur_activity.get('status')
@@ -353,6 +350,24 @@ threading = True
             sys.exit(1)
 
 
+    def read_ui_settings(self):
+        event, values = self.window.read(timeout=10)
+        print(f"Reading values: {values}")
+
+        scenery_path = values.get('scenery')
+        showconfig = values.get('showconfig')
+        maptype = values.get('maptype')
+        
+        self.dl.extract_dir = scenery_path
+        self.dl.find_releases()
+        
+        self.config['paths']['scenery_path'] = scenery_path
+        self.config['general']['showconfig'] = str(showconfig)
+        self.config['autoortho']['maptype_override'] = maptype
+
+        self.set_config()
+
+
     def load(self):
         self.config.read_string(self._defaults)
         if os.path.isfile(self.conf_file):
@@ -364,16 +379,21 @@ threading = True
             print("No config file found. Using defaults...")
             log.info("No config file found. Using defaults...")
             ret = False
+        
+        self.set_config()
+        return ret
 
+    def set_config(self):
         config_dict = {sect: dict(self.config.items(sect)) for sect in
                 self.config.sections()}
-
+        
+        #pprint.pprint(config_dict)
+        
         self.paths = types.SimpleNamespace(**config_dict.get('paths'))
         self.autoortho = types.SimpleNamespace(**config_dict.get('autoortho'))
         self.pydds = types.SimpleNamespace(**config_dict.get('pydds'))
         self.fuse = types.SimpleNamespace(**config_dict.get('fuse'))
         self.winfsp = types.SimpleNamespace(**config_dict.get('winfsp'))
-
 
         #self.general = types.SimpleNamespace(**config_dict.get('general'))
         self.gui = self.config.getboolean('general', 'gui')
@@ -385,17 +405,12 @@ threading = True
         print(self.__dict__)
         print(self.paths)
 
-        # Share the config object globaly  
-        #global CFG
-        #CFG=self
-        return ret
-
 
     def save(self):
-        config_dict = {sect: dict(self.config.items(sect)) for sect in
-                self.config.sections()}
+        #config_dict = {sect: dict(self.config.items(sect)) for sect in
+        #        self.config.sections()}
+        #print(config_dict)
 
-        print(config_dict)
         with open(self.conf_file, 'w') as h:
             self.config.write(h)
         log.info(f"Wrote config file: {self.conf_file}")
