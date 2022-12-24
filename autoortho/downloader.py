@@ -125,20 +125,35 @@ class OrthoRegion(object):
 
             self.local_version = info.get('ver',-1)
             if self.local_version == self.latest_version:
-                self.extracted = True
-                self.pending_update = False
-                print(f"We already have up to date {self.region_id}")
+                if not self.check_scenery_dirs(info.get('ortho_dirs')):
+                    print(f" ... Issues detected with scenery.  Recommend retrying")
+                    self.extracted = False
+                    self.pending_update = True
+                else:
+                    print(f" ... {self.region_id} up to date and validated.")
+                    self.extracted = True
+                    self.pending_update = False
             else:
+                print(f" ... {self.region_id} update is available")
                 self.pending_update = True
             
             # Current detected ortho_dirs
             self.ortho_dirs = info.get('ortho_dirs', [])
 
         else:
+            print(f" ... {self.region_id} not setup yet")
             self.pending_update = True
 
 
-
+    def check_scenery_dirs(self, ortho_dirs):
+        for d in ortho_dirs:
+            if not os.path.exists(d):
+                return False
+            if os.path.dirname(d) != self.extract_dir:
+                print(f"Installed scenery location of '{os.path.dirname(d)}' and configured scenery dir of '{self.extract_dir}' do not match!")
+                return False
+        return True
+        
 
     def download(self):
         downloaded_s = set(os.listdir(self.download_dir))
@@ -432,6 +447,7 @@ class Downloader(object):
 
         data = json.loads(resp)
 
+        print(f"Using scenery dir {self.extract_dir}")
         for item in data:
             v = item.get('name')
             rel_id = item.get('id')

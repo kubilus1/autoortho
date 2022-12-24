@@ -29,6 +29,9 @@ elif platform.system().lower() == 'windows':
     print("Windows detected")
     _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
     _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','ispc_texcomp.dll')
+elif platform.system().lower() == 'darwin' and platform.processor().lower() == 'arm':
+    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','darwin_arm','libstbdxt.dylib')
+    _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','darwin_arm','libispc_texcomp.dylib')
 else:
     print("System is not supported")
     exit()
