@@ -55,6 +55,7 @@ class OrthoRegion(object):
             release_data={},
             noclean=False
         ):
+
         self.region_id = region_id
         self.release_data = release_data
         self.extract_dir = extract_dir
@@ -268,7 +269,7 @@ class OrthoRegion(object):
         # Assemble split zips
         split_zips = {}
         for o in overlay_paths + ortho_paths:
-            m = re.match('(.*\.zip)\.[0-9]*', o)
+            m = re.match('(.*[.]zip)[.][0-9]*', o)
             if m:
                 print(f"Split zip detected for {m.groups()}")
                 zipname = m.groups()[0]
@@ -405,7 +406,6 @@ class OrthoRegion(object):
 
 class Downloader(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
-    regions = {}
     region_list = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi']
     info_cache = ".release_info"
     
@@ -414,6 +414,8 @@ class Downloader(object):
         self.download_dir = download_dir
         self.extract_dir = extract_dir
         self.noclean = noclean
+        self.regions = {}
+        
 
         if TESTMODE:
             self.region_list.append('test')
