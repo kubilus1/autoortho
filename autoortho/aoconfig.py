@@ -34,6 +34,8 @@ class AOConfig(object):
     config = configparser.ConfigParser(strict=False, allow_no_value=True, comment_prefixes='/')
     conf_file = os.path.join(os.path.expanduser("~"), ".autoortho")
 
+    window = None
+
     _defaults = f"""
 [general]
 # Use GUI config at startup
@@ -66,16 +68,12 @@ threading = True
 
 """
 
-    def __init__(self, headless=False):
+    def __init__(self):
         # Always load initially
         self.ready = self.load()
         # Save to update new defaults
         self.save()
         self.dl = downloader.Downloader(self.paths.scenery_path)
-
-        if headless:
-            # Always disable GUI if set on as a CLI switch
-            self.gui = False
 
         if self.gui:
             sg.theme('DarkAmber')
@@ -102,7 +100,7 @@ threading = True
 
         return ret
 
-    def setup(self):
+    def setup(self, headless=False):
         scenery_path = self.paths.scenery_path
         showconfig = self.showconfig
         maptype = self.autoortho.maptype_override
@@ -110,7 +108,7 @@ threading = True
         if not os.path.exists(self.paths.cache_dir):
             os.makedirs(self.paths.cache_dir)
 
-        if self.gui:
+        if not headless:
             self.ui_loop()
         else:
 
@@ -118,13 +116,13 @@ threading = True
             log.info(f"Running setup!")
             log.info("-"*28)
             scenery_path = input(f"Enter path to X-Plane 11 custom_scenery directory ({scenery_path}) : ") or scenery_path
-        
-        self.config['paths']['scenery_path'] = scenery_path
-        self.config['general']['showconfig'] = str(showconfig)
-        self.config['autoortho']['maptype_override'] = maptype
+            
+            self.config['paths']['scenery_path'] = scenery_path
+            self.config['general']['showconfig'] = str(showconfig)
+            self.config['autoortho']['maptype_override'] = maptype
 
-        self.save()
-        self.load()
+            self.save()
+            self.load()
 
 
     def ui_loop(self):
@@ -232,7 +230,6 @@ threading = True
             elif event == 'Save':
                 print("Updating config.")
                 #print(values)
-                self.read_ui_settings()
                 #self.dl.extract_dir = scenery_path
                 #self.dl.find_releases
                 self.save()
@@ -407,9 +404,14 @@ threading = True
 
 
     def save(self):
-        #config_dict = {sect: dict(self.config.items(sect)) for sect in
-        #        self.config.sections()}
-        #print(config_dict)
+        if self.window is not None:
+            self.read_ui_settings()
+
+        config_dict = {sect: dict(self.config.items(sect)) for sect in
+                self.config.sections()}
+
+        print("Will be saving: ")
+        pprint.pprint(config_dict)
 
         with open(self.conf_file, 'w') as h:
             self.config.write(h)

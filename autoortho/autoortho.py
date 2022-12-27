@@ -52,11 +52,9 @@ def main():
 
     args = parser.parse_args()
 
-    #CFG = aoconfig.AOConfig(headless=args.headless)
-    aoconfig.AOConfig(headless=args.headless)
     CFG = aoconfig.CFG
     if (not CFG.ready) or args.configure or (CFG.showconfig and not args.headless):
-        CFG.setup()
+        CFG.setup(headless = args.headless)
 
     if not args.root or not args.mountpoint:
         CFG.verify()
