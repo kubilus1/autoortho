@@ -404,14 +404,13 @@ threading = True
 
 
     def save(self):
+        print("Saving config ... ")
         if self.window is not None:
             self.read_ui_settings()
 
-        config_dict = {sect: dict(self.config.items(sect)) for sect in
-                self.config.sections()}
-
-        print("Will be saving: ")
-        pprint.pprint(config_dict)
+        #config_dict = {sect: dict(self.config.items(sect)) for sect in
+        #        self.config.sections()}
+        #pprint.pprint(config_dict)
 
         with open(self.conf_file, 'w') as h:
             self.config.write(h)
