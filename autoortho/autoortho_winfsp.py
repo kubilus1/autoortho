@@ -31,7 +31,7 @@ from winfspy.plumbing.win32_filetime import filetime_now
 from winfspy.plumbing.security_descriptor import SecurityDescriptor
 
 import getortho
-from autoortho import CFG
+from aoconfig import CFG
 
 def operation(fn):
     """Decorator for file system operations.
