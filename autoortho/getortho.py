@@ -373,7 +373,7 @@ class Tile(object):
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
 
-        if CFG.pydds.compressor == "ISPC":
+        if CFG.pydds.compressor.upper() == "ISPC":
             use_ispc=True
         else:
             use_ispc=False
