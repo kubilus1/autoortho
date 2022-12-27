@@ -15,6 +15,7 @@ from urllib.request import urlopen, Request
 from datetime import datetime, timezone, timedelta
 
 TESTMODE=os.environ.get('AO_TESTMODE', False)
+REGION_LIST = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi']
 
 def do_url(url, headers={}, ):
     req = Request(url, headers=headers)
@@ -406,7 +407,7 @@ class OrthoRegion(object):
 
 class Downloader(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
-    region_list = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi']
+    region_list = REGION_LIST 
     info_cache = ".release_info"
     
 
@@ -484,8 +485,6 @@ class Downloader(object):
 
 if __name__ == "__main__":
 
-    available_regions = ["eur", "na", "aus_pac", "test"]
-
     parser = argparse.ArgumentParser(
         description = "AutoOrtho Scenery Downloader"
     )
@@ -517,7 +516,7 @@ if __name__ == "__main__":
     parser_fetch.add_argument(
         "region",
         nargs = "?",
-        choices = available_regions,
+        choices = REGION_LIST, 
         help = "Which region to download and setup."
     )
 
