@@ -82,6 +82,25 @@ def test_read_mm0(tmpdir):
     data = dds.read(1024)
     assert data
 
+def test_quick_mm0(tmpdir):
+    outpath = os.path.join(tmpdir, 'test_quick_mm0.dds')
+    timg = Image.open(TESTJPG)
+    print(timg.size)
+    timg = timg.reduce(16)
+    print(timg.size)
+    timg = timg.resize((4096, 4096))
+    print(timg.size)
+
+    dds = pydds.DDS(4096, 4096)
+
+    if timg.mode == "RGB":
+        timg = timg.convert("RGBA")
+    dds.gen_mipmaps(timg)
+
+    data = dds.read(1024)
+    assert data
+    dds.write(outpath)
+    #assert True == False
 
 def test_read_mid(tmpdir):
     outpath = os.path.join(tmpdir, 'test_read_mid.dds')

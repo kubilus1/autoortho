@@ -73,6 +73,7 @@ def main():
     stats = aostats.AOStats()
     stats.start()
 
+
     if platform.system() == 'Windows':
         log.info("Running in Windows WinFSP mode.")
         import autoortho_winfsp

@@ -1,0 +1,18 @@
+<html>
+    <body>
+        <img width=256 height=256 src="{{ inimg }}" />
+        {% for match in matches %}
+        matches:
+            {% if match|length == 2 %}
+            <img width=256 height=256 src="{{ match[1] }}" />
+            PD: {{ match[0] }}
+            {% else %}
+            <img width=256 height=256 src="{{ match[2] }}" />
+            PD: {{ match[1] }} SD: {{ match[0] }}
+            {% endif %}
+            <hr>
+            <br>
+            <p>
+        {% endfor %}
+    </body>
+</html>

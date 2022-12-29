@@ -49,6 +49,7 @@ hide = True
 # X-Plane Custom Scenery path
 scenery_path =
 cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
+imgdir = 
 
 [autoortho]
 # Override map type with a different source

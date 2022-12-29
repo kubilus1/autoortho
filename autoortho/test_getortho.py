@@ -7,6 +7,8 @@ import pytest
 import psutil
 import getortho
 
+from aostats import STATS
+
 #getortho.ISPC = False
 
 @pytest.fixture
@@ -16,6 +18,10 @@ def chunk():
 def test_chunk_get(chunk):
     ret = chunk.get()
     assert ret == True
+    
+    print(STATS)
+    assert True == False
+
 
 def test_null_chunk():
     c = getortho.Chunk(2176, 3232, 'Null', 13)
@@ -148,6 +154,21 @@ def test_get_mipmap(tmpdir):
     testfile = tile.write()
     assert ret
 
+def test_get_mipmap_hash(tmpdir):
+    #tile = getortho.Tile(27568, 17984, 'NAIP', 16, cache_dir=tmpdir)
+    tile = getortho.Tile(2176, 3232, 'NAIP', 13, cache_dir=tmpdir)
+    #27568_17984_NAIP16.jpg
+    tile.min_zoom = 5
+    ret = tile.get_mipmap(0)
+    testfile = tile.write()
+    assert ret
+    assert True == False
+
+def test_create_chunks(tmpdir):
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    tile._create_chunks()
+    print(tile.chunks)
+    assert len(tile.chunks[13]) == 256
 
 def test_get_bytes_all(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)

@@ -15,6 +15,7 @@ from queue import Queue, PriorityQueue, Empty
 from functools import wraps
 
 import pydds
+import hashes
 
 import logging
 #logging.basicConfig()
@@ -30,6 +31,10 @@ from PIL import Image
 
 from aoconfig import CFG
 from aostats import STATS
+
+hashtype = "chash"
+img_dict = hashes.makehashes(CFG.paths.imgdir)
+hashtree, imglist = hashes.makeindex(img_dict, hashtype)
 
 MEMTRACE = False
 
@@ -204,8 +209,11 @@ class Chunk(object):
     width = 256
     height = 256
     cache_dir = 'cache'
-    
+    #hash = ('','')
+    hash = None
+
     attempt = 0
+    hash_attempt = 0
 
     starttime = 0
     fetchtime = 0
@@ -260,10 +268,52 @@ class Chunk(object):
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
+
+    def get_quick_img(self):
+        zoom_diff = 4 
+        col = int(self.col/pow(2,zoom_diff))
+        row = int(self.row/pow(2,zoom_diff))
+        width = int(self.width/pow(2,zoom_diff))
+        height = int(self.height/pow(2,zoom_diff))
+        zoom = int(self.zoom - zoom_diff)
+
+
+    def get_hash(self):
+        global STATS
+        global hashtree
+        global imglist
+
+        if self.hash is None:
+            return False
+
+        if self.hash_attempt > 0:
+            return False
+
+        matches = hashes.find_hash(self.hash, hashtree, imglist,
+                img_dict, hashtype="chash", secondary="phash")
+        if matches:
+            distance, d2, imgpath = matches[0]
+            #print(distance, imgpath)
+            if distance < 25:
+                print(f"GUESS HIT {imgpath}! for {self.chunk_id}")
+                self.hash_attempt += 1
+                STATS['guess_hit'] = STATS.get('guess_hit', 0) + 1
+                with open(imgpath, 'rb') as h:
+                    self.data = h.read()
+                return True
+                
+        STATS['guess_miss'] = STATS.get('guess_miss', 0) + 1
+        return False
+
+
     def get(self, idx=0):
         #log.debug(f"Getting {self}") 
 
         if self.get_cache():
+            self.ready.set()
+            return True
+
+        if self.get_hash():
             self.ready.set()
             return True
 
@@ -380,6 +430,8 @@ class Tile(object):
 
         self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
+        self.hashmap = {}
+        self.get_quick_chunk()
 
 
     def __lt__(self, other):
@@ -394,11 +446,23 @@ class Tile(object):
 
         if not self.chunks.get(zoom):
             self.chunks[zoom] = []
-
+            
+            cropwidth = 16
+            #print(cropwidth)
+            
             for r in range(row, row+height):
                 for c in range(col, col+width):
+                    #print(f"{r}, {c}")
                     #chunk = Chunk(c, r, self.maptype, zoom, priority=self.priority)
                     chunk = Chunk(c, r, self.maptype, zoom, cache_dir=self.cache_dir)
+        #        chonk = img.crop((i,j,i+16,j+16))
+        #        self.hashmap[f"{i*16}_{j*16}"] = hashes.get_img_hashes(chonk) 
+                    i = (r - row) * cropwidth
+                    j = (c - col) * cropwidth
+                    #print((i,j,i+cropwidth,j+cropwidth))
+                    cropimg = self.proto_img.crop((i,j,i+cropwidth,j+cropwidth))
+                    imghash = hashes.get_img_hashes(cropimg)
+                    chunk.hash = imghash
                     self.chunks[zoom].append(chunk)
 
     def _find_cache_file(self):
@@ -635,6 +699,45 @@ class Tile(object):
         self.ready.set()
         return outfile
 
+
+    def get_hash_img(self, mipmap):
+        if mipmap > 4:
+            # Skip if we are getting low quality image
+            self.get_img(mipmap)
+
+
+
+
+        # Get a low quality version for this location
+        col, row, width, height, zoom, mipmap = self._get_quick_zoom(self.zoom - 4)
+
+        # Create a hash for this image
+
+        # Compare with existing hashes
+
+        # Use the best hash
+
+
+        matches = hashes.find_similar(imgpath, hashtree, imglist, hashtype, secondary="chash")
+
+        
+
+
+    def get_quick_chunk(self):
+        # Get zoom - 4 quick chunk
+
+        col, row, width, height, zoom, mipmap = self._get_quick_zoom(self.zoom - 4)
+        quick_chunk = Chunk(col, row, self.maptype, zoom, 0, self.cache_dir)
+        quick_chunk.get()
+        self.proto_img = Image.open(BytesIO(quick_chunk.data)).convert("RGB")
+
+        #for i in range(0, 256, 16):
+        #    for j in range(0, 256, 16):
+        #        chonk = img.crop((i,j,i+16,j+16))
+        #        self.hashmap[f"{i*16}_{j*16}"] = hashes.get_img_hashes(chonk) 
+
+
+
     @locked
     def get_img(self, mipmap, startrow=0, endrow=None):
         #
@@ -704,13 +807,20 @@ class Tile(object):
         return new_im
 
 
+    
+
     #@profile
-    def get_mipmap(self, mipmap=0):
-        
+    def get_mipmap(self, mipmap=0, quick_zoom=False):
+       
         new_im = self.get_img(mipmap)
         if not new_im:
             log.debug("No updates, so no image generated")
             return True
+
+        if quick_zoom:
+            # Fake out a full size image with lower quality image
+            mipmap = 0
+            new_im = new_img.resize((4096, 4096))
 
         self.ready.clear()
         start_time = time.time()
@@ -813,6 +923,9 @@ class TileCacher(object):
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
         self.clean_t.start()
 
+
+
+
     def clean(self):
         memlimit = pow(2,30) * 2
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
@@ -858,6 +971,10 @@ class TileCacher(object):
                 tile = Tile(col, row, map_type, zoom, 
                     cache_dir = self.cache_dir,
                     min_zoom = self.min_zoom)
+
+                tile.hashtree = self.hashtree
+                tile.imglist = self.imglist
+
                 self.tiles[idx] = tile
             elif tile.refs <= 0:
                 # Only in this case would this cache have made a difference
