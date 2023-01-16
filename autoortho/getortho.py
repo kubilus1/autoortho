@@ -341,7 +341,7 @@ class Tile(object):
     cache_file = None
     dds = None
 
-    refs = 0
+    refs = None
 
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir='.cache'):
         self.row = int(row)
@@ -353,6 +353,7 @@ class Tile(object):
         self.ready = threading.Event()
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
+        self.refs = 0
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -671,6 +672,8 @@ class Tile(object):
         data_updated = False
         for chunk in chunks:
             if not chunk.ready.is_set():
+                # ??
+                chunk.priority = self.min_zoom - mipmap 
                 chunk_getter.submit(chunk)
                 data_updated = True
 
@@ -819,7 +822,11 @@ class TileCacher(object):
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
+            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
             log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+            time.sleep(15)
+            continue
+
             while len(self.tiles) >= 40 and cur_mem > memlimit:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
@@ -831,7 +838,6 @@ class TileCacher(object):
                             t = None
                             del(t)
                 cur_mem = process.memory_info().rss
-            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
 
 
             if MEMTRACE:
@@ -845,6 +851,14 @@ class TileCacher(object):
             time.sleep(15)
 
     def _get_tile(self, row, col, map_type, zoom):
+        idx = f"{row}_{col}_{map_type}_{zoom}"
+        with self.tc_lock:
+            tile = self.tiles.get(idx)
+            if not tile:
+                tile = self._open_tile(row, col, map_type, zoom)
+        return tile
+
+    def _open_tile(self, row, col, map_type, zoom):
         if self.maptype_override:
             map_type = self.maptype_override
 
@@ -863,5 +877,25 @@ class TileCacher(object):
                 # Only in this case would this cache have made a difference
                 self.hits += 1
 
+            tile.refs += 1
         return tile
 
+    
+    def _close_tile(self, tile_id):
+        with self.tc_lock:
+            t = self.tiles.get(tile_id)
+            if not t:
+                log.warning(f"Attmpted to close unknown tile {tile_id}!")
+                return False
+
+            t.refs -= 1
+            if t.refs <= 0:
+                log.info(f"No more refs for {tile_id} closing...")
+                t = self.tiles.pop(tile_id)
+                t.close()
+                t = None
+                del(t)
+            else:
+                log.info(f"Still have {t.refs} refs for {tile_id}")
+
+        return True

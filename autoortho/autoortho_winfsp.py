@@ -265,12 +265,12 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #print(f"OPEN: {t}")
             file_obj = self.add_obj(path, self._root_path, False)
             if file_obj.tile is None:
-                tile = self.tc._get_tile(row, col, maptype, zoom) 
+                tile = self.tc._open_tile(row, col, maptype, zoom) 
                 #tile = getortho.Tile(col, row, maptype, zoom)
                 print(f"Open: {tile}")
                 file_obj.tile = tile
                 
-            file_obj.tile.refs += 1
+            #file_obj.tile.refs += 1
             print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
 
         elif not m and not exists:
@@ -289,12 +289,13 @@ class AutoorthoOperations(BaseFileSystemOperations):
         path = str(file_context.file_obj.path)
         m = self.dds_re.match(path)
         if m:
-            file_context.file_obj.tile.refs -= 1
-            print(f"CLOSE: {file_context.file_obj.tile} REFS: {file_context.file_obj.tile.refs}")
-            if file_context.file_obj.tile.refs <= 0:
-                print(f"CLOSE: No refs.  Removing reference to tile: {file_context.file_obj.tile}!")
+            #file_context.file_obj.tile.refs -= 1
+            #print(f"CLOSE: {file_context.file_obj.tile} REFS: {file_context.file_obj.tile.refs}")
+            #if file_context.file_obj.tile.refs <= 0:
+            print(f"CLOSE: No refs.  Removing reference to tile: {file_context.file_obj.tile}!")
+            self.tc._close_tile(file_context.file_obj.tile.id)
             #    file_context.file_obj.tile.close()
-                file_context.file_obj.tile = None
+            #    file_context.file_obj.tile = None
         else:
             #fh = file_context.file_obj.h
             fh = file_context.handle

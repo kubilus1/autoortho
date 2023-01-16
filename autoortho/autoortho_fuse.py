@@ -268,7 +268,7 @@ class AutoOrtho(Operations):
         #self.fh += 1
         h = 0
 
-        log.debug(f"OPEN: {path}, {flags}")
+        log.info(f"OPEN: {path}, {flags}")
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
 
@@ -283,8 +283,8 @@ class AutoOrtho(Operations):
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            t = self.tc._get_tile(row, col, maptype, zoom) 
-            t.refs += 1
+            t = self.tc._open_tile(row, col, maptype, zoom) 
+            #t.refs += 1
             # if not platform.system() == 'Windows':
             #     with self.path_condition:
             #         while path in self.open_paths:
@@ -372,21 +372,23 @@ class AutoOrtho(Operations):
 
     #@locked
     def release(self, path, fh):
-        log.debug(f"RELEASE: {path}")
+        log.info(f"RELEASE: {path}")
         #dsf_m = self.dsf_re.match(path)
         #ter_m = self.ter_re.match(path)
         dsf_m = self.dsf_re.match(path)
         if dsf_m:
             log.info(f"RELEASE: Detected DSF close: {path}")
+
         dds_m = self.dds_re.match(path)
         if dds_m:
-            log.debug(f"RELEASE: {path}")
+            log.info(f"RELEASE DDS: {path}")
             row, col, maptype, zoom = dds_m.groups()
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            t = self.tc._get_tile(row, col, maptype, zoom) 
-            t.refs -= 1
+            self.tc._close_tile(f"{row}_{col}_{maptype}_{zoom}")
+            #t = self.tc._get_tile(row, col, maptype, zoom) 
+            #t.refs -= 1
             #with self.path_condition:
             #    if path in self.open_paths:
             #        log.debug(f"RELEASE: {path}")
