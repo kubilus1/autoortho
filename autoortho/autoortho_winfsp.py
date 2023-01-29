@@ -283,7 +283,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #    # Make sure to inc the refs count
             #    file_obj.tile.refs += 1
 
-            print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
+            #print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
 
         elif not m and not exists:
              raise NTStatusObjectNameNotFound()
@@ -433,7 +433,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
         path = str(file_context.file_obj.path)
         m = self.dds_re.match(path)
         if m:
-            #print(f"READ MATCH: {path}")
+            print(f"READ MATCH: {path}")
             #data = file_context.file_obj.tile.read_dds_bytes(offset, length)
             row, col, maptype, zoom = file_context.file_obj.tile_id.split("_")
             tile = self.tc._get_tile(row, col, maptype, zoom)
