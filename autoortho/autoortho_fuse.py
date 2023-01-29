@@ -17,7 +17,7 @@ import itertools
 
 import flighttrack
 
-from functools import wraps
+from functools import wraps, lru_cache
 
 import logging
 #logging.basicConfig()
@@ -30,6 +30,8 @@ else:
     log.setLevel(logging.INFO)
 
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+#from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+
 
 import getortho
 
@@ -128,6 +130,7 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         return os.chown(full_path, uid, gid)
 
+    @lru_cache(maxsize=1024)
     def getattr(self, path, fh=None):
         log.debug(f"GETATTR {path}")
 
@@ -180,6 +183,7 @@ class AutoOrtho(Operations):
 
         return attrs
 
+    @lru_cache
     def readdir(self, path, fh):
         log.debug(f"READDIR: {path}")
 
@@ -268,7 +272,10 @@ class AutoOrtho(Operations):
         #self.fh += 1
         h = 0
 
-        log.info(f"OPEN: {path}, {flags}")
+        #log.info(f"READ CACHE {self.read.cache_info()}")
+        #log.info(f"ATTR CACHE {self.getattr.cache_info()}")
+        #log.info(f"DIR CACHE {self.readdir.cache_info()}")
+        log.debug(f"OPEN: {path}, {flags}")
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
 
@@ -307,6 +314,7 @@ class AutoOrtho(Operations):
         return fd
 
     #@profile
+    #@lru_cache
     def read(self, path, length, offset, fh):
         log.debug(f"READ: {path} {offset} {length} {fh}")
         data = None
@@ -372,7 +380,7 @@ class AutoOrtho(Operations):
 
     #@locked
     def release(self, path, fh):
-        log.info(f"RELEASE: {path}")
+        log.debug(f"RELEASE: {path}")
         #dsf_m = self.dsf_re.match(path)
         #ter_m = self.ter_re.match(path)
         dsf_m = self.dsf_re.match(path)
@@ -381,7 +389,7 @@ class AutoOrtho(Operations):
 
         dds_m = self.dds_re.match(path)
         if dds_m:
-            log.info(f"RELEASE DDS: {path}")
+            log.debug(f"RELEASE DDS: {path}")
             row, col, maptype, zoom = dds_m.groups()
             row = int(row)
             col = int(col)
@@ -408,12 +416,15 @@ class AutoOrtho(Operations):
         return 0
 
 
-def run(ao, mountpoint, nothreads=False):
-    appt = threading.Thread(
-        target=flighttrack.run,
-        daemon=True
-    )
-    appt.start()
+def run(ao, mountpoint, nothreads=False, run_flighttrack=True):
+    if run_flighttrack:
+        appt = threading.Thread(
+            target=flighttrack.run,
+            daemon=True
+        )
+        appt.start()
+
+    log.info(f"MOUNT: {mountpoint}")
 
     FUSE(
         ao,
@@ -447,4 +458,5 @@ def run(ao, mountpoint, nothreads=False):
         #direct_io=True
     )
 
-    flighttrack.ft.stop()
+    if run_flighttrack:
+        flighttrack.ft.stop()

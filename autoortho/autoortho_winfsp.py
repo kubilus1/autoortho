@@ -10,7 +10,7 @@ import time
 import logging
 import argparse
 import threading
-from functools import wraps
+from functools import wraps, lru_cache
 from pathlib import Path, PureWindowsPath
 
 from winfspy import (
@@ -165,6 +165,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
     # Winfsp operations
 
     #@operation
+    @lru_cache
     def get_volume_info(self):
         return self._volume_info
 
@@ -328,6 +329,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
 
     #@operation
+    @lru_cache
     def read_directory(self, file_context, marker):
         print(f"READ_DIRECTORY {file_context} {marker}")
         entries = []

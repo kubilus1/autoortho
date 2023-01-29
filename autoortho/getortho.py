@@ -12,7 +12,7 @@ import collections
 from io import BytesIO
 from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
-from functools import wraps
+from functools import wraps, lru_cache
 
 import pydds
 
@@ -102,6 +102,7 @@ def _gtile_to_quadkey(til_x, til_y, zoomlevel):
 def locked(fn):
     @wraps(fn)
     def wrapped(self, *args, **kwargs):
+        #result = fn(self, *args, **kwargs)
         with self._lock:
             result = fn(self, *args, **kwargs)
         return result
@@ -381,7 +382,6 @@ class Tile(object):
 
         self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
-
 
     def __lt__(self, other):
         return self.priority < other.priority
@@ -825,6 +825,7 @@ class TileCacher(object):
             log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
             log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
             time.sleep(15)
+            
             continue
 
             while len(self.tiles) >= 40 and cur_mem > memlimit:
@@ -889,8 +890,9 @@ class TileCacher(object):
                 return False
 
             t.refs -= 1
+
             if t.refs <= 0:
-                log.info(f"No more refs for {tile_id} closing...")
+                log.debug(f"No more refs for {tile_id} closing...")
                 t = self.tiles.pop(tile_id)
                 t.close()
                 t = None
