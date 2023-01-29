@@ -243,6 +243,10 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
     @operation
     def open(self, file_name, create_options, granted_access):
+        #log.info(f"READ CACHE {self.read.cache_info()}")
+        #log.info(f"ATTR CACHE {self.getattr.cache_info()}")
+        print(f"DIR CACHE {self.read_directory.cache_info()}")
+        print(f"VOL CACHE {self.get_volume_info.cache_info()}")
         #print(f"OPEN: {file_name} {create_options} {granted_access}")
         file_name = PureWindowsPath(file_name)
         # Retrieve file
@@ -265,11 +269,12 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #print(f"OPEN: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
             #print(f"OPEN: {t}")
             file_obj = self.add_obj(path, self._root_path, False)
-            if file_obj.tile is None:
-                tile = self.tc._open_tile(row, col, maptype, zoom) 
-                #tile = getortho.Tile(col, row, maptype, zoom)
-                print(f"Open: {tile}")
-                file_obj.tile = tile
+            
+            #if file_obj.tile is None:
+            tile = self.tc._open_tile(row, col, maptype, zoom) 
+            #tile = getortho.Tile(col, row, maptype, zoom)
+            print(f"Open: {tile}")
+            file_obj.tile = tile
                 
             #file_obj.tile.refs += 1
             print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
@@ -293,7 +298,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #file_context.file_obj.tile.refs -= 1
             #print(f"CLOSE: {file_context.file_obj.tile} REFS: {file_context.file_obj.tile.refs}")
             #if file_context.file_obj.tile.refs <= 0:
-            print(f"CLOSE: No refs.  Removing reference to tile: {file_context.file_obj.tile}!")
+            #print(f"CLOSE: No refs.  Removing reference to tile: {file_context.file_obj.tile}!")
             self.tc._close_tile(file_context.file_obj.tile.id)
             #    file_context.file_obj.tile.close()
             #    file_context.file_obj.tile = None
@@ -301,7 +306,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #fh = file_context.file_obj.h
             fh = file_context.handle
             if fh != -1:
-                print(f"Closing {file_context}.  FH: {fh}")
+                #print(f"Closing {file_context}.  FH: {fh}")
                 #os.close(fh)
                 fh.close()
                 file_context.handle = None
