@@ -175,7 +175,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
         self._volume_info["volume_label"] = volume_label
 
     #@operation
-    #@lru_cache
+    @lru_cache
     def get_security_by_name(self, file_name):
         file_name = PureWindowsPath(file_name)
         print(f"GET_SECURITY_BY_NAME: {file_name}")
@@ -249,8 +249,8 @@ class AutoorthoOperations(BaseFileSystemOperations):
         #log.info(f"ATTR CACHE {self.getattr.cache_info()}")
         #print(f"DIR CACHE {self.read_directory.cache_info()}")
         #print(f"VOL CACHE {self.get_volume_info.cache_info()}")
-        #print(f"FILEINFO CACHE {self.get_file_info.cache_info()}")
-        #print(f"SECURITYINFO CACHE {self.get_security_by_name.cache_info()}")
+        print(f"FILEINFO CACHE {self.get_file_info.cache_info()}")
+        print(f"SECURITYINFO CACHE {self.get_security_by_name.cache_info()}")
         #print(f"OPEN: {file_name} {create_options} {granted_access}")
         file_name = PureWindowsPath(file_name)
         # Retrieve file
@@ -319,7 +319,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
                 #file_context.file_obj.h = -1
 
     #@operation
-    #@lru_cache
+    @lru_cache
     def get_file_info(self, file_context):
         print(f"GET_FILE_INFO: {file_context}")
         path = str(file_context.file_obj.path)
@@ -433,7 +433,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
         path = str(file_context.file_obj.path)
         m = self.dds_re.match(path)
         if m:
-            print(f"READ MATCH: {path}")
+            #print(f"READ MATCH: {path}")
             #data = file_context.file_obj.tile.read_dds_bytes(offset, length)
             row, col, maptype, zoom = file_context.file_obj.tile_id.split("_")
             tile = self.tc._get_tile(row, col, maptype, zoom)
