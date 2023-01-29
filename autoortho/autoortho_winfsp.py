@@ -104,7 +104,8 @@ class BaseFileObj:
 class FileObj(BaseFileObj):
 
     allocation_unit = 4096
-    tile = None
+    #tile = None
+    tile_id = None
 
     def __init__(self, path, attributes, security_descriptor, allocation_size=0):
         super().__init__(path, attributes, security_descriptor)
@@ -174,6 +175,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
         self._volume_info["volume_label"] = volume_label
 
     #@operation
+    @lru_cache
     def get_security_by_name(self, file_name):
         file_name = PureWindowsPath(file_name)
         print(f"GET_SECURITY_BY_NAME: {file_name}")
@@ -247,6 +249,8 @@ class AutoorthoOperations(BaseFileSystemOperations):
         #log.info(f"ATTR CACHE {self.getattr.cache_info()}")
         #print(f"DIR CACHE {self.read_directory.cache_info()}")
         #print(f"VOL CACHE {self.get_volume_info.cache_info()}")
+        print(f"FILEINFO CACHE {self.get_file_info.cache_info()}")
+        print(f"SECURITYINFO CACHE {self.get_security_by_name.cache_info()}")
         #print(f"OPEN: {file_name} {create_options} {granted_access}")
         file_name = PureWindowsPath(file_name)
         # Retrieve file
@@ -269,14 +273,15 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #print(f"OPEN: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
             #print(f"OPEN: {t}")
             file_obj = self.add_obj(path, self._root_path, False)
-            if file_obj.tile is None:
-                tile = self.tc._open_tile(row, col, maptype, zoom) 
-                #tile = getortho.Tile(col, row, maptype, zoom)
-                print(f"Open: {tile}")
-                file_obj.tile = tile
-            else:
-                # Make sure to inc the refs count
-                file_obj.tile.refs += 1
+            #if file_obj.tile is None:
+            tile = self.tc._open_tile(row, col, maptype, zoom) 
+            print(f"Open: {tile}")
+            file_obj.tile_id = tile.id
+            #    #tile = getortho.Tile(col, row, maptype, zoom)
+            #    file_obj.tile = tile
+            #else:
+            #    # Make sure to inc the refs count
+            #    file_obj.tile.refs += 1
 
             print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
 
@@ -292,7 +297,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
     @operation
     def close(self, file_context):
-        #print(f"CLOSE: {file_context}")
+        print(f"CLOSE: {file_context}")
         path = str(file_context.file_obj.path)
         m = self.dds_re.match(path)
         if m:
@@ -300,7 +305,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #print(f"CLOSE: {file_context.file_obj.tile} REFS: {file_context.file_obj.tile.refs}")
             #if file_context.file_obj.tile.refs <= 0:
             #print(f"CLOSE: No refs.  Removing reference to tile: {file_context.file_obj.tile}!")
-            self.tc._close_tile(file_context.file_obj.tile.id)
+            self.tc._close_tile(file_context.file_obj.tile_id)
             #    file_context.file_obj.tile.close()
             #    file_context.file_obj.tile = None
         else:
@@ -314,6 +319,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
                 #file_context.file_obj.h = -1
 
     #@operation
+    @lru_cache
     def get_file_info(self, file_context):
         print(f"GET_FILE_INFO: {file_context}")
         path = str(file_context.file_obj.path)
@@ -428,7 +434,10 @@ class AutoorthoOperations(BaseFileSystemOperations):
         m = self.dds_re.match(path)
         if m:
             #print(f"READ MATCH: {path}")
-            data = file_context.file_obj.tile.read_dds_bytes(offset, length)
+            #data = file_context.file_obj.tile.read_dds_bytes(offset, length)
+            row, col, maptype, zoom = file_context.file_obj.tile_id.split("_")
+            tile = self.tc._get_tile(row, col, maptype, zoom)
+            data = tile.read_dds_bytes(offset, length)
             #print(f"READ: {len(data)} bytes")
         
         if not data:
