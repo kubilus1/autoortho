@@ -176,7 +176,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
     #@operation
     def get_security_by_name(self, file_name):
         file_name = PureWindowsPath(file_name)
-        #print(f"GET_SECURITY_BY_NAME: {file_name}")
+        print(f"GET_SECURITY_BY_NAME: {file_name}")
 
         full_path = self._full_path(str(file_name))
        
@@ -238,15 +238,15 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
     #@operation
     def get_security(self, file_context):
-        #print(file_context.file_obj.security_descriptor)
+        print(file_context.file_obj.security_descriptor)
         return file_context.file_obj.security_descriptor
 
     @operation
     def open(self, file_name, create_options, granted_access):
         #log.info(f"READ CACHE {self.read.cache_info()}")
         #log.info(f"ATTR CACHE {self.getattr.cache_info()}")
-        print(f"DIR CACHE {self.read_directory.cache_info()}")
-        print(f"VOL CACHE {self.get_volume_info.cache_info()}")
+        #print(f"DIR CACHE {self.read_directory.cache_info()}")
+        #print(f"VOL CACHE {self.get_volume_info.cache_info()}")
         #print(f"OPEN: {file_name} {create_options} {granted_access}")
         file_name = PureWindowsPath(file_name)
         # Retrieve file
@@ -269,14 +269,15 @@ class AutoorthoOperations(BaseFileSystemOperations):
             #print(f"OPEN: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
             #print(f"OPEN: {t}")
             file_obj = self.add_obj(path, self._root_path, False)
-            
-            #if file_obj.tile is None:
-            tile = self.tc._open_tile(row, col, maptype, zoom) 
-            #tile = getortho.Tile(col, row, maptype, zoom)
-            print(f"Open: {tile}")
-            file_obj.tile = tile
-                
-            #file_obj.tile.refs += 1
+            if file_obj.tile is None:
+                tile = self.tc._open_tile(row, col, maptype, zoom) 
+                #tile = getortho.Tile(col, row, maptype, zoom)
+                print(f"Open: {tile}")
+                file_obj.tile = tile
+            else:
+                # Make sure to inc the refs count
+                file_obj.tile.refs += 1
+
             print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
 
         elif not m and not exists:
@@ -314,7 +315,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
 
     #@operation
     def get_file_info(self, file_context):
-        #print(f"GET_FILE_INFO: {file_context}")
+        print(f"GET_FILE_INFO: {file_context}")
         path = str(file_context.file_obj.path)
         full_path = self._full_path(path)
         #{'file_attributes': 32, 'allocation_size': 0, 'file_size': 0, 'creation_time': 133091265506258958, 'last_access_time': 133091265506258958, 'last_write_time': 133091265506258958, 'change_time': 133091265506258958, 'index_number': 0}
