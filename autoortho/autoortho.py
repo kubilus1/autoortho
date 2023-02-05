@@ -73,10 +73,31 @@ def main():
     stats = aostats.AOStats()
     stats.start()
 
+    winfuse = False
     if platform.system() == 'Windows':
         log.info("Running in Windows WinFSP mode.")
         import autoortho_winfsp
         autoortho_winfsp.main(root, mountpoint)
+    elif winfuse == True:
+        log.info("Logging in FUSE mode.")
+        import autoortho_fuse
+        root = os.path.expanduser(root)
+        mountpoint = os.path.expanduser(mountpoint)
+        nothreads=False
+
+        if CFG.fuse.threading:
+            log.info("Running in multi-threaded mode.")
+            nothreads = False
+        else:
+            log.info("Running in single-threaded mode.")
+            nothreads = True
+
+        log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
+        autoortho_fuse.run(
+                autoortho_fuse.AutoOrtho(root), 
+                mountpoint, 
+                nothreads
+        )
     else:
         log.info("Logging in FUSE mode.")
         import autoortho_fuse
