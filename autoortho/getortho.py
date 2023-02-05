@@ -816,6 +816,12 @@ class TileCacher(object):
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
         self.clean_t.start()
 
+    def _to_tile_id(self, row, col, map_type, zoom):
+        if self.maptype_override:
+            map_type = self.maptype_override
+        tile_id = f"{row}_{col}_{map_type}_{zoom}"
+        return tile_id
+
     def clean(self):
         memlimit = pow(2,30) * 2
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
@@ -852,7 +858,8 @@ class TileCacher(object):
             time.sleep(15)
 
     def _get_tile(self, row, col, map_type, zoom):
-        idx = f"{row}_{col}_{map_type}_{zoom}"
+        
+        idx = self._to_tile_id(row, col, map_type, zoom)
         with self.tc_lock:
             tile = self.tiles.get(idx)
             if not tile:
@@ -862,8 +869,7 @@ class TileCacher(object):
     def _open_tile(self, row, col, map_type, zoom):
         if self.maptype_override:
             map_type = self.maptype_override
-
-        idx = f"{row}_{col}_{map_type}_{zoom}"
+        idx = self._to_tile_id(row, col, map_type, zoom)
 
         log.debug(f"Get_tile: {idx}")
         with self.tc_lock:
@@ -882,7 +888,8 @@ class TileCacher(object):
         return tile
 
     
-    def _close_tile(self, tile_id):
+    def _close_tile(self, row, col, map_type, zoom):
+        tile_id = self._to_tile_id(row, col, map_type, zoom)
         with self.tc_lock:
             t = self.tiles.get(tile_id)
             if not t:

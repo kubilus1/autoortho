@@ -394,7 +394,9 @@ class AutoOrtho(Operations):
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            self.tc._close_tile(f"{row}_{col}_{maptype}_{zoom}")
+            self.tc._close_tile(row, col, maptype, zoom)
+
+            #self.tc._close_tile(f"{row}_{col}_{maptype}_{zoom}")
             #t = self.tc._get_tile(row, col, maptype, zoom) 
             #t.refs -= 1
             #with self.path_condition:
