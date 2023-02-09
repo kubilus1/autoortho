@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+   
+    - name: Setup 
+      run: |
+        echo "Setup"
+
+    - name: Build
+      run: |
+       make autoortho.bin 
+
+
+  build-windows:
+    runs-on: windows-latest
+
+
+    steps:
+    - uses: actions/checkout@v3
+   
+    - uses: actions/setup-python@v3
+      with:
+        python-version: '3.x'
+
+    - name: Setup 
+      run: |
+          #choco --yes install winfsp
+          py -m pip install -U pytest 
+          # Windows OS package install ecosystem is sketchy and broken.  Just test min stuff ...
+          py -m pip install -U -r requirements-build.txt
+
+    - name: Build
+      run: |
+        make exe 
