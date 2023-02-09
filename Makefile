@@ -5,7 +5,7 @@ autoortho.pyz:
 	cd build && python3 -m zipapp -p "/usr/bin/env python3" autoortho
 
 autoortho.bin: autoortho/*.py
-	docker run -it --rm -v `pwd`:/code /bin/bash -c "cd /code; ./buildreqs.sh; time make bin"
+	docker run --rm -v `pwd`:/code /bin/bash -c "cd /code; ./buildreqs.sh; time make bin"
 
 bin:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --include-data-file=./autoortho/templates/*.html=templates/ --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
