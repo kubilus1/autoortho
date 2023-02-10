@@ -11,7 +11,7 @@ bin:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --include-data-file=./autoortho/templates/*.html=templates/ --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
 
 exe:
-	py -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --assume-yes-for-downloads --include-data-file=./autoortho/templates/*.html=templates/ --include-data-file=./autoortho/lib/windows/*=lib/windows/ --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
+	python -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --assume-yes-for-downloads --include-data-file=./autoortho/templates/*.html=templates/ --include-data-file=./autoortho/lib/windows/*=lib/windows/ --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
 
 testperf:
 	python3.10 -m nuitka --verbose --verbose-output=nuitka.log  --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/testfiles=testfiles --onefile ./autoortho/perftest.py
