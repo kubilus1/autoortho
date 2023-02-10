@@ -8,10 +8,10 @@ autoortho.bin: autoortho/*.py
 	docker run --rm -v `pwd`:/code ubuntu:focal /bin/bash -c "cd /code; ./buildreqs.sh; time make bin"
 
 bin:
-	python3.10 -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --include-data-file=./autoortho/templates/*.html=templates/ --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
+	python3.10 -m nuitka --verbose --verbose-output=nuitka.log --linux-icon=ao-icon.png --enable-plugin=tk-inter --include-data-file=./autoortho/templates/*.html=templates/ --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
 
 exe:
-	python -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --assume-yes-for-downloads --include-data-file=./autoortho/templates/*.html=templates/ --include-data-file=./autoortho/lib/windows/*=lib/windows/ --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
+	python -m nuitka --verbose --verbose-output=nuitka.log --enable-plugin=tk-inter --windows-icon-from-ico=ao-icon.png --assume-yes-for-downloads --include-data-file=./autoortho/templates/*.html=templates/ --include-data-file=./autoortho/lib/windows/*=lib/windows/ --include-data-dir=./autoortho/imgs=imgs --onefile ./autoortho/autoortho.py
 
 testperf:
 	python3.10 -m nuitka --verbose --verbose-output=nuitka.log  --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/testfiles=testfiles --onefile ./autoortho/perftest.py
