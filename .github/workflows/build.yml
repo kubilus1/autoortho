@@ -37,6 +37,7 @@ jobs:
           #choco --yes install winfsp
           python -m pip install -U pytest 
           # Windows OS package install ecosystem is sketchy and broken.  Just test min stuff ...
+          python -m pip install -U -r requirements-win.txt
           python -m pip install -U -r requirements-build.txt
 
     - name: Build
