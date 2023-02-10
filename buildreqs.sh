@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export DEBIAN_FRONTEND=noninteractive
+export TZ=America/New_York
+
 apt-get update
 apt-get install software-properties-common -y
 add-apt-repository ppa:deadsnakes/ppa -y
@@ -11,5 +14,5 @@ curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 
 python3.10 -m pip install -U pip
 python3.10 -m pip install setuptools
-python3.10 -m pip install -r requirements-build.txt
+python3.10 -m pip install -r requirements-build.txt --no-use-pep517
 python3.10 -m pip install -r requirements.txt
