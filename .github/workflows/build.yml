@@ -14,7 +14,7 @@ jobs:
    
     - name: Setup 
       run: |
-        echo "Setup"
+        apt-get update && apt-get install -y make
 
     - name: Build
       run: |
