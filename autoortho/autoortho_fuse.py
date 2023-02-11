@@ -17,7 +17,7 @@ import itertools
 
 import flighttrack
 
-from functools import wraps
+from functools import wraps, lru_cache
 
 import logging
 #logging.basicConfig()
@@ -30,6 +30,8 @@ else:
     log.setLevel(logging.INFO)
 
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+#from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+
 
 import getortho
 
@@ -128,6 +130,7 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         return os.chown(full_path, uid, gid)
 
+    @lru_cache(maxsize=1024)
     def getattr(self, path, fh=None):
         log.debug(f"GETATTR {path}")
 
@@ -180,6 +183,7 @@ class AutoOrtho(Operations):
 
         return attrs
 
+    @lru_cache
     def readdir(self, path, fh):
         log.debug(f"READDIR: {path}")
 
@@ -268,6 +272,9 @@ class AutoOrtho(Operations):
         #self.fh += 1
         h = 0
 
+        #log.info(f"READ CACHE {self.read.cache_info()}")
+        #log.info(f"ATTR CACHE {self.getattr.cache_info()}")
+        #log.info(f"DIR CACHE {self.readdir.cache_info()}")
         log.debug(f"OPEN: {path}, {flags}")
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
@@ -283,8 +290,8 @@ class AutoOrtho(Operations):
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            t = self.tc._get_tile(row, col, maptype, zoom) 
-            t.refs += 1
+            t = self.tc._open_tile(row, col, maptype, zoom) 
+            #t.refs += 1
             # if not platform.system() == 'Windows':
             #     with self.path_condition:
             #         while path in self.open_paths:
@@ -307,6 +314,7 @@ class AutoOrtho(Operations):
         return fd
 
     #@profile
+    #@lru_cache
     def read(self, path, length, offset, fh):
         log.debug(f"READ: {path} {offset} {length} {fh}")
         data = None
@@ -378,15 +386,19 @@ class AutoOrtho(Operations):
         dsf_m = self.dsf_re.match(path)
         if dsf_m:
             log.info(f"RELEASE: Detected DSF close: {path}")
+
         dds_m = self.dds_re.match(path)
         if dds_m:
-            log.debug(f"RELEASE: {path}")
+            log.debug(f"RELEASE DDS: {path}")
             row, col, maptype, zoom = dds_m.groups()
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            t = self.tc._get_tile(row, col, maptype, zoom) 
-            t.refs -= 1
+            self.tc._close_tile(row, col, maptype, zoom)
+
+            #self.tc._close_tile(f"{row}_{col}_{maptype}_{zoom}")
+            #t = self.tc._get_tile(row, col, maptype, zoom) 
+            #t.refs -= 1
             #with self.path_condition:
             #    if path in self.open_paths:
             #        log.debug(f"RELEASE: {path}")
@@ -407,11 +419,7 @@ class AutoOrtho(Operations):
 
 
 def run(ao, mountpoint, nothreads=False):
-    appt = threading.Thread(
-        target=flighttrack.run,
-        daemon=True
-    )
-    appt.start()
+    log.info(f"MOUNT: {mountpoint}")
 
     FUSE(
         ao,
@@ -444,5 +452,3 @@ def run(ao, mountpoint, nothreads=False):
         #default_permissions=True,
         #direct_io=True
     )
-
-    flighttrack.ft.stop()

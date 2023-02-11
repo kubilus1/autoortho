@@ -12,7 +12,7 @@ import collections
 from io import BytesIO
 from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
-from functools import wraps
+from functools import wraps, lru_cache
 
 import pydds
 
@@ -102,6 +102,7 @@ def _gtile_to_quadkey(til_x, til_y, zoomlevel):
 def locked(fn):
     @wraps(fn)
     def wrapped(self, *args, **kwargs):
+        #result = fn(self, *args, **kwargs)
         with self._lock:
             result = fn(self, *args, **kwargs)
         return result
@@ -332,6 +333,8 @@ class Tile(object):
     width = 16
     height = 16
 
+    max_mipmap = 4
+
     priority = -1
     #tile_condition = None
     _lock = None
@@ -341,7 +344,7 @@ class Tile(object):
     cache_file = None
     dds = None
 
-    refs = 0
+    refs = None
 
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir='.cache'):
         self.row = int(row)
@@ -353,6 +356,7 @@ class Tile(object):
         self.ready = threading.Event()
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
+        self.refs = 0
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -380,7 +384,6 @@ class Tile(object):
 
         self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
-
 
     def __lt__(self, other):
         return self.priority < other.priority
@@ -418,7 +421,7 @@ class Tile(object):
     def _get_quick_zoom(self, quick_zoom=0):
         if quick_zoom:
             # Max difference in steps this tile can support
-            max_diff = min((self.zoom - int(quick_zoom)), 4)
+            max_diff = min((self.zoom - int(quick_zoom)), self.max_mipmap)
             # Minimum zoom level allowed
             min_zoom = max((self.zoom - max_diff), self.min_zoom)
             
@@ -426,7 +429,7 @@ class Tile(object):
             quick_zoom = max(int(quick_zoom), min_zoom)
 
             # Effective difference in steps we will use
-            zoom_diff = min((self.zoom - int(quick_zoom)), 4)
+            zoom_diff = min((self.zoom - int(quick_zoom)), self.max_mipmap)
 
             col = int(self.col/pow(2,zoom_diff))
             row = int(self.row/pow(2,zoom_diff))
@@ -671,6 +674,8 @@ class Tile(object):
         data_updated = False
         for chunk in chunks:
             if not chunk.ready.is_set():
+                # ??
+                chunk.priority = self.min_zoom - mipmap 
                 chunk_getter.submit(chunk)
                 data_updated = True
 
@@ -706,7 +711,10 @@ class Tile(object):
 
     #@profile
     def get_mipmap(self, mipmap=0):
-        
+       
+        if mipmap > self.max_mipmap:
+            mipmap = self.max_mipmap
+
         new_im = self.get_img(mipmap)
         if not new_im:
             log.debug("No updates, so no image generated")
@@ -797,6 +805,8 @@ class TileCacher(object):
     hits = 0
     misses = 0
 
+    enable_cache = False
+
     def __init__(self, cache_dir='.cache'):
         if MEMTRACE:
             tracemalloc.start()
@@ -813,14 +823,32 @@ class TileCacher(object):
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
         self.clean_t.start()
 
+    def _to_tile_id(self, row, col, map_type, zoom):
+        if self.maptype_override:
+            map_type = self.maptype_override
+        tile_id = f"{row}_{col}_{map_type}_{zoom}"
+        return tile_id
+
+    def show_stats(self):
+        process = psutil.Process(os.getpid())
+        cur_mem = process.memory_info().rss
+        log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+
     def clean(self):
         memlimit = pow(2,30) * 2
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
-            log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
-            while len(self.tiles) >= 40 and cur_mem > memlimit:
+
+            self.show_stats()
+            time.sleep(15)
+            
+            if not self.enable_cache:
+                continue
+
+            while len(self.tiles) >= 25 and cur_mem > memlimit:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
@@ -831,7 +859,6 @@ class TileCacher(object):
                             t = None
                             del(t)
                 cur_mem = process.memory_info().rss
-            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
 
 
             if MEMTRACE:
@@ -845,10 +872,18 @@ class TileCacher(object):
             time.sleep(15)
 
     def _get_tile(self, row, col, map_type, zoom):
+        
+        idx = self._to_tile_id(row, col, map_type, zoom)
+        with self.tc_lock:
+            tile = self.tiles.get(idx)
+            if not tile:
+                tile = self._open_tile(row, col, map_type, zoom)
+        return tile
+
+    def _open_tile(self, row, col, map_type, zoom):
         if self.maptype_override:
             map_type = self.maptype_override
-
-        idx = f"{row}_{col}_{map_type}_{zoom}"
+        idx = self._to_tile_id(row, col, map_type, zoom)
 
         log.debug(f"Get_tile: {idx}")
         with self.tc_lock:
@@ -863,5 +898,31 @@ class TileCacher(object):
                 # Only in this case would this cache have made a difference
                 self.hits += 1
 
+            tile.refs += 1
         return tile
 
+    
+    def _close_tile(self, row, col, map_type, zoom):
+        tile_id = self._to_tile_id(row, col, map_type, zoom)
+        with self.tc_lock:
+            t = self.tiles.get(tile_id)
+            if not t:
+                log.warning(f"Attmpted to close unknown tile {tile_id}!")
+                return False
+
+            t.refs -= 1
+
+            if self.enable_cache:
+                log.debug(f"Cache enabled.  Delay tile close for {tile_id}")
+                return True
+
+            if t.refs <= 0:
+                log.debug(f"No more refs for {tile_id} closing...")
+                t = self.tiles.pop(tile_id)
+                t.close()
+                t = None
+                del(t)
+            else:
+                log.debug(f"Still have {t.refs} refs for {tile_id}")
+
+        return True

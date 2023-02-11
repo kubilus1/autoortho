@@ -10,7 +10,8 @@ import time
 import logging
 import argparse
 import threading
-from functools import wraps
+import traceback
+from functools import wraps, lru_cache, cache, cached_property
 from pathlib import Path, PureWindowsPath
 
 from winfspy import (
@@ -32,6 +33,8 @@ from winfspy.plumbing.security_descriptor import SecurityDescriptor
 
 import getortho
 from aoconfig import CFG
+from winfsp_shim import OperationsShim
+
 
 def operation(fn):
     """Decorator for file system operations.
@@ -51,6 +54,7 @@ def operation(fn):
             else:
                 result = fn(self, *args, **kwargs)
         except Exception as exc:
+            traceback.print_exc()
             logging.info(f" NOK | {name:20} | {head!r:20} | {tail!r:20} | {exc!r}")
             raise
         else:
@@ -104,7 +108,8 @@ class BaseFileObj:
 class FileObj(BaseFileObj):
 
     allocation_unit = 4096
-    tile = None
+    #tile = None
+    tile_id = None
 
     def __init__(self, path, attributes, security_descriptor, allocation_size=0):
         super().__init__(path, attributes, security_descriptor)
@@ -129,7 +134,7 @@ class OpenedObj:
         return f"{type(self).__name__}:{self.file_obj.file_name}"
 
 
-class AutoorthoOperations(BaseFileSystemOperations):
+class AutoorthoOperations(OperationsShim):
     def __init__(self, root, volume_label, tile_cache, read_only=False):
         super().__init__()
         if len(volume_label) > 31:
@@ -160,11 +165,12 @@ class AutoorthoOperations(BaseFileSystemOperations):
         self.tc = tile_cache
 
         # Do lots of locking
-        self.biglock = True
+        #self.biglock = True
+        self.biglock = False
 
     # Winfsp operations
 
-    #@operation
+    @cached_property
     def get_volume_info(self):
         return self._volume_info
 
@@ -190,68 +196,43 @@ class AutoorthoOperations(BaseFileSystemOperations):
             file_obj.security_descriptor.size,
         )
 
-
-    @operation
+    #@operation
+    @lru_cache(maxsize=4096)
     def add_obj(self, file_name, parent, isdir):
         file_name = PureWindowsPath(file_name)
 
         # `granted_access` is already handle by winfsp
         # `allocation_size` useless for us
 
-        # Retrieve file
-        try:
-            parent_file_obj = self._entries[parent]
-            if isinstance(parent_file_obj, FileObj):
-                raise NTStatusNotADirectory()
-        except KeyError:
-            raise NTStatusObjectNameNotFound()
-
-        # File/Folder already exists
-        #if file_name in self._entries:
-        #    raise NTStatusObjectNameCollision()
-
-        file_obj = self._entries.get(str(file_name))
-        if file_obj:
-            return file_obj
-
         if isdir:
             file_attributes = FILE_ATTRIBUTE.FILE_ATTRIBUTE_DIRECTORY
-            #file_attributes = 16
             security_descriptor = self._root_obj.security_descriptor
-            #file_obj = self._entries[file_name] = FolderObj(
             file_obj = FolderObj(
                 file_name, file_attributes, security_descriptor
             )
         else:
-            #file_attributes = 32
             file_attributes = FILE_ATTRIBUTE.FILE_ATTRIBUTE_ARCHIVE
             security_descriptor = self._root_obj.security_descriptor
-            #file_obj = self._entries[file_name] = FileObj(
             file_obj = FileObj(
                 file_name, file_attributes, security_descriptor
             )
 
-        self._entries[str(file_name)] = file_obj
         return file_obj
         
 
     #@operation
+    #@lru_cache
+    @cache
     def get_security(self, file_context):
-        #print(file_context.file_obj.security_descriptor)
         return file_context.file_obj.security_descriptor
 
-    @operation
+    #@operation
     def open(self, file_name, create_options, granted_access):
         #print(f"OPEN: {file_name} {create_options} {granted_access}")
         file_name = PureWindowsPath(file_name)
         # Retrieve file
 
         path = str(file_name)
-        full_path = self._full_path(path)
-        exists = os.path.exists(full_path)
-        
-        #file_obj = self._entries.get(path)
-        #file_obj = None
         
         h = -1
         m = self.dds_re.match(path)
@@ -262,72 +243,63 @@ class AutoorthoOperations(BaseFileSystemOperations):
             col = int(col)
             zoom = int(zoom)
             #print(f"OPEN: DDS file {path}, offset {offset}, length {length} (%s) " % str(m.groups()))
-            #print(f"OPEN: {t}")
             file_obj = self.add_obj(path, self._root_path, False)
-            if file_obj.tile is None:
-                tile = self.tc._get_tile(row, col, maptype, zoom) 
-                #tile = getortho.Tile(col, row, maptype, zoom)
-                print(f"Open: {tile}")
-                file_obj.tile = tile
-                
-            file_obj.tile.refs += 1
-            print(f"OPEN: {file_obj.tile} REFS: {file_obj.tile.refs}")
-
-        elif not m and not exists:
-             raise NTStatusObjectNameNotFound()
-
-        elif os.path.isdir(full_path):
-            file_obj = self.add_obj(path, self._root_path, True)
+            tile = self.tc._open_tile(row, col, maptype, zoom) 
+            file_obj.tile_id = (row, col, maptype, zoom)
         else:
-            file_obj = self.add_obj(path, self._root_path, False)
-            h = open(full_path, "rb")
+            full_path = self._full_path(path)
+            if os.path.isdir(full_path):
+                file_obj = self.add_obj(path, self._root_path, True)
+            elif os.path.exists(full_path):
+                file_obj = self.add_obj(path, self._root_path, False)
+                h = open(full_path, "rb")
+            else:
+                raise NTStatusObjectNameNotFound()
         return OpenedObj(file_obj, h)
 
-    @operation
+    #@operation
     def close(self, file_context):
         #print(f"CLOSE: {file_context}")
         path = str(file_context.file_obj.path)
         m = self.dds_re.match(path)
         if m:
-            file_context.file_obj.tile.refs -= 1
-            print(f"CLOSE: {file_context.file_obj.tile} REFS: {file_context.file_obj.tile.refs}")
-            if file_context.file_obj.tile.refs <= 0:
-                print(f"CLOSE: No refs.  Removing reference to tile: {file_context.file_obj.tile}!")
-            #    file_context.file_obj.tile.close()
-                file_context.file_obj.tile = None
+            self.tc._close_tile(*file_context.file_obj.tile_id)
         else:
-            #fh = file_context.file_obj.h
             fh = file_context.handle
             if fh != -1:
-                print(f"Closing {file_context}.  FH: {fh}")
+                #print(f"Closing {file_context}.  FH: {fh}")
                 #os.close(fh)
                 fh.close()
                 file_context.handle = None
-                #file_context.file_obj.h = -1
 
     #@operation
+    #@lru_cache(maxsize=4096)
+    @cache
     def get_file_info(self, file_context):
         #print(f"GET_FILE_INFO: {file_context}")
         path = str(file_context.file_obj.path)
-        full_path = self._full_path(path)
         #{'file_attributes': 32, 'allocation_size': 0, 'file_size': 0, 'creation_time': 133091265506258958, 'last_access_time': 133091265506258958, 'last_write_time': 133091265506258958, 'change_time': 133091265506258958, 'index_number': 0}
         #os.stat_result(st_mode=33206, st_ino=562949953931301, st_dev=1421433975, st_nlink=1, st_uid=0, st_gid=0, st_size=832, st_atime=1664639212, st_mtime=1653275838, st_ctime=1653275838)
 
-        exists = os.path.exists(full_path)
         m = self.dds_re.match(path)
         if m:
             #print(f"MATCH: Set file size")
             file_context.file_obj.file_size = 22369744
-        elif exists:
-            #print(st)
+        else:
+            full_path = self._full_path(path)
             if os.path.isfile(full_path):
                 st = os.lstat(full_path)
                 file_context.file_obj.file_size = st.st_size
         return file_context.file_obj.get_file_info()
 
+    #@lru_cache
+    @cache
+    def listlocal(self, path):
+        return os.listdir(path)
 
     #@operation
-    def read_directory(self, file_context, marker):
+    @lru_cache
+    def read_directory(self, file_context, marker, buffer_len):
         print(f"READ_DIRECTORY {file_context} {marker}")
         entries = []
         file_obj = file_context.file_obj
@@ -339,19 +311,19 @@ class AutoorthoOperations(BaseFileSystemOperations):
         path = str(file_obj.path)
 
         full_path = self._full_path(path)
-        print(f"READDIR: {path}")
-        #print(self._entries)
+        #print(f"READDIR: {path}")
 
-        entries = []
+        #entries = []
         dirents = ['.', '..']
         if os.path.isdir(full_path):
-            dirents.extend(os.listdir(full_path))
+            #dirents.extend(os.listdir(full_path))
+            dirents.extend(self.listlocal(full_path))
 
         if marker:
-            print(f"MARKER! {marker}")
+            #print(f"MARKER! {marker} {buffer_len}")
             marker_idx = dirents.index(marker)
-            dirents = dirents[marker_idx + 1 :]
-            print(f"DIRENTS LEN: {len(dirents)}")
+            dirents = dirents[marker_idx + 1 : marker_idx + 1024]
+            #print(f"DIRENTS LEN: {len(dirents)}")
 
         #for r in dirents[0:1024]:
         for r in dirents:
@@ -361,18 +333,23 @@ class AutoorthoOperations(BaseFileSystemOperations):
                 obj = self.add_obj(tpath, self._root_path, True)
                 tobj = {"file_name": r, **obj.get_file_info()}
             else:
-                st = os.lstat(full_path)
+                st = os.lstat(os.path.join(full_path, r))
                 obj = self.add_obj(tpath, self._root_path, False)
                 obj.file_size = st.st_size
                 tobj = {"file_name": r, **obj.get_file_info()}
 
             #print(tobj)
-            entries.append(tobj)
-            #yield tobj
+            #entries.append(tobj)
+            yield tobj
 
+        return
 
         print(f"NUM ENTRIES: {len(entries)}")
         entries = sorted(entries, key=lambda x: x["file_name"])
+        for e in entries:
+            yield e
+        return
+
         return entries
 
         # No filtering to apply
@@ -390,18 +367,11 @@ class AutoorthoOperations(BaseFileSystemOperations):
     
 
     #@operation
+    @lru_cache
     def get_dir_info_by_name(self, file_context, file_name):
-        print(f"GET DIR INFO BY NAME: {file_context} {file_name}")
+        #print(f"GET DIR INFO BY NAME: {file_context} {file_name}")
         tpath = os.path.join(file_context.file_obj.path, file_name)
         obj = self.add_obj(tpath, self._root_path, True)
-        # return {"file_name": file_name, **obj.get_file_info()}
-        # path = file_context.file_obj.path / file_name
-        # try:
-        #     entry_obj = self._entries[path]
-        # except KeyError:
-        #     raise NTStatusObjectNameNotFound()
-
-        # return {"file_name": file_name, **entry_obj.get_file_info()}
 
     def _full_path(self, partial):
         #print(f"_FULL_PATH: {partial}")
@@ -410,7 +380,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
         path = os.path.abspath(os.path.join(self.root, partial))
         return path
 
-    ##@operation
+    #@operation
     def read(self, file_context, offset, length):
         #print(f"READ: P:{file_context.file_obj.path} O:{offset} L:{length}")
         data = None
@@ -419,7 +389,11 @@ class AutoorthoOperations(BaseFileSystemOperations):
         m = self.dds_re.match(path)
         if m:
             #print(f"READ MATCH: {path}")
-            data = file_context.file_obj.tile.read_dds_bytes(offset, length)
+            #data = file_context.file_obj.tile.read_dds_bytes(offset, length)
+            #row, col, maptype, zoom = file_context.file_obj.tile_id.split("_")
+            row, col, maptype, zoom = file_context.file_obj.tile_id
+            tile = self.tc._get_tile(row, col, maptype, zoom)
+            data = tile.read_dds_bytes(offset, length)
             #print(f"READ: {len(data)} bytes")
         
         if not data:
@@ -438,6 +412,16 @@ class AutoorthoOperations(BaseFileSystemOperations):
     #@operation
     def flush(self, file_context) -> None:
         pass
+
+    def show_stats(self):
+        method_list = [method for method in dir(AutoorthoOperations) if
+                method.startswith('_') is False]
+
+        self.tc.show_stats()
+        for m_name in method_list:
+            m = getattr(self, m_name)
+            if hasattr(m, 'cache_info'):
+                print(f"{m_name}: {m.cache_info()}")
 
 
 def create_file_system(
@@ -468,7 +452,7 @@ def create_file_system(
         case_sensitive_search=1,
         case_preserved_names=1,
         unicode_on_disk=1,
-        persistent_acls=1,
+        persistent_acls=0,
         #post_cleanup_when_modified_only=1,
         um_file_context_is_user_context2=1,
         flush_and_purge_on_cleanup=1,
@@ -482,20 +466,17 @@ def create_file_system(
     return fs
 
 
-def main(root, mountpoint, label="autoorotho", prefix="", verbose=False, debug=False): 
+def main(root, mountpoint, label="autoorotho", prefix="", verbose=False, debug=False):
+    #debug=True
     fs = create_file_system(root, mountpoint, label, prefix, verbose, debug)
     try:
         print("Starting FS")
         fs.start()
         print("FS started, keep it running forever")
         while True:
-            result = input("Set read-only flag (y/n/q)? ").lower()
-            if result == "y":
-                fs.operations.read_only = True
-                fs.restart(read_only_volume=True)
-            elif result == "n":
-                fs.operations.read_only = False
-                fs.restart(read_only_volume=False)
+            result = input("AO> ").lower()
+            if result == "s":
+                fs.operations.show_stats()
             elif result == "q":
                 break
 

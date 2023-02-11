@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import time
 import pytest
 import shutil
@@ -9,57 +10,135 @@ import platform
 from pathlib import Path
 import threading
 import subprocess
-import autoortho
+import random
+import string
+import tempfile
 
 from fuse import fuse_exit
+
+if platform.system() == 'Windows':
+    import autoortho_winfsp
+else:
+    import autoortho_fuse
+import aostats
+from aoconfig import CFG
 
 import logging
 logging.basicConfig()
 log = logging.getLogger('log')
-log.setLevel(logging.DEBUG)
+#log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 ao = None
 
 def runmount(mountdir, cachedir):
     global ao
-    ao = autoortho.AutoOrtho('./testfiles', cachedir)
+    #ao = autoortho.AutoOrtho('./testfiles', cachedir)
+    #autoortho.run(ao, mountdir, True)
+
+    if platform.system() == 'Windows':
+        ao = autoortho_winfsp.main('./testfiles', mountdir)
+        print("Exiting WinFSP mount")
+    else:
+        ao = autoortho_fuse.AutoOrtho('./testfiles', cachedir)
+        autoortho_fuse.run(ao, mountdir)
+        print("Exiting FUSE mount")
+    
     #if os.path.isdir(ao.cache_dir):
     #    print("Removing cache dir")
     #    shutil.rmtree(ao.cache_dir)
     #shutil.rmtree(ao.cache_dir)
     #ao.cache_dir = os.path.join(mountdir, "cache")
     #autoortho.FUSE(ao, mountdir, nothreads=True, foreground=True, allow_other=True, max_readahead=0)
-    autoortho.run(ao, mountdir, True)
-    print("Exiting FUSE mount")
+    
     print("Shutting down mount fixture")
     #if os.path.isdir(ao.cache_dir):
     #    print("Removing cache dir")
     #    shutil.rmtree(ao.cache_dir)
 
-@pytest.fixture
-def mount(tmpdir):
+@pytest.fixture(scope="module")
+def mount():
+
+    tmpname = ''.join(random.choice(string.ascii_lowercase) for x in range(8))
+
+    print(f"TMPNAME: {tmpname}")
+    
+    tmpdir = os.path.join(tempfile.gettempdir(), f"atest_{tmpname}")
+    os.makedirs(tmpdir)
+
+    #tmpdir = tempfile.mkdtemp()
     mountdir = str(os.path.join(tmpdir, 'mount'))
 
     if platform.system() != "Windows":
         os.makedirs(mountdir)
-    cachedir = os.path.join(tmpdir, 'cache')
-    t = threading.Thread(daemon=True, target=runmount, args=(mountdir, cachedir))
-    t.start()
-    time.sleep(1)
-    
-    yield mountdir
-    
-    files = os.listdir(mountdir)
-    print(files)
-    if platform.system() != "Windows":
-        subprocess.check_call(f"umount {mountdir}", shell=True)
-    time.sleep(1)
+        print(os.listdir(mountdir))
 
+    #cachedir = os.path.join(tmpdir, 'cache')
+    cachedir = "./cache"
 
-def test_stuff():
+    try:
+        stats = aostats.AOStats()
+        stats.start()
+        t = threading.Thread(daemon=True, target=runmount, args=(mountdir, cachedir))
+        t.start()
+        time.sleep(1)
+        #print(os.listdir(mountdir))
+        
+        yield mountdir
+
+    finally:
+        stats.stop()
+        #files = os.listdir(mountdir)
+        #print(files)
+        if platform.system() != "Windows":
+            subprocess.check_call(f"umount {mountdir}", shell=True)
+            subprocess.call(f"umount -f AutoOrtho", shell=True)
+        time.sleep(1)
+        shutil.rmtree(tmpdir)
+
+def _test_stuff():
     assert 1 == 1
 
-def _test_autoortho(mount):
+
+def test_read_dsf(mount):
+    dsf_file = './testfiles/dsftest/+00-051.dsf'
+    ter_dir = './testfiles/dsftest/' 
+
+    with open(dsf_file, encoding='utf-8', errors='ignore') as h:
+        ter_files = re.findall("terrain\W?\d+[-_]\d+[-_]\D*\d+\w*\.ter", h.read())
+
+
+    dds_full_paths = set()
+    log.info(f"DSF: found {len(ter_files)} terrain files.  Parsing ...")
+    for t in ter_files:
+        ter_path = os.path.join(ter_dir, t) 
+        #log.debug(f"Checking {ter_path}...")
+        with open(ter_path) as h:
+            dds_files = re.findall("\S*/\d+[-_]\d+[-_]\D*\d+.dds", h.read())
+            log.info(f"Found: {dds_files}")
+            for dds in dds_files:
+                dds_full_paths.add(
+                    os.path.join(mount, os.path.basename(dds))
+                ) 
+
+    print(dds_full_paths)
+    print(len(dds_full_paths))
+
+    #CFG.pydds.compressor = "STB"
+    for dds in dds_full_paths:
+        rc = subprocess.call(
+            f"identify {dds}",
+            shell=True
+        )
+
+
+    log.info(f"FINAL STATS: ID: {aostats.STATS}")
+    assert True == False
+
+
+def test_autoortho(mount):
+    print(mount)
+
     things = os.listdir(mount)
     print(things)
     
@@ -71,7 +150,7 @@ def _test_autoortho(mount):
     assert rc == 0
 
 
-def _test_read_header(mount):
+def test_read_header(mount):
     things = os.listdir(mount)
   
     testfile = f"{mount}/24832_12416_BI16.dds"
@@ -94,7 +173,7 @@ def _test_read_header(mount):
 
     assert rc == 0
 
-def _test_read_mip0(mount):
+def test_read_mip0(mount):
     things = os.listdir(mount)
   
     testfile = f"{mount}/24832_12416_BI16.dds"
@@ -111,7 +190,7 @@ def _test_read_mip0(mount):
         data = h.read(blocksize)
         data = h.read(blocksize)
 
-    assert True == False
+    #assert True == False
 
     rc = subprocess.call(
         f"identify {testfile}", 
@@ -120,7 +199,7 @@ def _test_read_mip0(mount):
 
     assert rc == 0
 
-def _test_read_mip1(mount, tmpdir):
+def test_read_mip1(mount, tmpdir):
     things = os.listdir(mount)
   
     testfile = f"{mount}/24832_12416_BI16.dds"
@@ -164,9 +243,9 @@ def _test_read_mip1(mount, tmpdir):
     )
     assert rc == 0
 
-    assert True == False
+    #assert True == False
 
-def test_mip_4_read(mount, tmpdir):
+def _test_mip_4_read(mount, tmpdir):
     global ao
     testfile = os.path.join(mount, "24832_12416_BI16.dds")
     with open(testfile, "rb") as h:
@@ -214,11 +293,12 @@ def test_mip_4_read(mount, tmpdir):
 #     assert testdata[128:150] == data[128:150]
 # 
 #     assert hashlib.md5(testdata).hexdigest() == hashlib.md5(data).hexdigest()
-    assert True == False
+    #assert True == False
     
 
 
-def _test_middle_read(mount, tmpdir):
+
+def test_middle_read(mount, tmpdir):
     testfile = os.path.join(mount, "24832_12416_BI16.dds")
     # rc = subprocess.call(
     #     f"identify -verbose {testfile}", 
@@ -255,17 +335,20 @@ def _test_middle_read(mount, tmpdir):
     assert testdata[128:150] == data[128:150]
 
     assert hashlib.md5(testdata).hexdigest() == hashlib.md5(data).hexdigest()
-    assert True == False
+    #assert True == False
 
-def _test_multi_read(mount, tmpdir):
+def test_multi_read(mount, tmpdir):
     testfile = f"{mount}/24832_12416_BI16.dds"
+    header1 = "aaa"
+    header2 = "zzz"
     with open(testfile, "rb") as h:
         header1 = h.read(128)
         print(header1)
 
         with open(testfile, "rb") as h2:
-            header2 = h.read(128)
+            header2 = h2.read(128)
             print(header2)
 
 
-    assert True == False
+    assert header1 == header2
+    #assert True == False

@@ -1,5 +1,5 @@
 winfspy
-pillow >= 8.3.0
+pillow-simd
 psutil
 pysimplegui
 Flask
