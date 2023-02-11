@@ -16,8 +16,11 @@ import tempfile
 
 from fuse import fuse_exit
 
+if platform.system() == 'Windows':
+    import autoortho_winfsp
+else:
+    import autoortho_fuse
 import aostats
-import autoortho_fuse
 from aoconfig import CFG
 
 import logging
@@ -32,9 +35,14 @@ def runmount(mountdir, cachedir):
     global ao
     #ao = autoortho.AutoOrtho('./testfiles', cachedir)
     #autoortho.run(ao, mountdir, True)
-    
-    ao = autoortho_fuse.AutoOrtho('./testfiles', cachedir)
-    autoortho_fuse.run(ao, mountdir, run_flighttrack=False)
+
+    if platform.system() == 'Windows':
+        ao = autoortho_winfsp.main('./testfiles', mountdir)
+        print("Exiting WinFSP mount")
+    else:
+        ao = autoortho_fuse.AutoOrtho('./testfiles', cachedir)
+        autoortho_fuse.run(ao, mountdir)
+        print("Exiting FUSE mount")
     
     #if os.path.isdir(ao.cache_dir):
     #    print("Removing cache dir")
@@ -43,7 +51,6 @@ def runmount(mountdir, cachedir):
     #ao.cache_dir = os.path.join(mountdir, "cache")
     #autoortho.FUSE(ao, mountdir, nothreads=True, foreground=True, allow_other=True, max_readahead=0)
     
-    print("Exiting FUSE mount")
     print("Shutting down mount fixture")
     #if os.path.isdir(ao.cache_dir):
     #    print("Removing cache dir")
@@ -64,8 +71,7 @@ def mount():
 
     if platform.system() != "Windows":
         os.makedirs(mountdir)
-
-    print(os.listdir(mountdir))
+        print(os.listdir(mountdir))
 
     #cachedir = os.path.join(tmpdir, 'cache')
     cachedir = "./cache"
@@ -76,7 +82,7 @@ def mount():
         t = threading.Thread(daemon=True, target=runmount, args=(mountdir, cachedir))
         t.start()
         time.sleep(1)
-        print(os.listdir(mountdir))
+        #print(os.listdir(mountdir))
         
         yield mountdir
 
