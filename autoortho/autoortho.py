@@ -19,6 +19,7 @@ else:
 
 import aoconfig
 import aostats
+import flighttrack
 
 def main():
 
@@ -69,9 +70,14 @@ def main():
     print("root:", root)
     print("mountpoint:", mountpoint)
 
-
     stats = aostats.AOStats()
     stats.start()
+
+    ftrack = threading.Thread(
+        target=flighttrack.run,
+        daemon=True
+    )
+    ftrack.start()
 
     winfuse = False
     if platform.system() == 'Windows':
@@ -125,6 +131,7 @@ def main():
                 nothreads
         )
 
+    flighttrack.ft.stop()
     stats.stop()
 
 

@@ -418,14 +418,7 @@ class AutoOrtho(Operations):
         return 0
 
 
-def run(ao, mountpoint, nothreads=False, run_flighttrack=True):
-    if run_flighttrack:
-        appt = threading.Thread(
-            target=flighttrack.run,
-            daemon=True
-        )
-        appt.start()
-
+def run(ao, mountpoint, nothreads=False):
     log.info(f"MOUNT: {mountpoint}")
 
     FUSE(
@@ -459,6 +452,3 @@ def run(ao, mountpoint, nothreads=False, run_flighttrack=True):
         #default_permissions=True,
         #direct_io=True
     )
-
-    if run_flighttrack:
-        flighttrack.ft.stop()
