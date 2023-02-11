@@ -186,7 +186,9 @@ threading = True
         ]
 
         font = ("Helventica", 14)
-        self.window = sg.Window('AutoOrtho Setup', layout, font=font, finalize=True)
+        self.window = sg.Window('AutoOrtho Setup', layout, font=font,
+                finalize=True, icon=os.path.join(CUR_PATH, 'imgs',
+                'ao-icon.png'))
 
 
         #print = lambda *args, **kwargs: window['output'].print(*args, **kwargs)
