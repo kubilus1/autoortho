@@ -401,8 +401,8 @@ class DDS(Structure):
                 desired_width = self.width / ratio
                 desired_height = self.height / ratio
 
-                if True:
-                #if not self.mipmap_list[mipmap].retrieved:
+                #if True:
+                if not self.mipmap_list[mipmap].retrieved:
                 
                     # Only squares for now
                     reduction_ratio = int(img_width // desired_width)

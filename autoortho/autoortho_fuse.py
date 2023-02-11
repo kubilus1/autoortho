@@ -394,7 +394,9 @@ class AutoOrtho(Operations):
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            self.tc._close_tile(f"{row}_{col}_{maptype}_{zoom}")
+            self.tc._close_tile(row, col, maptype, zoom)
+
+            #self.tc._close_tile(f"{row}_{col}_{maptype}_{zoom}")
             #t = self.tc._get_tile(row, col, maptype, zoom) 
             #t.refs -= 1
             #with self.path_condition:
@@ -416,14 +418,7 @@ class AutoOrtho(Operations):
         return 0
 
 
-def run(ao, mountpoint, nothreads=False, run_flighttrack=True):
-    if run_flighttrack:
-        appt = threading.Thread(
-            target=flighttrack.run,
-            daemon=True
-        )
-        appt.start()
-
+def run(ao, mountpoint, nothreads=False):
     log.info(f"MOUNT: {mountpoint}")
 
     FUSE(
@@ -457,6 +452,3 @@ def run(ao, mountpoint, nothreads=False, run_flighttrack=True):
         #default_permissions=True,
         #direct_io=True
     )
-
-    if run_flighttrack:
-        flighttrack.ft.stop()
