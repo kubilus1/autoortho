@@ -102,6 +102,8 @@ class OrthoRegion(object):
                 # Found orthos
                 self.ortho_size += int(a.get('size'))
                 self.ortho_urls.append(a.get('browser_download_url'))
+                if a.get('download_count') >= self.download_count:
+                    self.download_count = a.get('download_count')
             elif asset_name.startswith("y_"):
                 # Found overlays
                 self.overlay_size += int(a.get('size'))
@@ -111,8 +113,6 @@ class OrthoRegion(object):
             
             self.size += a.get('size')
 
-            if a.get('download_count') >= self.download_count:
-                self.download_count = a.get('download_count')
 
 
     def check_local(self):
