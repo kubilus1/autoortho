@@ -1,5 +1,8 @@
 # FAQ and Troubleshooting
 
+## On Linux this does not start/gives a FUSE error
+Make sure that your `/etc/fuse.conf` files is set to `user_allow_other`.  You may need to uncomment a line.
+
 ## I get an error like `Failed to find resource '../textures/22304_34976_BI16.dds', referenced from file 'Custom Scenery/z_eur_11/terrain/'.`
 
 What's happening is that X-Plane has found a terrain file, but is not finding a linked texture.  This could be caused by a few issues:

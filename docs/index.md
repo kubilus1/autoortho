@@ -4,19 +4,17 @@
 Assumptions:
 
 * You have installed X-Plane 11.50+
-* You have a recent version of Python and pip installed
 * You have a reasonably fast CPU and broadband internet 
+* FUSE is installed and setup (Enable `user_allow_other` in /etc/fuse.conf, if not already the case.) 
 
 Steps:
 
-1. Download the most recent release of this project: https://github.com/kubilus1/autoortho/releases
-2. Extract to a convenient location
-3. Enter the directory you extracted
-4. Install all pre-reqs with `python3 -m pip install -r requirements.txt`
-5. Run the project with `python3 autoortho`
+1. Download the most recent `autoortho.bin` release of this project: https://github.com/kubilus1/autoortho/releases
+3. Place the downloaded file somewhere sensible and make executable `chmod +x autoortho.bin` 
+4. Run the program `./autoortho.bin`
 6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 7. Download and setup an ortho set from the 'Scenery' tab.
-8. Click 'Fly' to run the program
+8. Click 'Run' to run the program
 9. Configure your scenery_packs.ini file appropriately
 10. Run X-Plane and choose a location for an ortho set you have downloaded
 
@@ -27,17 +25,15 @@ Assumptions:
 * You are running 64bit Windows 10+
 * You have install X-Plane 11.50+
 * You have setup and configured [WinFSP](https://github.com/winfsp/winfsp)
-* You have installed a recent version of [Python](https://www.python.org/downloads/)
 
 Steps:
 
-1. Download the most recent release of this project: https://github.com/kubilus1/autoortho/releases
-2. Extract to a convenient location
-3. Enter the directory you extracted
-4. Run the project by executing `run.bat`
+1. Download the most recent `autoortho.exe` release of this project: https://github.com/kubilus1/autoortho/releases
+2. Place `autoortho.exe` in a sensible location
+4. Run the program
 5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 6. Download and setup an ortho set from the 'Scenery' tab.
-7. Click 'Fly' to run the program
+7. Click 'Run' to run the program
 8. Configure your scenery_packs.ini file appropriately 
 9. Run X-Plane and choose a location for an ortho set you have downloaded
 
@@ -122,10 +118,6 @@ fine, but this is not how I use this project, so it's not my primary concern.
 * ~Allow for overriding the satellite source type.  Since this pulls on the fly, we aren't stuck with what was setup initially with Ortho4XP.~
 * ~Package a set of DSF files to get started with~
 * See if we can auto-arrange scenery_packs.ini files
-
-# Other projects and links
-* (Ortho4XP) [https://github.com/oscarpilote/Ortho4XP]
-* (Slippy Mapy Tilenames) [https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames]
 
 # Warnings, Warranty, etc
 
