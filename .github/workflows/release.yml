@@ -19,7 +19,7 @@ jobs:
     - name: Build
       run: |
         make autoortho.bin
-        mv autoortho.bin auotortho_linux.bin
+        mv autoortho.bin autoortho_linux.bin
 
     - name: Release
       uses: softprops/action-gh-release@v1
