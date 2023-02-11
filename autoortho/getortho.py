@@ -333,6 +333,8 @@ class Tile(object):
     width = 16
     height = 16
 
+    max_mipmap = 4
+
     priority = -1
     #tile_condition = None
     _lock = None
@@ -419,7 +421,7 @@ class Tile(object):
     def _get_quick_zoom(self, quick_zoom=0):
         if quick_zoom:
             # Max difference in steps this tile can support
-            max_diff = min((self.zoom - int(quick_zoom)), 4)
+            max_diff = min((self.zoom - int(quick_zoom)), self.max_mipmap)
             # Minimum zoom level allowed
             min_zoom = max((self.zoom - max_diff), self.min_zoom)
             
@@ -427,7 +429,7 @@ class Tile(object):
             quick_zoom = max(int(quick_zoom), min_zoom)
 
             # Effective difference in steps we will use
-            zoom_diff = min((self.zoom - int(quick_zoom)), 4)
+            zoom_diff = min((self.zoom - int(quick_zoom)), self.max_mipmap)
 
             col = int(self.col/pow(2,zoom_diff))
             row = int(self.row/pow(2,zoom_diff))
@@ -709,7 +711,10 @@ class Tile(object):
 
     #@profile
     def get_mipmap(self, mipmap=0):
-        
+       
+        if mipmap > self.max_mipmap:
+            mipmap = self.max_mipmap
+
         new_im = self.get_img(mipmap)
         if not new_im:
             log.debug("No updates, so no image generated")
@@ -800,6 +805,8 @@ class TileCacher(object):
     hits = 0
     misses = 0
 
+    enable_cache = False
+
     def __init__(self, cache_dir='.cache'):
         if MEMTRACE:
             tracemalloc.start()
@@ -822,19 +829,26 @@ class TileCacher(object):
         tile_id = f"{row}_{col}_{map_type}_{zoom}"
         return tile_id
 
+    def show_stats(self):
+        process = psutil.Process(os.getpid())
+        cur_mem = process.memory_info().rss
+        log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+
     def clean(self):
         memlimit = pow(2,30) * 2
         log.info(f"Started tile clean thread.  Mem limit {memlimit}")
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
-            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-            log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+
+            self.show_stats()
             time.sleep(15)
             
-            continue
+            if not self.enable_cache:
+                continue
 
-            while len(self.tiles) >= 40 and cur_mem > memlimit:
+            while len(self.tiles) >= 25 and cur_mem > memlimit:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
@@ -898,6 +912,10 @@ class TileCacher(object):
 
             t.refs -= 1
 
+            if self.enable_cache:
+                log.debug(f"Cache enabled.  Delay tile close for {tile_id}")
+                return True
+
             if t.refs <= 0:
                 log.debug(f"No more refs for {tile_id} closing...")
                 t = self.tiles.pop(tile_id)
@@ -905,6 +923,6 @@ class TileCacher(object):
                 t = None
                 del(t)
             else:
-                log.info(f"Still have {t.refs} refs for {tile_id}")
+                log.debug(f"Still have {t.refs} refs for {tile_id}")
 
         return True
