@@ -34,7 +34,7 @@ from winfspy.plumbing.security_descriptor import SecurityDescriptor
 import getortho
 from aoconfig import CFG
 from winfsp_shim import OperationsShim
-
+import flighttrack
 
 def operation(fn):
     """Decorator for file system operations.
@@ -168,6 +168,8 @@ class AutoorthoOperations(OperationsShim):
         #self.biglock = True
         self.biglock = False
 
+        self.startup = True
+
     # Winfsp operations
 
     @cached_property
@@ -237,6 +239,12 @@ class AutoorthoOperations(OperationsShim):
         h = -1
         m = self.dds_re.match(path)
         if m:
+            if self.startup:
+                # First matched file
+                log.info("First matched DDS file detected.  Start flight tracker.")
+                flighttrack.ft.start()
+                self.startup = False
+
             #print(f"MATCH! {path}")
             row, col, maptype, zoom = m.groups()
             row = int(row)
