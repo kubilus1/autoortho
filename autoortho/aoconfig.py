@@ -13,8 +13,7 @@ import configparser
 
 
 import logging
-logging.basicConfig()
-log = logging.getLogger('log')
+log = logging.getLogger(__name__)
 
 import PySimpleGUI as sg
 #print = sg.Print
@@ -49,6 +48,8 @@ hide = True
 # X-Plane Custom Scenery path
 scenery_path =
 cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
+download_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")}
+log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "autoortho.log")}
 
 [autoortho]
 # Override map type with a different source

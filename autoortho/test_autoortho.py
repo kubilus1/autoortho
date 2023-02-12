@@ -24,7 +24,7 @@ import aostats
 from aoconfig import CFG
 
 import logging
-logging.basicConfig()
+#logging.basicConfig()
 log = logging.getLogger('log')
 #log.setLevel(logging.DEBUG)
 log.setLevel(logging.INFO)

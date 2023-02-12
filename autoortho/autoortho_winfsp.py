@@ -7,7 +7,6 @@ import os
 import re
 import sys
 import time
-import logging
 import argparse
 import threading
 import traceback
@@ -35,6 +34,10 @@ import getortho
 from aoconfig import CFG
 from winfsp_shim import OperationsShim
 import flighttrack
+
+import logging
+log = logging.getLogger(__name__)
+
 
 def operation(fn):
     """Decorator for file system operations.

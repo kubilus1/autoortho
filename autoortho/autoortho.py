@@ -6,20 +6,12 @@ import platform
 import argparse
 import threading
 
-import logging
-#logging.basicConfig()
-logging.basicConfig(filename='autoortho.log')
-log = logging.getLogger('log')
-log.addHandler(logging.StreamHandler())
-
-if os.environ.get('AO_DEBUG'):
-    log.setLevel(logging.DEBUG)
-else:
-    log.setLevel(logging.INFO)
-
 import aoconfig
 import aostats
 import flighttrack
+
+import logging
+log = logging.getLogger(__name__)
 
 def main():
 
