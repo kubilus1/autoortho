@@ -18,8 +18,7 @@ jobs:
 
     - name: Build
       run: |
-        make autoortho.bin
-        mv autoortho.bin autoortho_linux.bin
+        make autoortho_lin.bin
 
     - name: Release
       uses: softprops/action-gh-release@v1
@@ -47,8 +46,7 @@ jobs:
 
     - name: Build
       run: |
-        make exe
-        mv autoortho.exe autoortho_win.exe
+        make autoortho_win.exe
 
     - name: Release
       uses: softprops/action-gh-release@v1

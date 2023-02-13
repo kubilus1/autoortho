@@ -18,13 +18,13 @@ jobs:
 
     - name: Build
       run: |
-       make autoortho.bin 
+       make autoortho_lin.bin 
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: linbin
-        path: autoortho.bin
+        path: autoortho_lin.bin
 
 
   build-windows:
@@ -47,10 +47,10 @@ jobs:
 
     - name: Build
       run: |
-        make exe 
+        make autoortho_win.exe
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: winbin
-        path: autoortho.exe
+        path: autoortho_win.exe
