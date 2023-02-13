@@ -411,7 +411,7 @@ class OrthoRegion(object):
 class Downloader(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
     region_list = REGION_LIST 
-    info_cache = ".release_info"
+    info_cache = os.path.join(os.path.expanduser("~"), ".autoortho-data", ".release_info")
     
 
     def __init__(self, extract_dir, download_dir=None, noclean=False):
