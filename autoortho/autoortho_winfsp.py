@@ -175,7 +175,6 @@ class AutoorthoOperations(OperationsShim):
 
     # Winfsp operations
 
-    @cached_property
     def get_volume_info(self):
         return self._volume_info
 
