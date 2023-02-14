@@ -19,16 +19,6 @@ import flighttrack
 
 from functools import wraps, lru_cache
 
-import logging
-#logging.basicConfig()
-logging.basicConfig(filename='autoortho.log')
-log = logging.getLogger('log')
-
-if os.environ.get('AO_DEBUG'):
-    log.setLevel(logging.DEBUG)
-else:
-    log.setLevel(logging.INFO)
-
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 #from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
@@ -42,6 +32,9 @@ import socket
 import tracemalloc
 
 from aoconfig import CFG
+
+import logging
+log = logging.getLogger(__name__)
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)

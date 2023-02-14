@@ -4,15 +4,9 @@ import os
 import time
 import socket
 import threading
+from aoconfig import CFG
 import logging
-logging.basicConfig(filename='autoortho.log')
-log = logging.getLogger('log')
-
-if os.environ.get('AO_DEBUG'):
-    log.setLevel(logging.DEBUG)
-else:
-    log.setLevel(logging.INFO)
-
+log = logging.getLogger(__name__)
 
 from flask import Flask, render_template, url_for, request, jsonify
 

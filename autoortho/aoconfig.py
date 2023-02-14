@@ -10,11 +10,10 @@ import threading
 import traceback
 import subprocess
 import configparser
-
+import platform
 
 import logging
-logging.basicConfig()
-log = logging.getLogger('log')
+log = logging.getLogger(__name__)
 
 import PySimpleGUI as sg
 #print = sg.Print
@@ -49,6 +48,8 @@ hide = True
 # X-Plane Custom Scenery path
 scenery_path =
 cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
+download_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")}
+log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "autoortho.log")}
 
 [autoortho]
 # Override map type with a different source
@@ -80,6 +81,11 @@ threading = True
 
         self.running = True
         self.scenery_q = queue.Queue()
+
+        if platform.system() == 'Windows':
+            self.icon_path =os.path.join(CUR_PATH, 'imgs', 'ao-icon.ico')
+        else:
+            self.icon_path =os.path.join(CUR_PATH, 'imgs', 'ao-icon.png')
 
 
     def _check_ortho_dir(self, path):
@@ -186,7 +192,8 @@ threading = True
         ]
 
         font = ("Helventica", 14)
-        self.window = sg.Window('AutoOrtho Setup', layout, font=font, finalize=True)
+        self.window = sg.Window('AutoOrtho Setup', layout, font=font,
+                finalize=True, icon=self.icon_path)
 
 
         #print = lambda *args, **kwargs: window['output'].print(*args, **kwargs)

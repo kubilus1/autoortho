@@ -16,14 +16,6 @@ from functools import wraps, lru_cache
 
 import pydds
 
-import logging
-#logging.basicConfig()
-logging.basicConfig(filename='autoortho.log')
-log = logging.getLogger('log')
-if os.environ.get('AO_DEBUG'):
-    log.setLevel(logging.DEBUG)
-else:
-    log.setLevel(logging.INFO)
 
 import psutil
 from PIL import Image
@@ -33,6 +25,8 @@ from aostats import STATS
 
 MEMTRACE = False
 
+import logging
+log = logging.getLogger(__name__)
 
 #from memory_profiler import profile
 

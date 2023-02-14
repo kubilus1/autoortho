@@ -7,7 +7,6 @@ import os
 import re
 import sys
 import time
-import logging
 import argparse
 import threading
 import traceback
@@ -34,6 +33,10 @@ from winfspy.plumbing.security_descriptor import SecurityDescriptor
 import getortho
 from aoconfig import CFG
 from winfsp_shim import OperationsShim
+import flighttrack
+
+import logging
+log = logging.getLogger(__name__)
 
 
 def operation(fn):
@@ -168,9 +171,10 @@ class AutoorthoOperations(OperationsShim):
         #self.biglock = True
         self.biglock = False
 
+        self.startup = True
+
     # Winfsp operations
 
-    @cached_property
     def get_volume_info(self):
         return self._volume_info
 
@@ -237,6 +241,12 @@ class AutoorthoOperations(OperationsShim):
         h = -1
         m = self.dds_re.match(path)
         if m:
+            if self.startup:
+                # First matched file
+                log.info("First matched DDS file detected.  Start flight tracker.")
+                flighttrack.ft.start()
+                self.startup = False
+
             #print(f"MATCH! {path}")
             row, col, maptype, zoom = m.groups()
             row = int(row)

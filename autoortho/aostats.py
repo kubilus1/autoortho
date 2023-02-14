@@ -1,14 +1,9 @@
 import os
 import time
 import threading
+from aoconfig import CFG
 import logging
-logging.basicConfig(filename='autoortho.log')
-log = logging.getLogger('log')
-
-if os.environ.get('AO_DEBUG'):
-    log.setLevel(logging.DEBUG)
-else:
-    log.setLevel(logging.INFO)
+log = logging.getLogger(__name__)
 
 STATS={}
 
