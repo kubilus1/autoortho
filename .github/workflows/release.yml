@@ -48,7 +48,7 @@ jobs:
     - name: Build
       run: |
         make autoortho_win.exe
-        zip autoortho_win.zip autoortho_win.exe
+        7z a autoortho_win.zip autoortho_win.exe
 
     - name: Release
       uses: softprops/action-gh-release@v1
