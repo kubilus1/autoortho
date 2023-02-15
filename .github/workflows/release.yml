@@ -23,7 +23,7 @@ jobs:
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: autoortho_linux.bin
+        files: autoortho_lin.bin
 
 
   build-windows:
