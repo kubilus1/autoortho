@@ -198,7 +198,7 @@ class AutoorthoOperations(BaseFileSystemOperations):
     get_size_file_cnt = 0
     get_size_tile_cnt = 0
 
-    def __init__(self, root, volume_label, tile_cache, read_only=False):
+    def __init__(self, root, volume_label, tile_cache):
         super().__init__()
         if len(volume_label) > 31:
             raise ValueError("`volume_label` must be 31 characters long max")
@@ -213,7 +213,6 @@ class AutoorthoOperations(BaseFileSystemOperations):
             "volume_label": volume_label,
         }
 
-        self.read_only = read_only
         self.root = root
         self._root_path = PureWindowsPath("/")
         self.root_security_descr = SecurityDescriptor.from_string("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)")
@@ -362,6 +361,7 @@ def create_file_system(
         str(mountpoint),
         operations,
         sector_size=512,
+        read_only_volume = 1,
         sectors_per_allocation_unit=1,
         volume_creation_time=filetime_now(),
         volume_serial_number=0,
