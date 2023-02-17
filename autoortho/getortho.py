@@ -351,6 +351,7 @@ class Tile(object):
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
         self.refs = 0
+        self.cache_dds = CFG.config['winfsp'].getboolean("cache_dds", fallback = False)
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -718,7 +719,14 @@ class Tile(object):
         start_time = time.time()
         try:
             #with self.tile_lock:
-            self.dds.gen_mipmaps(new_im, mipmap) 
+            if self.cache_dds and mipmap == 0:
+                self.dds.gen_mipmaps(new_im, 0, 99)    # it's cheap to create full mipmaps
+                dds_name = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}{self.zoom}.dds")
+                self.dds.write(dds_name)
+                self.priority = 0   # no longer of use in the cache
+                log.info(f"DDS: {dds_name} written")
+            else:
+                self.dds.gen_mipmaps(new_im, mipmap)
         finally:
             new_im.close()
 
