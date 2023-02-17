@@ -66,7 +66,7 @@ compressor = ISPC
 threading = True
 
 [winfsp]
-
+cache_dds = False
 """
 
     def __init__(self):
