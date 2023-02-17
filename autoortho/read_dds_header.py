@@ -28,8 +28,7 @@ class DDS(Structure):
 
     def read(self, fn):
         fh = open(fn, "rb")
-        #len = fh.readinto(self)
-        print(len)
+        len = fh.readinto(self)
  
         print(f"size:\t{self.size}")
         print(f"height:\t{self.height}")
