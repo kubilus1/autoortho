@@ -247,11 +247,8 @@ class OrthoRegion(object):
             log.info(f"Detected existing scenery dirs for {self.region_id}.  Cleanup first")
             self.cur_activity['status'] = f"Detected existing scenery dirs for {self.region_id}.  Cleanup first."
             for o in self.ortho_dirs:
-                try:
+                if os.path.exists(o):
                     shutil.rmtree(o)
-                except FileNotFoundError:
-                    # directory is not present
-                    pass
 
         log.info(f"Ready to extract archives for {self.region_id} v{self.latest_version}!")
         self.cur_activity['status'] = f"Extracting archives for {self.region_id} v{self.latest_version}"
