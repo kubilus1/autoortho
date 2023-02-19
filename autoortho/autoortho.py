@@ -71,8 +71,8 @@ def main():
     )
     ftrack.start()
 
-    winfuse = False
-    if platform.system() == 'Windows':
+    winfuse = True
+    if platform.system() == 'Windows' and not winfuse:
         log.info("Running in Windows WinFSP mode.")
         import autoortho_winfsp
         autoortho_winfsp.main(root, mountpoint)

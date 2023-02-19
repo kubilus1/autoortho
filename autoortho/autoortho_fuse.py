@@ -71,8 +71,8 @@ class AutoOrtho(Operations):
 
     fh = 1000
 
-    default_uid = 0
-    default_gid = 0
+    default_uid = -1
+    default_gid = -1
 
     startup = True
 
@@ -133,7 +133,7 @@ class AutoOrtho(Operations):
             log.debug(f"GETATTR: {path}: MATCH!")
             if self.startup:
                 # First matched file
-                log.info("First matched DDS file detected.  Start flight tracker.")
+                log.info(f"First matched DDS file {path} detected.  Start flight tracker.")
                 flighttrack.ft.start()
                 self.startup = False
 
@@ -210,6 +210,7 @@ class AutoOrtho(Operations):
     def mkdir(self, path, mode):
         return os.mkdir(self._full_path(path), mode)
 
+    @lru_cache
     def statfs(self, path):
         log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
@@ -420,14 +421,15 @@ def run(ao, mountpoint, nothreads=False):
         nothreads=nothreads, 
         foreground=True, 
         allow_other=True,
-        #auto_cache=True,
+        auto_cache=True,
         #max_read=16384,
         #kernel_cache=True,
-        #uid=-1,
-        #gid=-1,
+        uid=-1,
+        gid=-1,
         #debug=True,
         #mode="0777",
         #umask="777",
+        FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
         #FileSecurity="D:P(A;;FA;;;OW)",
         #FileSecurity="D:P(A;;0x1200A9;;;WD)",
         #FileSecurity="D:P(A;OICI;FA;;;WD)(A;OICI;FA;;;BU)(A;OICI;FA;;;BA)(A;OICI;FA;;;OW)",

@@ -826,8 +826,9 @@ class TileCacher(object):
     def show_stats(self):
         process = psutil.Process(os.getpid())
         cur_mem = process.memory_info().rss
-        log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-        log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+        if self.enable_cache:
+            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.info(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
 
     def clean(self):
         memlimit = pow(2,30) * 2
