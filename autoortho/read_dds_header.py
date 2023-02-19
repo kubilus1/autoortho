@@ -31,6 +31,7 @@ class DDS(Structure):
         len = fh.readinto(self)
  
         print(f"size:\t{self.size}")
+        print(f"flags:\t{self.flags:08x}")
         print(f"height:\t{self.height}")
         print(f"width:\t{self.width}")
         print(f"pitchOrLinearSize:\t{self.pitchOrLinearSize}")
