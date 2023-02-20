@@ -9,7 +9,7 @@ Assumptions:
 
 Steps:
 
-1. Download the most recent `autoortho_lin.zip` release of this project: (https://github.com/kubilus1/autoortho/releases)
+1. Download the most recent packaged release [autoortho_lin.zip](https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_lin.zip)
 3. Extract the downloaded file somewhere sensible and make executable if needed `chmod +x autoortho_lin.bin` 
 4. Run the program `./autoortho_lin.bin`
 6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
@@ -28,7 +28,7 @@ Assumptions:
 
 Steps:
 
-1. Download the most recent `autoortho_win.zip` release of this project: (https://github.com/kubilus1/autoortho/releases)
+1. Download the most recent packaged release [autoortho_win.zip](https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_win.zip)
 2. Extract the downloaded file and place `autoortho_win.exe` in a sensible location
 4. Run the program
 5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
