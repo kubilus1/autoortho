@@ -145,6 +145,9 @@ class DDS(Structure):
         self.width = width
         self.height = height
         
+        # https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+        # pitchOrLinearSize is the total number of bytes in the top level texture for a compressed texture
+        self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * 16 
 
         #self.reserved1 = b"pydds"
         self.pfSize = 32
@@ -198,8 +201,8 @@ class DDS(Structure):
         for m in self.mipmap_list:
             log.debug(m)
         #log.debug(self.mipmap_list)
-        log.debug(self.pitchOrLinearSize)
-        #print(self.pitchOrLinearSize)
+        log.debug(self.total_size)
+        #print(self.total_size)
         log.debug(self.mipMapCount)
 
         self.lock = threading.Lock()
@@ -224,8 +227,7 @@ class DDS(Structure):
             # Make sure we complete the full file size
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
-                #h.seek(self.pitchOrLinearSize+126)
-                h.seek(self.total_size - 2)
+                h.seek(self.total_size-2)
                 h.write(b'x\00')
 
 
