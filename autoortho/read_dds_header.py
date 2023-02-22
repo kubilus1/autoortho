@@ -37,6 +37,7 @@ class DDS(Structure):
         print(f"pitchOrLinearSize:\t{self.pitchOrLinearSize}")
         print(f"fourCC:\t{self.fourCC}")
         print(f"mipMapCount:\t{self.mipMapCount}")
+        print(f"caps:\t{self.caps:08x}")
         print(f"depth:\t{self.depth}")
         
 dds = DDS()
