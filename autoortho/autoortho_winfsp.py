@@ -134,14 +134,12 @@ class OpenedTileObj:
 
     def read(self, offset, length):
         self.fsops.read_tile_cnt += 1
-        if offset == 0 and length < 40000:
-            self.fsops.read_tile_short_cnt += 1
 
         # delayed open to make get_size cheap
         if self.fh == None and self.tile == None:
             dds_name = self.fsops.cache_dir + self.file_obj.file_name
             if os.path.exists(dds_name):
-                print(f"DIRECT ACCESS: {dds_name}")
+                #print(f"DIRECT ACCESS: {dds_name}")
                 self.fh = open(dds_name, "rb")
                 self.fsops.open_tile_direct_cnt += 1
 
@@ -159,7 +157,8 @@ class OpenedTileObj:
 
     def get_size(self):
         self.fsops.get_size_tile_cnt += 1
-        return 22369744
+        return 11184936     # DXT1
+        #return 22369744
 
 class OpenedFileObj:
     def __init__(self, file_obj, handle, fsops):
@@ -324,7 +323,6 @@ class AutoorthoOperations(BaseFileSystemOperations):
         print(f" open_cache\t{self.open_tile_cache_cnt}")
         print(f" open_direct\t{self.open_tile_direct_cnt}")
         print(f" read\t\t{self.read_tile_cnt}")
-        print(f" read_short\t{self.read_tile_short_cnt}")
         print(f" get_size\t{self.get_size_tile_cnt}\n")
         print("File:")
         print(f" open\t\t{self.open_file_cnt}")
