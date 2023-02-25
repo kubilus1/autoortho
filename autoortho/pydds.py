@@ -138,7 +138,7 @@ class DDS(Structure):
     ]
 
 
-    def __init__(self, width, height, ispc=True, dxt_format="BC3"):
+    def __init__(self, width, height, ispc=True, dxt_format="BC1"):
         self.magic = b"DDS "  
         self.size = 124
         self.flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_MIPMAPCOUNT | DDSD_LINEARSIZE
