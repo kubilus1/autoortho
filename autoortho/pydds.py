@@ -150,6 +150,7 @@ class DDS(Structure):
         self.pfSize = 32
         self.pfFlags = 0x4
         self.fourCC = b'DXT5'
+        self.blocksize = 16 # DXT5
         self.caps = 0x1000 | 0x400000
         self.mipMapCount = 0
        
@@ -165,6 +166,10 @@ class DDS(Structure):
         # List of tuples [(byte_position, retrieved_bool)]
         self.mipmap_list = []
 
+        # https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+        # pitchOrLinearSize is the total number of bytes in the top level texture for a compressed texture
+        self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize 
+
         self.position = 0
 
         curbytes = 128
@@ -172,7 +177,7 @@ class DDS(Structure):
             mipmap = MipMap()
             mipmap.idx = self.mipMapCount
             mipmap.startpos = curbytes
-            curbytes += width*height
+            curbytes += (width*height >> 4) * self.blocksize
             mipmap.length = curbytes - mipmap.startpos
             mipmap.endpos = mipmap.startpos + mipmap.length 
             width = int(width/2)
@@ -180,7 +185,7 @@ class DDS(Structure):
             self.mipMapCount+=1
             self.mipmap_list.append(mipmap)
         # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
-        self.pitchOrLinearSize = curbytes 
+        self.total_size = curbytes 
         self.dump_header()
 
         for m in self.mipmap_list:
@@ -213,7 +218,7 @@ class DDS(Structure):
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
                 #h.seek(self.pitchOrLinearSize+126)
-                h.seek(self.pitchOrLinearSize-2)
+                h.seek(self.total_size - 2)
                 h.write(b'x\00')
 
 
@@ -324,8 +329,7 @@ class DDS(Structure):
 
         is_rgba = True
         
-        blocksize = 16
-        dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
+        dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize
         
         outdata = create_string_buffer(dxt_size)
         
