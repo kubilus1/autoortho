@@ -23,7 +23,7 @@ import downloader
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-class CFGParser:
+class SectionParser:
     true = ['true','1', 'yes', 'on']
     false = ['false', '0', 'no', 'off']
 
@@ -33,6 +33,7 @@ class CFGParser:
                 v = True
             elif v.lower() in self.false:
                 v = False
+
             self.__dict__.update({k:v})
 
     def __repr__(self):
@@ -102,7 +103,7 @@ class ConfigUI(object):
         scenery_path = self.cfg.paths.scenery_path
         showconfig = self.cfg.general.showconfig
         maptype = self.cfg.autoortho.maptype_override
-        maptypes = [None, 'BI', 'NAIP', 'Arc', 'EOX', 'USGS', 'Firefly'] 
+        maptypes = ['', 'BI', 'NAIP', 'Arc', 'EOX', 'USGS', 'Firefly'] 
 
         sg.theme('DarkAmber')
 
@@ -418,8 +419,9 @@ threading = True
     def get_config(self):
         # Pull info from ConfigParser object into AOConfig
 
-        config_dict = {sect: CFGParser(**dict(self.config.items(sect))) for sect in
+        config_dict = {sect: SectionParser(**dict(self.config.items(sect))) for sect in
                 self.config.sections()}
+        #pprint.pprint(config_dict)
         self.__dict__.update(**config_dict)
 
         self.z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
@@ -443,6 +445,8 @@ threading = True
         for sect in self.config.sections():
             foo = self.__dict__.get(sect)
             for k,v in foo.__dict__.items():
+                if k.startswith('#'):
+                    continue
                 self.config[sect][k] = str(v)
 
 CFG = AOConfig()
