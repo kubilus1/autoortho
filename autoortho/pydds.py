@@ -15,7 +15,6 @@ from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
-
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
     print("Linux detected")
@@ -322,7 +321,7 @@ class DDS(Structure):
         self.header.write(self)
 
     #@profile 
-    def compress(self, width, height, data):
+    def compress(self, width, height, length_only, data):
         if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
             log.debug(f"Compressed images must have dimensions that are multiples of 4. We got {width}x{height}")
             return None
@@ -338,6 +337,10 @@ class DDS(Structure):
         #bio.write(b'\x00'*dxt_size)
         #outdata = bio.getbuffer().tobytes()
 
+        if length_only:
+            height = (length_only * 16) // (width * self.blocksize)
+            height = max(4, ((height + 3) // 4) * 4) 
+            #print(f"compressing partial height: {height}")
 
         if self.ispc:
             s = rgba_surface()
@@ -380,7 +383,7 @@ class DDS(Structure):
         return outdata
 
     #@profile
-    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0):
+    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0, mm0_partial = 0):
     
         #if maxmipmaps <= len(self.mipmap_list):
         #    maxmipmaps = len(self.mipmap_list)
@@ -418,9 +421,12 @@ class DDS(Structure):
                     imgdata = timg.tobytes()
                     width, height = timg.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
-                    
+                    min_size = 0
+                    if startmipmap == 0 and maxmipmaps == 1 and mm0_partial:    # sanity check
+                        min_size = mm0_partial
+
                     try:
-                        dxtdata = self.compress(width, height, imgdata)
+                        dxtdata = self.compress(width, height, min_size, imgdata)
                     finally:
                         pass
                         timg.close()
@@ -468,7 +474,6 @@ def main():
     img = Image.open(inimg)
    
     to_dds(img, outimg)
-
 
 if __name__ == "__main__":
     main()
