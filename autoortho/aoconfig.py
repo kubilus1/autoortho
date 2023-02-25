@@ -16,7 +16,6 @@ import logging
 log = logging.getLogger(__name__)
 
 import PySimpleGUI as sg
-#print = sg.Print
 
 import downloader
 
