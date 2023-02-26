@@ -9,6 +9,9 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
 
+    env:
+      DISPLAY: :0
+
     steps:
     - uses: actions/checkout@v3
    
