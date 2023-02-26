@@ -145,10 +145,6 @@ class DDS(Structure):
         self.width = width
         self.height = height
 
-        # https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
-        # pitchOrLinearSize is the total number of bytes in the top level texture for a compressed texture
-        self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * 16
-
         #self.reserved1 = b"pydds"
         self.pfSize = 32
         self.pfFlags = 0x4
