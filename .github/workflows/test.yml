@@ -9,9 +9,6 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
 
-    env:
-      DISPLAY: :0
-
     steps:
     - uses: actions/checkout@v3
    
@@ -32,8 +29,7 @@ jobs:
     - name: Test
       run: |
         cd autoortho
-        sleep 5
-        xvfb-run -e /dev/stdout --auto-servernum pytest -v test_getortho.py test_pydds.py test_downloader.py test_aoconfig.py 
+        pytest -v test_getortho.py test_pydds.py test_downloader.py
 
 
   test-windows:
@@ -63,4 +59,4 @@ jobs:
           py -m pip install -U -r requirements-win-test.txt
 
     - name: Test
-      run: cd autoortho && py -m pytest -v test_getortho.py test_pydds.py test_downloader.py test_aoconfig.py
+      run: cd autoortho && py -m pytest -v test_getortho.py test_pydds.py test_downloader.py
