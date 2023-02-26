@@ -32,6 +32,7 @@ jobs:
     - name: Test
       run: |
         cd autoortho
+        sleep 5
         xvfb-run -e /dev/stdout --auto-servernum pytest -v test_getortho.py test_pydds.py test_downloader.py test_aoconfig.py 
 
 
