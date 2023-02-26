@@ -53,15 +53,18 @@ class ConfigUI(object):
     show_errs = []
     window = None
     running = False
+    ready = None
 
     def __init__(self, cfg):
+        self.ready = threading.Event()
+        self.ready.clear()
+
         self.cfg = cfg
         self.dl = downloader.Downloader(self.cfg.paths.scenery_path)
 
         if self.cfg.general.gui:
             sg.theme('DarkAmber')
 
-        self.running = True
         self.scenery_q = queue.Queue()
 
         if platform.system() == 'Windows':
@@ -178,7 +181,9 @@ class ConfigUI(object):
 
         close = False
 
-        while True:
+        self.ready.set()
+        self.running = True
+        while self.running:
             event, values = self.window.read(timeout=100)
             #log.info(f'VALUES: {values}')
             #print(f"VALUES {values}")
@@ -223,6 +228,9 @@ class ConfigUI(object):
         if close:
             sys.exit(0)
 
+    def stop(self):
+        self.running = False
+        self.window.close()
 
     def scenery_setup(self):
 
@@ -285,7 +293,7 @@ class ConfigUI(object):
 
     def save(self):
         # Pull info from UI into AOConfig object and save config
-
+        self.ready.clear()
         event, values = self.window.read(timeout=10)
         #print(f"Reading values: {values}")
         #print(f"Reading events: {event}")
@@ -298,6 +306,7 @@ class ConfigUI(object):
             if cfgsection:
                 cfgsection.__dict__[k] = v 
         self.cfg.save()
+        self.ready.set()
         return
 
 

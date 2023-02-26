@@ -1,11 +1,27 @@
 import os
+import time
 import pytest
+import threading
 
 import aoconfig
 
 @pytest.fixture
 def cfg(tmpdir):
     return aoconfig.AOConfig(os.path.join(tmpdir, '.aocfg'))
+
+
+
+@pytest.fixture
+def cfgui(tmpdir):
+    cfg = aoconfig.AOConfig(os.path.join(tmpdir, '.aocfg'))
+    cfgui = aoconfig.ConfigUI(cfg)
+    t = threading.Thread(daemon=True, target=cfgui.ui_loop)
+    t.start()
+    cfgui.ready.wait()
+
+    yield cfgui
+    cfgui.stop()
+    t.join()
 
 
 def test_cfg_init(cfg):
@@ -36,6 +52,19 @@ def test_load(cfg):
     assert cfg.test.foo == 'bar'
 
 
+def find_in_file(filename, line):
+    lines = []
+    with open(filename, 'r') as h:
+        lines = h.readlines()
+
+    found = False
+    for l in lines:
+        if l == line:
+            found = True
+
+    return found    
+
+
 def test_save(cfg):
 
     assert cfg.general.gui == True
@@ -43,14 +72,14 @@ def test_save(cfg):
     cfg.general.gui = False
     cfg.save()
 
-    lines = []
-    with open(cfg.conf_file, 'r') as h:
-        lines = h.readlines()
+    assert find_in_file(cfg.conf_file, "gui = False\n")
 
-    found = False
-    for l in lines:
-        if l == "gui = False\n":
-            found = True
 
-    assert found
-
+def test_ui(cfgui):
+    # Update config
+    cfgui.window["maptype_override"].update("USGS")
+    cfgui.window["Save"].click()
+    time.sleep(0.1)
+    cfgui.ready.wait()
+    assert find_in_file(cfgui.cfg.conf_file, "maptype_override = USGS\n")
+    assert cfgui.cfg.autoortho.maptype_override == "USGS"
