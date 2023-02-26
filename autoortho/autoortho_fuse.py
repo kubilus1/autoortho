@@ -19,6 +19,7 @@ import flighttrack
 
 from functools import wraps, lru_cache
 
+#os.environ['FUSE_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows', 'dokanfuse2.dll')
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 #from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
@@ -176,9 +177,9 @@ class AutoOrtho(Operations):
 
         return attrs
 
-    @lru_cache
+    #@lru_cache
     def readdir(self, path, fh):
-        log.debug(f"READDIR: {path}")
+        log.info(f"READDIR: {path}")
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -229,6 +230,7 @@ class AutoOrtho(Operations):
                     'f_frsize':1024, 
                     'f_namemax':1024
             }
+            stats = {}
             return stats
             # st = os.stat(full_path)
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
@@ -311,6 +313,8 @@ class AutoOrtho(Operations):
     #@lru_cache
     def read(self, path, length, offset, fh):
         log.debug(f"READ: {path} {offset} {length} {fh}")
+        if length > 32768:
+            log.info(f"READ: {path} {offset} {length} {fh}")
         data = None
         
         #full_path = self._full_path(path)
@@ -421,7 +425,8 @@ def run(ao, mountpoint, nothreads=False):
         nothreads=nothreads, 
         foreground=True, 
         allow_other=True,
-        auto_cache=True,
+        #auto_cache=True,
+        #max_read=32768,
         #max_read=16384,
         #kernel_cache=True,
         uid=-1,
@@ -429,7 +434,7 @@ def run(ao, mountpoint, nothreads=False):
         #debug=True,
         #mode="0777",
         #umask="777",
-        FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
+        #FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
         #FileSecurity="D:P(A;;FA;;;OW)",
         #FileSecurity="D:P(A;;0x1200A9;;;WD)",
         #FileSecurity="D:P(A;OICI;FA;;;WD)(A;OICI;FA;;;BU)(A;OICI;FA;;;BA)(A;OICI;FA;;;OW)",

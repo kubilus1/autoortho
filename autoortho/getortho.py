@@ -351,6 +351,7 @@ class Tile(object):
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
         self.refs = 0
+        self.bytes_read = 0
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -526,7 +527,7 @@ class Tile(object):
         for m in self.dds.mipmap_list:
             if offset < m.endpos:
                 return m.idx
-
+        return self.dds.mipmap_list[-1].idx
 
     def get_bytes(self, offset, length):
 
@@ -611,6 +612,7 @@ class Tile(object):
             # Get the entire next mipmap
             self.get_mipmap(mm_idx + 1)
 
+        self.bytes_read += length
         # Seek and return data
         self.dds.seek(offset)
         return self.dds.read(length)
@@ -719,6 +721,10 @@ class Tile(object):
         try:
             #with self.tile_lock:
             self.dds.gen_mipmaps(new_im, mipmap) 
+            #if mipmap == 0:
+            #    self.dds.gen_mipmaps(new_im, mipmap, 1) 
+            #else:
+            #    self.dds.gen_mipmaps(new_im, mipmap, mipmap+1) 
         finally:
             new_im.close()
 
@@ -754,6 +760,13 @@ class Tile(object):
 
     def close(self):
         log.debug(f"Closing {self}")
+
+        if self.dds.mipmap_list[0].retrieved:
+            if self.bytes_read < self.dds.mipmap_list[0].length:
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+            else:
+                log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+
 
         if self.refs > 0:
             log.warning(f"TILE: Trying to close, but has refs: {self.refs}")

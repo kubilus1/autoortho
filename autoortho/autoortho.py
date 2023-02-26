@@ -76,12 +76,17 @@ def main():
         log.info("Running in Windows WinFSP mode.")
         import autoortho_winfsp
         autoortho_winfsp.main(root, mountpoint)
-    elif winfuse == True:
+    elif platform.system() == 'Windows' and winfuse:
         log.info("Logging in FUSE mode.")
         import autoortho_fuse
         root = os.path.expanduser(root)
         mountpoint = os.path.expanduser(mountpoint)
         nothreads=False
+        #if not os.path.exists(mountpoint):
+        #    os.makedirs(mountpoint)
+        #if not os.path.isdir(mountpoint):
+        #    log.error(f"WARNING: {mountpoint} is not a directory.  Exiting.")
+        #    sys.exit(1)
 
         if CFG.fuse.threading:
             log.info("Running in multi-threaded mode.")
