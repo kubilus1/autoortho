@@ -157,8 +157,8 @@ class OpenedTileObj:
 
     def get_size(self):
         self.fsops.get_size_tile_cnt += 1
-        return 11184936     # DXT1
-        #return 22369744
+        return 11184952     # DXT1
+        #return 22369776
 
 class OpenedFileObj:
     def __init__(self, file_obj, handle, fsops):
