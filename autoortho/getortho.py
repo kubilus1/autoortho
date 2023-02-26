@@ -819,7 +819,10 @@ class TileCacher(object):
             tracemalloc.start()
 
         self.maptype_override = CFG.autoortho.maptype_override
-        log.info(f"Maptype override set to {self.maptype_override}")
+        if self.maptype_override:
+            log.info(f"Maptype override set to {self.maptype_override}")
+        else:
+            log.info(f"Maptype override not set, will use default.")
         log.info(f"Will use Compressor: {CFG.pydds.compressor}")
         self.tc_lock = threading.RLock()
         

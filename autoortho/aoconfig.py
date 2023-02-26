@@ -16,70 +16,55 @@ import logging
 log = logging.getLogger(__name__)
 
 import PySimpleGUI as sg
-#print = sg.Print
 
 import downloader
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
-class AOConfig(object):
+
+class SectionParser:
+    true = ['true','1', 'yes', 'on']
+    false = ['false', '0', 'no', 'off']
+
+    def __init__(self, /, **kwargs):
+        for k,v in kwargs.items():
+            if v.lower() in self.true:
+                v = True
+            elif v.lower() in self.false:
+                v = False
+
+            self.__dict__.update({k:v})
+
+    def __repr__(self):
+        items = (f"{k}={v!r}" for k, v in self.__dict__.items())
+        return "{}({})".format(type(self).__name__, ", ".join(items))
+
+    def __eq__(self, other):
+        if isinstance(self, SimpleNamespace) and isinstance(other, SimpleNamespace):
+           return self.__dict__ == other.__dict__
+        return NotImplemented
+
+
+class ConfigUI(object):
    
     status = None
-
     warnings = []
     errors = []
     show_errs = []
-
-    config = configparser.ConfigParser(strict=False, allow_no_value=True, comment_prefixes='/')
-    conf_file = os.path.join(os.path.expanduser("~"), ".autoortho")
-
     window = None
+    running = False
+    ready = None
 
-    _defaults = f"""
-[general]
-# Use GUI config at startup
-gui = True
-# Show config setup at startup everytime
-showconfig = True
-# Hide when running
-hide = True
+    def __init__(self, cfg):
+        self.ready = threading.Event()
+        self.ready.clear()
 
-[paths]
-# X-Plane Custom Scenery path
-scenery_path =
-cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
-download_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")}
-log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "autoortho.log")}
+        self.cfg = cfg
+        self.dl = downloader.Downloader(self.cfg.paths.scenery_path)
 
-[autoortho]
-# Override map type with a different source
-maptype_override =
-# Minimum zoom level to allow
-min_zoom = 12
-
-[pydds]
-# ISPC or STB for dds file compression
-compressor = ISPC
-
-[fuse]
-# Enable or disable multi-threading when using FUSE
-threading = True
-
-[winfsp]
-
-"""
-
-    def __init__(self):
-        # Always load initially
-        self.ready = self.load()
-        # Save to update new defaults
-        self.save()
-        self.dl = downloader.Downloader(self.paths.scenery_path)
-
-        if self.gui:
+        if self.cfg.general.gui:
             sg.theme('DarkAmber')
 
-        self.running = True
         self.scenery_q = queue.Queue()
 
         if platform.system() == 'Windows':
@@ -87,32 +72,13 @@ threading = True
         else:
             self.icon_path =os.path.join(CUR_PATH, 'imgs', 'ao-icon.png')
 
-
-    def _check_ortho_dir(self, path):
-        ret = True
-
-        if not sorted(pathlib.Path(path).glob(f"Earth nav data/*/*.dsf")):
-            self.warnings.append(f"Orthophoto dir {path} seems wrong.  This may cause issues.")
-            ret =  False
-
-        return ret
-
-    def _check_xplane_dir(self, path):
-        ret = True
-
-        if os.path.basename(path) != "Custom Scenery":
-            self.warnings.append(f"XPlane Custom Scenery directory {path} seems wrong.  This may cause issues.")
-            ret = False
-
-        return ret
-
     def setup(self, headless=False):
-        scenery_path = self.paths.scenery_path
-        showconfig = self.showconfig
-        maptype = self.autoortho.maptype_override
+        scenery_path = self.cfg.paths.scenery_path
+        showconfig = self.cfg.general.showconfig
+        maptype = self.cfg.autoortho.maptype_override
 
-        if not os.path.exists(self.paths.cache_dir):
-            os.makedirs(self.paths.cache_dir)
+        if not os.path.exists(self.cfg.paths.cache_dir):
+            os.makedirs(self.cfg.paths.cache_dir)
 
         if not headless:
             self.ui_loop()
@@ -131,13 +97,15 @@ threading = True
             self.load()
 
 
+
+
     def ui_loop(self):
         # Main GUI loop
         
-        scenery_path = self.paths.scenery_path
-        showconfig = self.showconfig
-        maptype = self.autoortho.maptype_override
-        maptypes = [None, 'BI', 'NAIP', 'Arc', 'EOX', 'USGS', 'Firefly'] 
+        scenery_path = self.cfg.paths.scenery_path
+        showconfig = self.cfg.general.showconfig
+        maptype = self.cfg.autoortho.maptype_override
+        maptypes = ['', 'BI', 'NAIP', 'Arc', 'EOX', 'USGS', 'Firefly'] 
 
         sg.theme('DarkAmber')
 
@@ -147,17 +115,25 @@ threading = True
             [sg.HorizontalSeparator(pad=5)],
             [
                 sg.Text('X-Plane scenery dir:', size=(18,1)), 
-                sg.InputText(scenery_path, size=(45,1), key='scenery'), 
-                sg.FolderBrowse(key="scenery_b", target='scenery', initial_folder=scenery_path)
+                sg.InputText(scenery_path, size=(45,1), key='scenery_path',
+                    metadata={'section':self.cfg.paths}), 
+                sg.FolderBrowse(key="scenery_b", target='scenery_path', initial_folder=scenery_path)
             ],
             [
                 sg.Text('Image cache dir:', size=(18,1)),
-                sg.InputText(self.paths.cache_dir, size=(45,1), key='cache'),
-                sg.FolderBrowse(key="cache_b", target='cache', initial_folder=self.paths.cache_dir)
+                sg.InputText(self.cfg.paths.cache_dir, size=(45,1),
+                    key='cache_dir',
+                    metadata={'section':self.cfg.paths}),
+                sg.FolderBrowse(key="cache_b", target='cache_dir',
+                    initial_folder=self.cfg.paths.cache_dir)
             ],
             [sg.HorizontalSeparator(pad=5)],
-            [sg.Checkbox('Always show config menu', key='showconfig', default=self.showconfig)],
-            [sg.Text('Map type override'), sg.Combo(maptypes, default_value=maptype, key='maptype')],
+            [sg.Checkbox('Always show config menu', key='showconfig',
+                default=self.cfg.general.showconfig,
+                metadata={'section':self.cfg.general})],
+            [sg.Text('Map type override'), sg.Combo(maptypes,
+                default_value=maptype, key='maptype_override',
+                metadata={'section':self.cfg.autoortho})],
             [sg.HorizontalSeparator(pad=5)],
         ]
 
@@ -205,7 +181,9 @@ threading = True
 
         close = False
 
-        while True:
+        self.ready.set()
+        self.running = True
+        while self.running:
             event, values = self.window.read(timeout=100)
             #log.info(f'VALUES: {values}')
             #print(f"VALUES {values}")
@@ -220,29 +198,16 @@ threading = True
                 break
             elif event == "Run":
                 print("Updating config.")
-                self.read_ui_settings()
-                
-                #print(values)
-                #scenery_path = values.get('scenery', scenery_path)
-                #showconfig = values.get('showconfig', showconfig)
-                #maptype = values.get('maptype', maptype)
-
-                # if not self._check_ortho_dir(orthos_path):
-                #     sg.popup(f"Orthophoto dir {orthos_path} seems wrong.  This may cause issues.")
-
-                # if not self._check_xplane_dir(scenery_path):
-                #     sg.popup(f"XPlane Custom Scenery directory {scenery_path} seems wrong.  This may cause issues.")
-
+                self.save()
+                self.cfg.load()
                 break
             elif event == 'Save':
                 print("Updating config.")
-                #print(values)
-                #self.dl.extract_dir = scenery_path
-                #self.dl.find_releases
                 self.save()
-                self.load()
+                self.cfg.load()
             elif event.startswith("scenery-"):
-                self.read_ui_settings()
+                self.save()
+                self.cfg.load()
                 button = self.window[event]
                 button.update(disabled=True)
                 regionid = event.split("-")[1]
@@ -263,6 +228,9 @@ threading = True
         if close:
             sys.exit(0)
 
+    def stop(self):
+        self.running = False
+        self.window.close()
 
     def scenery_setup(self):
 
@@ -284,8 +252,8 @@ threading = True
                 r = self.dl.regions.get(regionid)
                 # Make sure the region is using whatever the current scenery
                 # dir is set to at this moment
-                r.extract_dir = self.paths.scenery_path
-                print(f"Setting extract dir to {self.paths.scenery_path}")
+                r.extract_dir = self.cfg.paths.scenery_path
+                print(f"Setting extract dir to {self.cfg.paths.scenery_path}")
                 if not r.extract():
                     print("Errors detected!")
                     status = r.cur_activity.get('status')
@@ -321,10 +289,29 @@ threading = True
             MBps = r.cur_activity.get('MBps', 0)
             self.status.update(f"{status}")
             time.sleep(1)
-       
+
+
+    def save(self):
+        # Pull info from UI into AOConfig object and save config
+        self.ready.clear()
+        event, values = self.window.read(timeout=10)
+        #print(f"Reading values: {values}")
+        #print(f"Reading events: {event}")
+        for k,v in values.items():
+            metadata = self.window[k].metadata
+            if not metadata:
+                continue
+            
+            cfgsection = metadata.get('section')
+            if cfgsection:
+                cfgsection.__dict__[k] = v 
+        self.cfg.save()
+        self.ready.set()
+        return
+
 
     def verify(self):
-        self._check_xplane_dir(self.paths.scenery_path)
+        self._check_xplane_dir(self.cfg.paths.scenery_path)
 
         msg = []
         if self.warnings:
@@ -346,30 +333,81 @@ threading = True
         font = ("Helventica", 14)
         if msg:
             print(msg)
-            if self.gui:
+            if self.cfg.general.gui:
                 sg.popup("\n".join(msg), title="WARNING!", font=font)
 
         if self.errors:
             log.error("ERRORS DETECTED.  Exiting.")
             sys.exit(1)
 
+    def _check_ortho_dir(self, path):
+        ret = True
 
-    def read_ui_settings(self):
-        event, values = self.window.read(timeout=10)
-        print(f"Reading values: {values}")
+        if not sorted(pathlib.Path(path).glob(f"Earth nav data/*/*.dsf")):
+            self.warnings.append(f"Orthophoto dir {path} seems wrong.  This may cause issues.")
+            ret =  False
 
-        scenery_path = values.get('scenery')
-        showconfig = values.get('showconfig')
-        maptype = values.get('maptype')
-        
-        self.dl.extract_dir = scenery_path
-        self.dl.find_releases()
-        
-        self.config['paths']['scenery_path'] = scenery_path
-        self.config['general']['showconfig'] = str(showconfig)
-        self.config['autoortho']['maptype_override'] = maptype
+        return ret
 
-        self.set_config()
+    def _check_xplane_dir(self, path):
+        ret = True
+
+        if os.path.basename(path) != "Custom Scenery":
+            self.warnings.append(f"XPlane Custom Scenery directory {path} seems wrong.  This may cause issues.")
+            ret = False
+
+        return ret
+
+
+
+class AOConfig(object):
+    config = configparser.ConfigParser(strict=False, allow_no_value=True, comment_prefixes='/')
+
+
+    _defaults = f"""
+[general]
+# Use GUI config at startup
+gui = True
+# Show config setup at startup everytime
+showconfig = True
+# Hide when running
+hide = True
+
+[paths]
+# X-Plane Custom Scenery path
+scenery_path =
+cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
+download_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")}
+log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "autoortho.log")}
+
+[autoortho]
+# Override map type with a different source
+maptype_override =
+# Minimum zoom level to allow
+min_zoom = 12
+
+[pydds]
+# ISPC or STB for dds file compression
+compressor = ISPC
+
+[fuse]
+# Enable or disable multi-threading when using FUSE
+threading = True
+
+[winfsp]
+
+"""
+
+    def __init__(self, conf_file=None):
+        if not conf_file:
+            self.conf_file = os.path.join(os.path.expanduser("~"), ".autoortho")
+        else:
+            self.conf_file = conf_file
+
+        # Always load initially
+        self.ready = self.load()
+        # Save to update new defaults
+        self.save()
 
 
     def load(self):
@@ -378,66 +416,51 @@ threading = True
             print(f"Config file found {self.conf_file} reading...") 
             log.info(f"Config file found {self.conf_file} reading...") 
             self.config.read(self.conf_file)
-            ret = True
         else:
             print("No config file found. Using defaults...")
             log.info("No config file found. Using defaults...")
-            ret = False
         
-        self.set_config()
-        return ret
+        self.get_config()
+        return True
 
-    def set_config(self):
-        config_dict = {sect: dict(self.config.items(sect)) for sect in
+
+    def get_config(self):
+        # Pull info from ConfigParser object into AOConfig
+
+        config_dict = {sect: SectionParser(**dict(self.config.items(sect))) for sect in
                 self.config.sections()}
-        
         #pprint.pprint(config_dict)
-        
-        self.paths = types.SimpleNamespace(**config_dict.get('paths'))
-        self.autoortho = types.SimpleNamespace(**config_dict.get('autoortho'))
-        self.pydds = types.SimpleNamespace(**config_dict.get('pydds'))
-        self.fuse = types.SimpleNamespace(**config_dict.get('fuse'))
-        self.winfsp = types.SimpleNamespace(**config_dict.get('winfsp'))
+        self.__dict__.update(**config_dict)
 
-        #self.general = types.SimpleNamespace(**config_dict.get('general'))
-        self.gui = self.config.getboolean('general', 'gui')
-        self.showconfig = self.config.getboolean('general', 'showconfig')
-        self.hide = self.config.getboolean('general', 'hide')
-
-        self.fuse.threading = self.config.getboolean('fuse', 'threading')
-
-        print(self.__dict__)
-        print(self.paths)
+        self.z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
+        self.root = os.path.join(self.z_autoortho_path, '_textures')
+        self.mountpoint = os.path.join(self.z_autoortho_path, 'textures')
 
 
     def save(self):
         print("Saving config ... ")
-        if self.window is not None:
-            self.read_ui_settings()
-
-        #config_dict = {sect: dict(self.config.items(sect)) for sect in
-        #        self.config.sections()}
-        #pprint.pprint(config_dict)
-
+        self.set_config()
+        
         with open(self.conf_file, 'w') as h:
             self.config.write(h)
         log.info(f"Wrote config file: {self.conf_file}")
         print(f"Wrote config file: {self.conf_file}")
 
 
-    def prepdirs(self):
-        z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
-        if not os.path.exists(z_autoortho_path):
-            os.makedirs(z_autoortho_path)
+    def set_config(self):
+        # Push info from AOConfig into ConfigParser object
 
-        self.root = os.path.join(z_autoortho_path, '_textures')
-        self.mountpoint = os.path.join(z_autoortho_path, 'textures')
-        return
-
+        for sect in self.config.sections():
+            foo = self.__dict__.get(sect)
+            for k,v in foo.__dict__.items():
+                if k.startswith('#'):
+                    continue
+                self.config[sect][k] = str(v)
 
 CFG = AOConfig()
 
 if __name__ == "__main__":
     aoc = AOConfig()
-    aoc.setup()
-    aoc.verify()
+    cfgui = ConfigUI(aoc)
+    cfgui.setup()
+    cfgui.verify()
