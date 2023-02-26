@@ -46,19 +46,20 @@ def main():
     args = parser.parse_args()
 
     CFG = aoconfig.CFG
-    if (not CFG.ready) or args.configure or (CFG.showconfig and not args.headless):
-        CFG.setup(headless = args.headless)
+    cfgui = aoconfig.ConfigUI(CFG)
+    if (not CFG.ready) or args.configure or (CFG.general.showconfig and not args.headless):
+        cfgui.setup(headless = args.headless)
 
     if not args.root or not args.mountpoint:
-        CFG.verify()
-        CFG.prepdirs()
-
+        cfgui.verify()
         root = CFG.root
         mountpoint = CFG.mountpoint
     else:
         root = args.root
         mountpoint = args.mountpoint
 
+    if not os.path.exists(CFG.z_autoortho_path):
+        os.makedirs(CFG.z_autoortho_path)
     print("root:", root)
     print("mountpoint:", mountpoint)
 

@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   test-linux:
@@ -23,12 +22,14 @@ jobs:
 
     - name: Setup 
       run: |
-          sudo apt-get update && sudo apt-get install -y python3-tk
+          sudo apt-get update && sudo apt-get install -y python3-tk xvfb
           python3 -m pip install -U pytest  
           python3 -m pip install -U -r requirements.txt
 
     - name: Test
-      run: cd autoortho && pytest -v test_getortho.py test_pydds.py test_downloader.py 
+      run: |
+        cd autoortho
+        pytest -v test_getortho.py test_pydds.py test_downloader.py
 
 
   test-windows:
@@ -48,7 +49,7 @@ jobs:
 
     - uses: actions/setup-python@v3
       with:
-        python-version: '3.x'
+        python-version: '3.10'
 
     - name: Setup 
       run: |
