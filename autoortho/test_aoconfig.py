@@ -78,8 +78,10 @@ def test_save(cfg):
 def test_ui(cfgui):
     # Update config
     cfgui.window["maptype_override"].update("USGS")
+    # Save
     cfgui.window["Save"].click()
     time.sleep(0.1)
     cfgui.ready.wait()
+    # Verify
     assert find_in_file(cfgui.cfg.conf_file, "maptype_override = USGS\n")
     assert cfgui.cfg.autoortho.maptype_override == "USGS"
