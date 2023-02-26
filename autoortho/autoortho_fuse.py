@@ -147,7 +147,7 @@ class AutoOrtho(Operations):
                 'st_mode': 33204,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
-                'st_size': 22369744, 
+                'st_size': 22369776, 
                 'st_blksize': 32768
                 #'st_blksize': 16384
                 #'st_blksize': 8192

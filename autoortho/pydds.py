@@ -15,7 +15,6 @@ from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
-
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
     print("Linux detected")
@@ -150,6 +149,7 @@ class DDS(Structure):
         self.pfSize = 32
         self.pfFlags = 0x4
         self.fourCC = b'DXT5'
+        self.blocksize = 16 # DXT5
         self.caps = 0x1000 | 0x400000
         self.mipMapCount = 0
        
@@ -165,22 +165,33 @@ class DDS(Structure):
         # List of tuples [(byte_position, retrieved_bool)]
         self.mipmap_list = []
 
+        # https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+        # pitchOrLinearSize is the total number of bytes in the top level texture for a compressed texture
+        self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize 
+
         self.position = 0
 
         curbytes = 128
-        while (width >= 4) and (height >= 4):
+        while True:
             mipmap = MipMap()
             mipmap.idx = self.mipMapCount
             mipmap.startpos = curbytes
-            curbytes += width*height
+            curbytes += max(1, (width*height >> 4)) * self.blocksize
             mipmap.length = curbytes - mipmap.startpos
             mipmap.endpos = mipmap.startpos + mipmap.length 
-            width = int(width/2)
-            height = int(height/2)
-            self.mipMapCount+=1
+            self.mipMapCount += 1
             self.mipmap_list.append(mipmap)
+ 
+            if (width == 1) and (height == 1):
+                break
+ 
+            if (width > 1):
+                width = width >> 1
+            if (height > 1):
+                height = height >> 1
+
         # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
-        self.pitchOrLinearSize = curbytes 
+        self.total_size = curbytes 
         self.dump_header()
 
         for m in self.mipmap_list:
@@ -213,7 +224,7 @@ class DDS(Structure):
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
                 #h.seek(self.pitchOrLinearSize+126)
-                h.seek(self.pitchOrLinearSize-2)
+                h.seek(self.total_size - 2)
                 h.write(b'x\00')
 
 
@@ -317,16 +328,14 @@ class DDS(Structure):
         self.header.write(self)
 
     #@profile 
-    def compress(self, width, height, data):
+    def compress(self, width, height, length_only, data):
         if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
             log.debug(f"Compressed images must have dimensions that are multiples of 4. We got {width}x{height}")
             return None
 
         is_rgba = True
         
-        blocksize = 16
-        dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
-        
+        dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize
         outdata = create_string_buffer(dxt_size)
         
         #outdata = b'\x00'*dxt_size
@@ -334,6 +343,10 @@ class DDS(Structure):
         #bio.write(b'\x00'*dxt_size)
         #outdata = bio.getbuffer().tobytes()
 
+        if length_only:
+            height = (length_only * 16) // (width * self.blocksize)
+            height = max(4, ((height + 3) // 4) * 4) 
+            #print(f"compressing partial height: {height}")
 
         if self.ispc:
             s = rgba_surface()
@@ -376,7 +389,7 @@ class DDS(Structure):
         return outdata
 
     #@profile
-    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0):
+    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0, mm0_partial = 0):
     
         #if maxmipmaps <= len(self.mipmap_list):
         #    maxmipmaps = len(self.mipmap_list)
@@ -391,8 +404,7 @@ class DDS(Structure):
 
             log.debug(self.mipmap_list)
 
-            while (width > 4) and (height > 4):
-
+            while True:
                 ratio = pow(2,mipmap)
                 desired_width = self.width / ratio
                 desired_height = self.height / ratio
@@ -414,27 +426,39 @@ class DDS(Structure):
                     imgdata = timg.tobytes()
                     width, height = timg.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
-                    
-                    try:
-                        dxtdata = self.compress(width, height, imgdata)
-                    finally:
-                        pass
-                        timg.close()
-                        del(imgdata)
-                        imgdata = None
-                        timg = None
 
-                    if dxtdata is not None:
-                    #    self.mipmap_list[mipmap].databuffer.seek(0)
-                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
-                    #    print(f"DXTLEN: {len(dxtdata)}")
-                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
-                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                    # that's a crude hack as X Plane >= 12.04 insists of having 13 mipmaps
+                    # and the compressors only support >= 4x4
+                    # so we copy the first texel of MM10.
+                    if width < 4 or height < 4 and self.mipmap_list[10].retrieved:
+                        mm10_db = self.mipmap_list[10].databuffer.getbuffer()
+                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=mm10_db[0:self.blocksize])
                         self.mipmap_list[mipmap].retrieved = True
-                    #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
-                    dxtdata = None
+                    else:
+                        min_size = 0
+                        if startmipmap == 0 and maxmipmaps == 1 and mm0_partial:    # sanity check
+                            min_size = mm0_partial
 
-                    #print(f"REF: {sys.getrefcount(dxtdata)}")
+                        try:
+                            dxtdata = self.compress(width, height, min_size, imgdata)
+                        finally:
+                            pass
+                            timg.close()
+                            del(imgdata)
+                            imgdata = None
+                            timg = None
+
+                        if dxtdata is not None:
+                        #    self.mipmap_list[mipmap].databuffer.seek(0)
+                        #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                        #    print(f"DXTLEN: {len(dxtdata)}")
+                            self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
+                        #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                            self.mipmap_list[mipmap].retrieved = True
+                        #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
+                        dxtdata = None
+
+                        #print(f"REF: {sys.getrefcount(dxtdata)}")
 
                 mipmap += 1
                 if maxmipmaps and mipmap >= maxmipmaps:
@@ -464,7 +488,6 @@ def main():
     img = Image.open(inimg)
    
     to_dds(img, outimg)
-
 
 if __name__ == "__main__":
     main()

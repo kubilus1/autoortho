@@ -294,7 +294,7 @@ class AutoorthoOperations(OperationsShim):
         m = self.dds_re.match(path)
         if m:
             #print(f"MATCH: Set file size")
-            file_context.file_obj.file_size = 22369744
+            file_context.file_obj.file_size = 22369776
         else:
             full_path = self._full_path(path)
             if os.path.isfile(full_path):
