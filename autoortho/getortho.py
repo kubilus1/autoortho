@@ -293,7 +293,7 @@ class Chunk(object):
         req = Request(url, headers=header)
         resp = 0
         try:
-            resp = urlopen(req, timeout=5)
+            resp = urlopen(req, timeout=10)
             if resp.status != 200:
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
