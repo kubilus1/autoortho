@@ -293,7 +293,7 @@ class Chunk(object):
         req = Request(url, headers=header)
         resp = 0
         try:
-            resp = urlopen(req, timeout=5)
+            resp = urlopen(req, timeout=10)
             if resp.status != 200:
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
@@ -530,7 +530,6 @@ class Tile(object):
 
 
     def get_bytes(self, offset, length):
-
         mipmap = self.find_mipmap_pos(offset)
         log.debug(f"Get_bytes for mipmap {mipmap} ...")
         if mipmap > 4:
@@ -571,8 +570,12 @@ class Tile(object):
 
         self.ready.clear()
         #log.info(new_im.size)
+        mm0_partial = 0
+        if mipmap == 0 and offset == 0 and 128 <= length and length <= 64000:
+            mm0_partial = length - 128
+
         try:
-            self.dds.gen_mipmaps(new_im, mipmap, 1)
+            self.dds.gen_mipmaps(new_im, mipmap, 1, mm0_partial = mm0_partial)
         finally:
             new_im.close()
 
@@ -587,7 +590,7 @@ class Tile(object):
         
         mm_idx = self.find_mipmap_pos(offset)
         mipmap = self.dds.mipmap_list[mm_idx]
-        
+
         if offset == 0:
             # If offset = 0, read the header
             log.debug("TILE: Read header")

@@ -28,7 +28,7 @@ def test_dds_conv(tmpdir):
     outpath = os.path.join(tmpdir, 'test_tile.dds')
     pydds.to_dds(timg, outpath)
     
-    expectedbytes = 22369744
+    expectedbytes = 22369776
     actualbytes = os.path.getsize(outpath)
 
     assert expectedbytes == actualbytes
@@ -43,7 +43,7 @@ def test_empty_dds(tmpdir):
     dds = pydds.DDS(4096, 4096)
     dds.write(outpath)
     
-    expectedbytes = 22369744
+    expectedbytes = 22369776
     actualbytes = os.path.getsize(outpath)
     assert expectedbytes == actualbytes
 
@@ -117,6 +117,25 @@ def test_read_mid(tmpdir):
     assert expectedbytes == actualbytes
 
 
+def test_mm0_dxt1(tmpdir):
+    outpath = os.path.join(tmpdir, 'test_mm0.dds')
+    timg = Image.open(TESTJPG)
+    dds = pydds.DDS(4096, 4096, dxt_format='BC1')
+
+    if timg.mode == "RGB":
+        timg = timg.convert("RGBA")
+    dds.gen_mipmaps(timg)
+
+    data = dds.read(1024)
+    assert data
+    
+    outpath = os.path.join(tmpdir, 'test.dds')
+    dds.write(outpath)
+
+    for m in dds.mipmap_list:
+        print(m)
+
+    assert True == False
 #assert False
 
 

@@ -28,15 +28,16 @@ class DDS(Structure):
 
     def read(self, fn):
         fh = open(fn, "rb")
-        #len = fh.readinto(self)
-        print(len)
+        len = fh.readinto(self)
  
         print(f"size:\t{self.size}")
+        print(f"flags:\t{self.flags:08x}")
         print(f"height:\t{self.height}")
         print(f"width:\t{self.width}")
         print(f"pitchOrLinearSize:\t{self.pitchOrLinearSize}")
         print(f"fourCC:\t{self.fourCC}")
         print(f"mipMapCount:\t{self.mipMapCount}")
+        print(f"caps:\t{self.caps:08x}")
         print(f"depth:\t{self.depth}")
         
 dds = DDS()
