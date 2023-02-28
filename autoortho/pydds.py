@@ -450,7 +450,10 @@ class DDS(Structure):
                             break
                         continue
 
-                    timg = img.reduce(reduction_ratio)
+                    if reduction_ratio == 1:
+                        timg = img
+                    else:
+                        timg = img.reduce(reduction_ratio)
 
                     imgdata = timg.tobytes()
                     width, height = timg.size
@@ -472,8 +475,6 @@ class DDS(Structure):
                             dxtdata = self.compress(width, height, min_size, imgdata)
                         finally:
                             pass
-                            timg.close()
-                            del(imgdata)
                             imgdata = None
                             timg = None
 
