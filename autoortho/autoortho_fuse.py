@@ -18,11 +18,14 @@ import itertools
 import flighttrack
 
 from functools import wraps, lru_cache
+from ctypes.util import find_library
 
-#os.environ['FUSE_LIBRARY_PATH'] = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows', 'dokanfuse2.dll')
+if platform.system() == 'Windows':
+    _libfuse_path = find_library('dokanfuse2.dll')
+    os.environ['FUSE_LIBRARY_PATH'] = _libfuse_path
+
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 #from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
-
 
 import getortho
 
@@ -76,6 +79,7 @@ class AutoOrtho(Operations):
     default_gid = -1
 
     startup = True
+
 
     def __init__(self, root, cache_dir='.cache'):
         log.info(f"ROOT: {root}")
@@ -145,7 +149,8 @@ class AutoOrtho(Operations):
                 'st_ctime': 1649857251.726115, 
                 'st_gid': self.default_gid,
                 'st_uid': self.default_uid,
-                'st_mode': 33204,
+                #'st_mode': 33204,
+                'st_mode': 33206,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
                 'st_size': 22369744, 
@@ -153,6 +158,9 @@ class AutoOrtho(Operations):
                 #'st_blksize': 16384
                 #'st_blksize': 8192
                 #'st_blksize': 4096
+                # Windows specific stuff
+                #'st_ino': 844424931910150,
+                #'st_dev': 1421433975
             }
         else:
             full_path = self._full_path(path)
@@ -160,9 +168,9 @@ class AutoOrtho(Operations):
             log.debug(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
             full_path = self._full_path(path)
             st = os.lstat(full_path)
-            #log.info(st)
+            log.debug(f"GETATTR: Orig stat: {st}")
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
-                        'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
+                        'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid', 'st_ino', 'st_dev'))
 
             #if os.path.isdir(full_path):
             #    attrs['st_nlink'] = 2
@@ -177,9 +185,9 @@ class AutoOrtho(Operations):
 
         return attrs
 
-    #@lru_cache
+    @lru_cache
     def readdir(self, path, fh):
-        log.info(f"READDIR: {path}")
+        log.info(f"READDIR: {path} {fh}")
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -190,8 +198,9 @@ class AutoOrtho(Operations):
         else:
             dirents = self.path_dict.get(path)
 
-        for r in dirents:
-            yield r
+        return dirents
+        #for r in dirents:
+        #    yield r
 
     def readlink(self, path):
         pathname = os.readlink(self._full_path(path))
@@ -287,19 +296,11 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             t = self.tc._open_tile(row, col, maptype, zoom) 
-            #t.refs += 1
-            # if not platform.system() == 'Windows':
-            #     with self.path_condition:
-            #         while path in self.open_paths:
-            #             log.info(f"{path} already open. {self.open_paths}  wait.")
-            #             self.path_condition.wait(10)
-
-            #         log.info(f"Opening for {path} : {self.open_paths}....")
-            #         self.open_paths.append(path)
         else:
-            h = os.open(full_path, flags)
+            #h = os.open(full_path, flags)
+            h = os.open(full_path, flags|os.O_BINARY)
 
-        #log.info(f"FH: {h}")
+        log.debug(f"OPEN: FH= {h}")
         return h
 
     def _create(self, path, mode, fi=None):
@@ -313,8 +314,8 @@ class AutoOrtho(Operations):
     #@lru_cache
     def read(self, path, length, offset, fh):
         log.debug(f"READ: {path} {offset} {length} {fh}")
-        if length > 32768:
-            log.info(f"READ: {path} {offset} {length} {fh}")
+        #if length > 32768:
+        #    log.info(f"READ: {path} {offset} {length} {fh}")
         data = None
         
         #full_path = self._full_path(path)
@@ -350,6 +351,7 @@ class AutoOrtho(Operations):
         if not data:
             os.lseek(fh, offset, os.SEEK_SET)
             data = os.read(fh, length)
+            log.debug(f"READ: Read {len(data)} bytes.")
 
         return data
 

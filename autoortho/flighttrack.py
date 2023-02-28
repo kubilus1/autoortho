@@ -69,7 +69,11 @@ class FlightTracker(object):
                 log.debug("Socket timeout.  Reset.")
                 RequestDataRefs(self.sock)
                 continue
-            
+            except ConnectionResetError: 
+                log.debug("Connection reset.")
+                time.sleep(2)
+                continue
+
             if not self.connected:
                 # We are transitioning states
                 log.info("FT: Flight is starting.")

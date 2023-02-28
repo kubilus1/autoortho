@@ -393,6 +393,8 @@ compressor = ISPC
 [fuse]
 # Enable or disable multi-threading when using FUSE
 threading = True
+# Enable Windows to use FUSE mode
+winfuse = False
 
 [winfsp]
 
