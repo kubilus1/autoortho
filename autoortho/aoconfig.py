@@ -176,13 +176,14 @@ class ConfigUI(object):
         self.window['-EXPAND-'].expand(True, True, True)
         self.status = self.window['status']
 
+        self.running = True
+        close = False
+        
         t = threading.Thread(target=self.scenery_setup)
         t.start()
 
-        close = False
-
         self.ready.set()
-        self.running = True
+
         while self.running:
             event, values = self.window.read(timeout=100)
             #log.info(f'VALUES: {values}')
@@ -372,6 +373,8 @@ gui = True
 showconfig = True
 # Hide when running
 hide = True
+# Debug mode
+debug = False
 
 [paths]
 # X-Plane Custom Scenery path
@@ -437,6 +440,9 @@ winfuse = False
         self.z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
         self.root = os.path.join(self.z_autoortho_path, '_textures')
         self.mountpoint = os.path.join(self.z_autoortho_path, 'textures')
+        if not os.path.exists(self.z_autoortho_path):
+            log.info(f"Creating dir {self.z_autoortho_path}")
+            os.makedirs(self.z_autoortho_path)
 
 
     def save(self):

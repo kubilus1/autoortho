@@ -32,7 +32,7 @@ class FlightTracker(object):
         self.sock = socket.socket(socket.AF_INET, # Internet
                             socket.SOCK_DGRAM) # UDP
 
-        self.sock.settimeout(2.0)
+        self.sock.settimeout(5.0)
         self.connected = False
 
     def start(self):
@@ -79,6 +79,7 @@ class FlightTracker(object):
                 log.info("FT: Flight is starting.")
                 delta = time.time() - self.start_time
                 log.info(f"FT: Time to start was {round(delta/60, 2)} minutes.")
+                STATS['minutes_to_start'] = round(delta/60, 2)
 
             self.connected = True
 
