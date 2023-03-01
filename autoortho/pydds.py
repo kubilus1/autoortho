@@ -167,7 +167,8 @@ class DDS(Structure):
 
         # https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
         # pitchOrLinearSize is the total number of bytes in the top level texture for a compressed texture
-        self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize 
+        #self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize 
+        self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
 
         self.position = 0
 
@@ -328,7 +329,9 @@ class DDS(Structure):
         self.header.write(self)
 
     #@profile 
-    def compress(self, width, height, length_only, data):
+    def compress(self, width, height, data):
+        # Compress width * height of data
+
         if (width < 4 or width % 4 != 0 or height < 4 or height % 4 != 0):
             log.debug(f"Compressed images must have dimensions that are multiples of 4. We got {width}x{height}")
             return None
@@ -343,10 +346,6 @@ class DDS(Structure):
         #bio.write(b'\x00'*dxt_size)
         #outdata = bio.getbuffer().tobytes()
 
-        if length_only:
-            height = (length_only * 16) // (width * self.blocksize)
-            height = max(4, ((height + 3) // 4) * 4) 
-            #print(f"compressing partial height: {height}")
 
         if self.ispc:
             s = rgba_surface()
@@ -389,10 +388,18 @@ class DDS(Structure):
         return outdata
 
     #@profile
-    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0, mm0_partial = 0):
-    
+    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0, compress_height=0):
+        # img : PIL/Pillow image
+        # startmipmap : Mipmap to start compressing
+        # maxmipmaps : Maximum mipmap to compress.  0 = all mipmaps
+        # compress_height : Optionally limit compression to number of bytes
+
         #if maxmipmaps <= len(self.mipmap_list):
         #    maxmipmaps = len(self.mipmap_list)
+
+        if not maxmipmaps:
+            # Avoid compressing tiny mipmaps that will likely never be used.
+            maxmipmaps = 6
 
         with self.lock:
 
@@ -408,6 +415,7 @@ class DDS(Structure):
                 ratio = pow(2,mipmap)
                 desired_width = self.width / ratio
                 desired_height = self.height / ratio
+                desired_compress_height = compress_height / ratio
 
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
@@ -435,12 +443,13 @@ class DDS(Structure):
                         self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=mm10_db[0:self.blocksize])
                         self.mipmap_list[mipmap].retrieved = True
                     else:
-                        min_size = 0
-                        if startmipmap == 0 and maxmipmaps == 1 and mm0_partial:    # sanity check
-                            min_size = mm0_partial
+                        if desired_compress_height:
+                            height = int((desired_compress_height * 16) // (width * self.blocksize))
+                            height = max(4, ((height + 3) // 4) * 4) 
+                            #print(f"compressing partial height: {height}")
 
                         try:
-                            dxtdata = self.compress(width, height, min_size, imgdata)
+                            dxtdata = self.compress(width, height, imgdata)
                         finally:
                             pass
                             timg.close()
