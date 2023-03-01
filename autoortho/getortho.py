@@ -569,12 +569,15 @@ class Tile(object):
 
         self.ready.clear()
         #log.info(new_im.size)
-        mm0_partial = 0
-        if mipmap == 0 and offset == 0 and 128 <= length and length <= 64000:
-            mm0_partial = length - 128
+       
+        # Only attempt partial compression from mipmap start
+        if offset == 0:
+            compress_len = length - 128
+        else:
+            compress_len = 0
 
         try:
-            self.dds.gen_mipmaps(new_im, mipmap, 1, mm0_partial = mm0_partial)
+            self.dds.gen_mipmaps(new_im, mipmap, 1, compress_len)
         finally:
             new_im.close()
 
