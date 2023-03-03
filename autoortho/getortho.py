@@ -351,6 +351,7 @@ class Tile(object):
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
         self.refs = 0
+        self.bytes_read = 0
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -526,10 +527,11 @@ class Tile(object):
         for m in self.dds.mipmap_list:
             if offset < m.endpos:
                 return m.idx
-
+        return self.dds.mipmap_list[-1].idx
 
     def get_bytes(self, offset, length):
 
+        STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
         mipmap = self.find_mipmap_pos(offset)
         log.debug(f"Get_bytes for mipmap {mipmap} ...")
         if mipmap > 4:
@@ -591,7 +593,10 @@ class Tile(object):
             # If offset = 0, read the header
             log.debug("TILE: Read header")
             self.get_bytes(0, length)
+        #elif offset < 32768:
         elif offset < 131072:
+        #elif offset < 262144:
+        #elif offset < 1048576:
             # How far into mipmap 0 do we go before just getting the whole thing
             log.debug("TILE: Middle of mipmap 0")
             self.get_bytes(0, length + offset)
@@ -611,6 +616,7 @@ class Tile(object):
             # Get the entire next mipmap
             self.get_mipmap(mm_idx + 1)
 
+        self.bytes_read += length
         # Seek and return data
         self.dds.seek(offset)
         return self.dds.read(length)
@@ -718,7 +724,14 @@ class Tile(object):
         start_time = time.time()
         try:
             #with self.tile_lock:
-            self.dds.gen_mipmaps(new_im, mipmap) 
+            if mipmap == 0:
+                self.dds.gen_mipmaps(new_im, mipmap, 1) 
+            else:
+                self.dds.gen_mipmaps(new_im, mipmap) 
+            #if mipmap == 0:
+            #    self.dds.gen_mipmaps(new_im, mipmap, 1) 
+            #else:
+            #    self.dds.gen_mipmaps(new_im, mipmap, mipmap+1) 
         finally:
             new_im.close()
 
@@ -752,8 +765,27 @@ class Tile(object):
         return True
 
 
+    def should_close(self):
+        if self.dds.mipmap_list[0].retrieved:
+            if self.bytes_read < self.dds.mipmap_list[0].length:
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+                return False
+            else:
+                #log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+                return True
+        else:
+            return True
+
+
     def close(self):
         log.debug(f"Closing {self}")
+
+        if self.dds.mipmap_list[0].retrieved:
+            if self.bytes_read < self.dds.mipmap_list[0].length:
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+            else:
+                log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+
 
         if self.refs > 0:
             log.warning(f"TILE: Trying to close, but has refs: {self.refs}")
@@ -800,7 +832,11 @@ class TileCacher(object):
     misses = 0
 
     enable_cache = False
+    cache_mem_lim = pow(2,30) * 4
+    cache_tile_lim = 150
 
+    open_count = {}
+    
     def __init__(self, cache_dir='.cache'):
         if MEMTRACE:
             tracemalloc.start()
@@ -829,12 +865,12 @@ class TileCacher(object):
     def show_stats(self):
         process = psutil.Process(os.getpid())
         cur_mem = process.memory_info().rss
-        log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-        log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+        if self.enable_cache:
+            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.info(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
 
     def clean(self):
-        memlimit = pow(2,30) * 2
-        log.info(f"Started tile clean thread.  Mem limit {memlimit}")
+        log.info(f"Started tile clean thread.  Mem limit {self.cache_mem_lim}")
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
@@ -845,7 +881,7 @@ class TileCacher(object):
             if not self.enable_cache:
                 continue
 
-            while len(self.tiles) >= 25 and cur_mem > memlimit:
+            while len(self.tiles) >= self.cache_tile_lim and cur_mem > self.cache_mem_lim:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
@@ -891,10 +927,13 @@ class TileCacher(object):
                     cache_dir = self.cache_dir,
                     min_zoom = self.min_zoom)
                 self.tiles[idx] = tile
+                self.open_count[idx] = self.open_count.get(idx, 0) + 1
+                if self.open_count[idx] > 1:
+                    log.debug(f"Tile: {idx} opened for the {self.open_count[idx]} time.")
             elif tile.refs <= 0:
                 # Only in this case would this cache have made a difference
                 self.hits += 1
-
+                
             tile.refs += 1
         return tile
 
