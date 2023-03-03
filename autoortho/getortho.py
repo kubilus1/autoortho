@@ -531,7 +531,6 @@ class Tile(object):
 
     def get_bytes(self, offset, length):
 
-        STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
         mipmap = self.find_mipmap_pos(offset)
         log.debug(f"Get_bytes for mipmap {mipmap} ...")
         if mipmap > 4:
@@ -549,6 +548,7 @@ class Tile(object):
             self.get_mipmap(mipmap)
             return True
         
+        STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
         log.debug(f"Retrieving {length} bytes from mipmap {mipmap} offset {offset}")
 
         bytes_per_row = 1048576 >> mipmap
@@ -838,9 +838,9 @@ class TileCacher(object):
     hits = 0
     misses = 0
 
-    enable_cache = False
-    cache_mem_lim = pow(2,30) * 4
-    cache_tile_lim = 150
+    enable_cache = True
+    cache_mem_lim = pow(2,30) * 2
+    cache_tile_lim = 100
 
     open_count = {}
     

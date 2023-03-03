@@ -270,15 +270,21 @@ class DDS(Structure):
                     # Mipmap has more than enough remaining length for request
                     # ~We have remaining length in current mipmap~
                     #
+                    #if mipmap.databuffer is None:
+                    #    log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
+                    #    #data = b''
+                    #    data = b'\x88' * length
+                    #    log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
+                    #else:
                     log.debug("We have a mipmap and adequated remaining length")
                     mipmap.databuffer.seek(mipmap_pos)
                     data = mipmap.databuffer.read(length)
                     ret_len = length - len(data)
                     if ret_len != 0:
                         # This should be impossible
-                        log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len}i for {mipmap.idx}")
+                        log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len} for {mipmap.idx}")
                         data += b'\xFF' * ret_len
-                            
+                                
                     outdata += data
                     self.position += length
                     break
@@ -397,9 +403,8 @@ class DDS(Structure):
         #if maxmipmaps <= len(self.mipmap_list):
         #    maxmipmaps = len(self.mipmap_list)
 
-        if not maxmipmaps:
-            # Avoid compressing tiny mipmaps that will likely never be used.
-            maxmipmaps = 6
+        #if not maxmipmaps:
+        #    maxmipmaps = 0
 
         with self.lock:
 
@@ -417,9 +422,22 @@ class DDS(Structure):
                 desired_height = self.height / ratio
                 desired_compress_height = compress_height / ratio
 
+                if maxmipmaps and mipmap >= maxmipmaps:
+                    break
+                
+                if mipmap >= len(self.mipmap_list):
+                    break
+
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
-                
+
+                    if mipmap >= 7:
+                        # Avoid compressing tiny mipmaps that will likely never be used.
+                        #self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
+                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=b'\x00' * self.mipmap_list[mipmap].length)
+                        self.mipmap_list[mipmap].retrieved = True
+                        continue
+
                     # Only squares for now
                     reduction_ratio = int(img_width // desired_width)
                     if reduction_ratio < 1:
@@ -463,18 +481,17 @@ class DDS(Structure):
                         #    print(f"DXTLEN: {len(dxtdata)}")
                             self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
                         #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
-                            self.mipmap_list[mipmap].retrieved = True
+                        
+                            if not compress_height:
+                                # If we partially compressed, this is not
+                                # fully retrieved
+                                self.mipmap_list[mipmap].retrieved = True
                         #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
                         dxtdata = None
 
                         #print(f"REF: {sys.getrefcount(dxtdata)}")
 
                 mipmap += 1
-                if maxmipmaps and mipmap >= maxmipmaps:
-                    break
-                
-                if mipmap >= len(self.mipmap_list):
-                    break
 
 
             self.dump_header()
