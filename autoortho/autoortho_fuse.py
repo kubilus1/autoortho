@@ -21,7 +21,7 @@ from functools import wraps, lru_cache
 from ctypes.util import find_library
 
 if platform.system() == 'Windows':
-    _libfuse_path = find_library('dokanfuse3.dll')
+    _libfuse_path = find_library('dokanfuse2.dll')
     if not _libfuse_path:
         print("Dokan v2 install required for Windows FUSE mode. See: https://github.com/dokan-dev/dokany/releases/latest/download/DokanSetup.exe")
         input("Press any key to continue")
