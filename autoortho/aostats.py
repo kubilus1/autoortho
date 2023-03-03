@@ -13,7 +13,7 @@ class AOStats(object):
         #global STATS
         #STATS=self.
         self.running = False
-        self._t = threading.Thread(target=self.show)
+        self._t = threading.Thread(daemon=True, target=self.show)
 
     def start(self):
         log.info("Starting stats thread")
