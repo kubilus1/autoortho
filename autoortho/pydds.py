@@ -429,7 +429,6 @@ class DDS(Structure):
             # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
 
             width, height = img.size
-            img_width, img_height = img.size
             mipmap = startmipmap
             if maxmipmaps > 10:
                 maxmipmaps = 10
@@ -444,19 +443,17 @@ class DDS(Structure):
                     steps += 1
 
             if steps > 0:        
-                timg = img.reduce(pow(2, steps))
-            else:
-                timg = img.copy()
+                img = img.reduce(pow(2, steps))
 
-            #print(f"gen_mipmaps: after initial scale SIZE: {timg.size}")
+            #print(f"gen_mipmaps: after initial scale SIZE: {img.size}")
 
             while True:
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
-                    imgdata = timg.tobytes()
-                    width, height = timg.size
-                    log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
-                    #print(f"MIPMAP: {mipmap} SIZE: {timg.size}")
+                    imgdata = img.tobytes()
+                    width, height = img.size
+                    log.debug(f"MIPMAP: {mipmap} SIZE: {img.size}")
+                    #print(f"MIPMAP: {mipmap} SIZE: {img.size}")
 
                     min_size = 0
                     if startmipmap == 0 and maxmipmaps == 1 and mm0_partial:    # sanity check
@@ -499,7 +496,7 @@ class DDS(Structure):
                 if mipmap >= len(self.mipmap_list):
                     break
 
-                timg = timg.reduce(2)
+                img = img.reduce(2)
 
             self.dump_header()
 
