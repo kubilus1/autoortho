@@ -3,7 +3,8 @@ import aoconfig
 import getortho
 
 import cProfile, pstats
-profiler = cProfile.Profile(builtins = False)
+#profiler = cProfile.Profile(builtins = False)
+profiler = cProfile.Profile()
 
 tc = getortho.TileCacher()
 

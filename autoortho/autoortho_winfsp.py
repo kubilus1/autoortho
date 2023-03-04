@@ -139,7 +139,7 @@ class OpenedTileObj:
         if self.fh == None and self.tile == None:
             dds_name = self.fsops.cache_dir + self.file_obj.file_name
             if os.path.exists(dds_name):
-                #print(f"DIRECT ACCESS: {dds_name}")
+                print(f"DIRECT ACCESS: {dds_name}")
                 self.fh = open(dds_name, "rb")
                 self.fsops.open_tile_direct_cnt += 1
 
