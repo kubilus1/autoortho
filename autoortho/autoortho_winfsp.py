@@ -137,7 +137,7 @@ class OpenedTileObj:
 
         # delayed open to make get_size cheap
         if self.fh == None and self.tile == None:
-            dds_name = self.fsops.cache_dir + self.file_obj.file_name
+            dds_name = self.fsops.cache_dir + self.file_obj.file_name + "n"
             if os.path.exists(dds_name):
                 print(f"DIRECT ACCESS: {dds_name}")
                 self.fh = open(dds_name, "rb")
