@@ -18,15 +18,10 @@ import itertools
 import flighttrack
 
 from functools import wraps, lru_cache
-from ctypes.util import find_library
 
-if platform.system() == 'Windows':
-    _libfuse_path = find_library('dokanfuse2.dll')
-    if not _libfuse_path:
-        print("Dokan v2 install required for Windows FUSE mode. See: https://github.com/dokan-dev/dokany/releases/latest/download/DokanSetup.exe")
-        input("Press any key to continue")
-        sys.exit(1)
-    os.environ['FUSE_LIBRARY_PATH'] = _libfuse_path
+from aoconfig import CFG
+import logging
+log = logging.getLogger(__name__)
 
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 #from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
@@ -39,10 +34,6 @@ import socket
 #from memory_profiler import profile
 import tracemalloc
 
-from aoconfig import CFG
-
-import logging
-log = logging.getLogger(__name__)
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
