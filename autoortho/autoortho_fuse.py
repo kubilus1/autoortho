@@ -18,30 +18,10 @@ import itertools
 import flighttrack
 
 from functools import wraps, lru_cache
-from ctypes.util import find_library
 
 from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
-
-if platform.system() == 'Windows' and CFG.fuse.winfuse:
-    log.info("Winfuse mode enabled.  First looking for Dokan ...")
-    _libfuse_path = find_library('dokanfuse2.dll')
-    if _libfuse_path:
-        log.info(f"Dokan found at {_libfuse_path}")
-        os.environ['FUSE_LIBRARY_PATH'] = _libfuse_path
-    else:
-        log.info("Dokan not found, looking for WinFSP ...")
-        _libfuse_path = find_library('winfsp-x64.dll')
-
-        if not _libfuse_path:
-            log.error("WinFSP not found.  No FUSE wrappers found!")
-            print("DokanV2 or WinFSP install required for Windows FUSE mode")
-            input("Press any key to continue")
-            sys.exit(1)
-        else:
-            log.info(f"WinFSP found at {_libfuse_path}")
-
 
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 #from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
