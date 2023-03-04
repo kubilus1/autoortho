@@ -424,79 +424,82 @@ class DDS(Structure):
         #    maxmipmaps = len(self.mipmap_list)
 
         with self.lock:
+            #print(f"gen_mipmaps: MIPMAP: {startmipmap} input SIZE: {img.size}")
 
             # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
 
             width, height = img.size
             img_width, img_height = img.size
             mipmap = startmipmap
+            if maxmipmaps > 10:
+                maxmipmaps = 10
 
             log.debug(self.mipmap_list)
 
-            while True:
-                ratio = pow(2,mipmap)
-                desired_width = self.width / ratio
-                desired_height = self.height / ratio
+            steps = 0
+            if mipmap > 0:
+                desired_width = 4096 >> mipmap
+                while width > desired_width:
+                    width >>= 1
+                    steps += 1
 
+            if steps > 0:        
+                timg = img.reduce(pow(2, steps))
+            else:
+                timg = img.copy()
+
+            #print(f"gen_mipmaps: after initial scale SIZE: {timg.size}")
+
+            while True:
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
-
-                    # Only squares for now
-                    reduction_ratio = int(img_width // desired_width)
-                    if reduction_ratio < 1:
-                        #log.debug("0 ratio. skip")
-                        mipmap += 1
-                        if maxmipmaps and mipmap >= maxmipmaps:
-                            break
-                        continue
-
-                    if reduction_ratio == 1:
-                        timg = img
-                    else:
-                        timg = img.reduce(reduction_ratio)
-
                     imgdata = timg.tobytes()
                     width, height = timg.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
+                    #print(f"MIPMAP: {mipmap} SIZE: {timg.size}")
 
-                    # that's a crude hack as X Plane >= 12.04 insists of having 13 mipmaps
-                    # and the compressors only support >= 4x4
-                    # so we copy the first texel of MM10.
-                    if width < 4 or height < 4 and self.mipmap_list[10].retrieved:
-                        mm10_db = self.mipmap_list[10].databuffer.getbuffer()
-                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=mm10_db[0:self.blocksize])
+                    min_size = 0
+                    if startmipmap == 0 and maxmipmaps == 1 and mm0_partial:    # sanity check
+                        min_size = mm0_partial
+
+                    try:
+                        dxtdata = self.compress(width, height, min_size, imgdata)
+                    finally:
+                        pass
+                        imgdata = None
+
+                    if dxtdata is not None:
+                    #    self.mipmap_list[mipmap].databuffer.seek(0)
+                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                    #    print(f"DXTLEN: {len(dxtdata)}")
+                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
+                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
                         self.mipmap_list[mipmap].retrieved = True
-                    else:
-                        min_size = 0
-                        if startmipmap == 0 and maxmipmaps == 1 and mm0_partial:    # sanity check
-                            min_size = mm0_partial
+                    #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
 
-                        try:
-                            dxtdata = self.compress(width, height, min_size, imgdata)
-                        finally:
-                            pass
-                            imgdata = None
-                            timg = None
+                        # we are already at 4x4 so push result forward to 11+12
+                        if mipmap == 10:
+                            self.mipmap_list[11].databuffer = BytesIO(initial_bytes=dxtdata)
+                            self.mipmap_list[11].retrieved = True
+                            self.mipmap_list[12].databuffer = BytesIO(initial_bytes=dxtdata)
+                            self.mipmap_list[12].retrieved = True
 
-                        if dxtdata is not None:
-                        #    self.mipmap_list[mipmap].databuffer.seek(0)
-                        #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
-                        #    print(f"DXTLEN: {len(dxtdata)}")
-                            self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
-                        #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
-                            self.mipmap_list[mipmap].retrieved = True
-                        #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
-                        dxtdata = None
+                    dxtdata = None
 
-                        #print(f"REF: {sys.getrefcount(dxtdata)}")
+                    #print(f"REF: {sys.getrefcount(dxtdata)}")
+
 
                 mipmap += 1
+                if mipmap > 10:
+                    break
+
                 if maxmipmaps and mipmap >= maxmipmaps:
                     break
 
                 if mipmap >= len(self.mipmap_list):
                     break
 
+                timg = timg.reduce(2)
 
             self.dump_header()
 
