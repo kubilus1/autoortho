@@ -352,7 +352,7 @@ class Tile(object):
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
         self.refs = 0
-        self.cache_dds = CFG.config['winfsp'].getboolean("cache_dds", fallback = False)
+        self.cache_dds = False # CFG.config['winfsp'].getboolean("cache_dds", fallback = False)
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
