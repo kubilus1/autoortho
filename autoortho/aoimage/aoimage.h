@@ -18,7 +18,7 @@
 #else /* _WIN32 not defined. */
 
   /* Define with no value on non-Windows OSes. */
-  #define AOIAPI
+  #define AOIAPI __attribute__((__visibility__("default")))
   #define AOICALL
 
 #endif
