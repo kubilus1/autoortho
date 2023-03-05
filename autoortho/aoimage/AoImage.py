@@ -127,7 +127,7 @@ def main():
     #img = Image.open(inimg)
     width = 16
     height = 16
-    black = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
+    black = new('RGBA', (256*width,256*height), (0,0,0))
     print(f"{black}")
 
     black.write_jpg("black.jpg")
@@ -135,11 +135,11 @@ def main():
     black = None
     print(f"black done, {w} {h}")
 
-    green = AoImage.new('RGBA', (256*width,256*height), (0,230,0))
+    green = new('RGBA', (256*width,256*height), (0,230,0))
     print(f"green {green}")
     green.write_jpg("green.jpg")
 
-    img = AoImage.open("../testfiles/test_tile.jpg")
+    img = open("../testfiles/test_tile.jpg")
     print(f"AoImage.open {img}")
 
     img2 = img.reduce_2()
