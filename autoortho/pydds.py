@@ -5,7 +5,8 @@ import sys
 from io import BytesIO
 from binascii import hexlify
 from ctypes import *
-from PIL import Image
+#from PIL import Image
+from aoimage import AoImage
 import platform
 import threading
 
@@ -443,14 +444,17 @@ class DDS(Structure):
                     steps += 1
 
             if steps > 0:        
-                img = img.reduce(pow(2, steps))
+                #img = img.reduce(pow(2, steps))
+                img = img.reduce_2(steps)
 
             #print(f"gen_mipmaps: after initial scale SIZE: {img.size}")
 
             while True:
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
+                    #img.write_jpg(f"dds_{mipmap}.jpg")
                     imgdata = img.tobytes()
+                    #imgdata = img.data_ptr()
                     width, height = img.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {img.size}")
                     #print(f"MIPMAP: {mipmap} SIZE: {img.size}")
@@ -496,15 +500,13 @@ class DDS(Structure):
                 if mipmap >= len(self.mipmap_list):
                     break
 
-                img = img.reduce(2)
+                img = img.reduce_2()
 
             self.dump_header()
 
 
 
 def to_dds(img, outpath):
-    if img.mode == "RGB":
-        img = img.convert("RGBA")
     width, height = img.size
 
     dds = DDS(width, height)
@@ -515,7 +517,7 @@ def to_dds(img, outpath):
 def main():
     inimg = sys.argv[1]
     outimg = sys.argv[2]
-    img = Image.open(inimg)
+    img = AoImage.open(inimg)
 
     to_dds(img, outimg)
 

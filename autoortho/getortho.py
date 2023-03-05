@@ -18,7 +18,8 @@ import pydds
 
 
 import psutil
-from PIL import Image
+#from PIL import Image
+from aoimage import AoImage
 
 from aoconfig import CFG
 from aostats import STATS
@@ -229,8 +230,8 @@ class Chunk(object):
         if maptype == "Null":
             self.maptype = "EOX"
 
-        if not os.path.exists(self.cache_dir):
-            os.makedirs(self.cache_dir)
+        #if not os.path.exists(self.cache_dir):
+        #    os.makedirs(self.cache_dir)
 
         self.cache_path = os.path.join(self.cache_dir, f"{self.chunk_id}.jpg")
 
@@ -686,7 +687,7 @@ class Tile(object):
         #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
         log.debug(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
-        new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
+        new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
             ret = chunk.ready.wait()
@@ -697,7 +698,7 @@ class Tile(object):
             start_y = int((chunk.height) * (chunk.row - row))
             new_im.paste(
                 #chunk.img, 
-                Image.open(BytesIO(chunk.data)).convert("RGBA"),
+                AoImage.load_from_memory(chunk.data),
                 (
                     start_x,
                     start_y
