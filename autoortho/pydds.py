@@ -375,6 +375,7 @@ class DDS(Structure):
         elif self.ispc and self.dxt_format == "BC1":
             s = rgba_surface()
             s.data = c_char_p(data)
+            #s.data = data
             s.width = c_uint32(width)
             s.height = c_uint32(height)
             s.stride = c_uint32(width * 4)
@@ -453,8 +454,7 @@ class DDS(Structure):
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
                     #img.write_jpg(f"dds_{mipmap}.jpg")
-                    imgdata = img.tobytes()
-                    #imgdata = img.data_ptr()
+                    imgdata = img.data_ptr()
                     width, height = img.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {img.size}")
                     #print(f"MIPMAP: {mipmap} SIZE: {img.size}")

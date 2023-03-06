@@ -12,15 +12,15 @@ log = logging.getLogger(__name__)
 
 class AoImage(Structure):
     _fields_ = [
-        ('_data', c_char_p),
+        ('_data', c_uint64),    # ctypes pointers are tricky when changed under the hut so we treat it as number
         ('_width', c_uint32),
         ('_height', c_uint32),
-        ('_stride', c_uint32),   # up to here it's identical to rgba_surface for ISPC
+        ('_stride', c_uint32),
         ('_channels', c_uint32)
     ]
 
     def __init__(self):
-        self._data = None
+        self._data = 0
         self._width = 0
         self._height = 0
         self._stride = 0
@@ -32,7 +32,6 @@ class AoImage(Structure):
 
     def __repr__(self):
         return f"ptr:  width: {self._width} height: {self._height} stride: {self._stride} channels: {self._channels}"
-
 
     def close(self):
         _aoi.aoimage_delete(self)
@@ -65,7 +64,6 @@ class AoImage(Structure):
 
     def data_ptr(self):
         return self._data
-
 
     def paste(self, p_img, pos):
         _aoi.aoimage_paste(self, p_img, pos[0], pos[1])
@@ -111,7 +109,6 @@ else:
 
 _aoi = CDLL(_aoi_path)
 _aoi.aoimage_read_jpg.argtypes = (c_char_p, POINTER(AoImage))
-_aoi.aoimage_read_jpg.argtypes = (c_char_p, POINTER(AoImage))
 _aoi.aoimage_write_jpg.argtypes = (c_char_p, POINTER(AoImage), c_int32)
 _aoi.aoimage_2_rgba.argtypes = (POINTER(AoImage), POINTER(AoImage))
 _aoi.aoimage_reduce_2.argtypes = (POINTER(AoImage), POINTER(AoImage))
@@ -129,7 +126,8 @@ def main():
     height = 16
     black = new('RGBA', (256*width,256*height), (0,0,0))
     print(f"{black}")
-
+    print(f"black._data: {black._data}")
+    print(f"black.data_ptr(): {black.data_ptr()}")
     black.write_jpg("black.jpg")
     w, h = black.size
     black = None
