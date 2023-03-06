@@ -20,6 +20,7 @@ AOIAPI void aoimage_delete(aoimage_t *img) {
 AOIAPI int32_t aoimage_create(aoimage_t *img, uint32_t width, uint32_t height, uint32_t r, uint32_t g, uint32_t b) {
     memset(img, 0, sizeof(aoimage_t));
 
+    assert(height >=4 && (height & 3) == 0);    // multiple of 4
     int len = width * height * 4;
     img->ptr = malloc(len);
     if (NULL == img->ptr) {
@@ -34,13 +35,29 @@ AOIAPI int32_t aoimage_create(aoimage_t *img, uint32_t width, uint32_t height, u
 
     uint32_t pixel = 0xff000000 | (r & 0xff) | (g & 0xff) << 8 | (b & 0xff) << 16;
 
-    uint32_t *uptr = (uint32_t *)img->ptr;
-    uint32_t *end = (uint32_t *)(img->ptr + len);
+    if (pixel == 0xff000000) {
+        // if pixel color is 0 alpha does not matter here so we zero out everything
+        memset(img->ptr, 0, len);
+    } else {
+        // fill row 0 with integer arithmetics
+        uint32_t *uiptr = (uint32_t *)img->ptr;
+        while (uiptr < (uint32_t *)(img->ptr + img->stride))
+            *uiptr++ = pixel;
 
-    while (uptr < end)
-        *uptr++ = pixel;
+        uint8_t *uptr = img->ptr + img->stride;
+        memcpy(uptr, img->ptr, img->stride);        // copy row 1 from 0
+        uptr += img->stride;
 
-    assert((uint8_t *)uptr == img->ptr + len);
+        memcpy(uptr, img->ptr, 2 * img->stride);    // copy 2 + 3 from 0 + 1
+        uptr += 2 *img->stride;
+
+        while (uptr < img->ptr + len) {             // fill rest from 0-4
+            memcpy(uptr, img->ptr, 4 * img->stride);
+            uptr += 4 * img->stride;
+        }
+
+        assert(uptr == img->ptr + len);
+    }
 
     return TRUE;
 }
