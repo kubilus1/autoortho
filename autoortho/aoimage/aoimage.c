@@ -278,7 +278,7 @@ AOIAPI int32_t aoimage_from_memory(aoimage_t *img, const uint8_t *data, uint32_t
 
     //printf("Pixel format: %d\n", TJPF_RGBA);
 
-    if (tjDecompress2(tjh, data, len, img_buff, width, 0, height, TJPF_RGBA, 0) < 0) {
+    if (tjDecompress2(tjh, data, len, img_buff, width, 0, height, TJPF_RGBA, TJFLAG_FASTDCT) < 0) {
         fprintf(stderr, "tjDecompress2 failure %s\n", tjGetErrorStr2(tjh)); fflush(stderr);
         goto err;
     }
