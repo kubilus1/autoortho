@@ -33,16 +33,14 @@ AOIAPI int32_t aoimage_create(aoimage_t *img, uint32_t width, uint32_t height, u
     img->stride = width * 4;
 
     uint32_t pixel = 0xff000000 | (r & 0xff) | (g & 0xff) << 8 | (b & 0xff) << 16;
-    if (pixel == 0)
-        memset(img->ptr, 0, len);
-    else {
-        uint32_t *uptr = (uint32_t *)img->ptr;
-        uint32_t *end = (uint32_t *)(img->ptr + len);
-        while (uptr < end)
-            *uptr++ = pixel;
 
-        assert((uint8_t *)uptr == img->ptr + len);
-    }
+    uint32_t *uptr = (uint32_t *)img->ptr;
+    uint32_t *end = (uint32_t *)(img->ptr + len);
+
+    while (uptr < end)
+        *uptr++ = pixel;
+
+    assert((uint8_t *)uptr == img->ptr + len);
 
     return TRUE;
 }
