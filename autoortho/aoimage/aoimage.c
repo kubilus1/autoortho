@@ -5,9 +5,6 @@
 #include <string.h>
 #include <turbojpeg.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
 #include "aoimage.h"
 
 #define TRUE 1
@@ -134,7 +131,7 @@ AOIAPI int32_t aoimage_read_jpg(const char *filename, aoimage_t *img) {
         fprintf(stderr, "read error");
         return FALSE;
     }
-        
+
     //fprintf(stderr, "Input: Read %d/%lu bytes\n", rc, in_jpg_size);
     fclose(fd);
     int res = aoimage_from_memory(img, in_jpg_buff, in_jpg_size);
@@ -142,9 +139,45 @@ AOIAPI int32_t aoimage_read_jpg(const char *filename, aoimage_t *img) {
     return res;
 }
 AOIAPI int32_t aoimage_write_jpg(const char *filename, const aoimage_t *img, int32_t quality) {
-    // this is only use for debugging and it's so easy with stb
-    stbi_write_jpg(filename, img->width, img->height, img->channels, img->ptr, quality);
-    return TRUE;
+    tjhandle tjh = NULL;
+    unsigned char *out_jpg_buf = NULL;
+    unsigned long out_jpg_size = 0;
+    FILE *fd = NULL;
+
+    int result = FALSE;
+
+    tjh = tjInitCompress();
+    if (NULL == tjh) {
+        fprintf(stderr, "Can't allocate tjInitCompress"); fflush(stderr);
+        goto err;
+    }
+
+    int rc = tjCompress2(tjh, img->ptr, img->width, 0, img->height, TJPF_RGBA,
+                         &out_jpg_buf, &out_jpg_size, TJSAMP_444, quality, 0);
+    if (rc) {
+        fprintf(stderr, "tjCompress2 failure %d\n", rc); fflush(stderr);
+        goto err;
+    }
+
+    //fprintf(stderr, "jpg_size: %ld\n", out_jpg_size);
+    fd = fopen(filename, "wb");
+    if (fd == NULL) {
+		fprintf(stderr, "FAILED to open dest jpg '%s'", filename);
+		goto err;
+	}
+
+    if (fwrite(out_jpg_buf, 1, out_jpg_size, fd) < 0) {
+        fprintf(stderr, "write error");
+        goto err;
+    }
+
+    result = TRUE;
+
+   err:
+    if (fd) fclose(fd);
+    if (tjh) tjDestroy(tjh);
+    if (out_jpg_buf) tjFree(out_jpg_buf);
+    return result;
 }
 
 AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img) {
@@ -210,14 +243,14 @@ AOIAPI int32_t aoimage_from_memory(aoimage_t *img, const uint8_t *data, uint32_t
         fprintf(stderr, "Can't allocate tjInitDecompress"); fflush(stderr);
         goto err;
     }
-        
+
     int subsamp, width, height, color_space;
 
     if (tjDecompressHeader3(tjh, data, len, &width, &height, &subsamp, &color_space) < 0) {
         fprintf(stderr, "tjDecompressHeader3 failure %s\n", tjGetErrorStr2(tjh)); fflush(stderr);
         goto err;
     }
-       
+
     //fprintf(stderr, "%d %d %d\n", width, height, subsamp); fflush(stderr);
 
     unsigned long img_size = width * height * tjPixelSize[TJPF_RGBA];
@@ -229,7 +262,7 @@ AOIAPI int32_t aoimage_from_memory(aoimage_t *img, const uint8_t *data, uint32_t
 	}
 
     //printf("Pixel format: %d\n", TJPF_RGBA);
-        
+
     if (tjDecompress2(tjh, data, len, img_buff, width, 0, height, TJPF_RGBA, 0) < 0) {
         fprintf(stderr, "tjDecompress2 failure %s\n", tjGetErrorStr2(tjh)); fflush(stderr);
         goto err;
@@ -243,12 +276,12 @@ AOIAPI int32_t aoimage_from_memory(aoimage_t *img, const uint8_t *data, uint32_t
     img->channels = 4;
     img->stride = img->channels * img->width;
     return TRUE;
-    
+
 err:
     if (tjh) tjDestroy(tjh);
     if (img_buff) free(img_buff);
     return FALSE;
-}   
+}
 
 AOIAPI void aoimage_tobytes(aoimage_t *img, uint8_t *data) {
     memcpy(data, img->ptr, img->width * img->height * img->channels);
@@ -260,7 +293,7 @@ AOIAPI int32_t aoimage_paste(aoimage_t *img, const aoimage_t *p_img, uint32_t x,
     assert((img->channels == 4) && (p_img->channels == 4));
 
     //aoimage_dump("paste img", img);
-    //aoimage_dump("paste P", p_img); 
+    //aoimage_dump("paste P", p_img);
     //fprintf(stderr, "aoimage_paste: %d %d\n", x, y);
 
     uint8_t *ip = img->ptr + (y * img->width * 4) + x * 4;  // lower left corner of image

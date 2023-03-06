@@ -1,8 +1,6 @@
 .SUFFIXES: .obj
 
 TARGET=main
-STB=./stb
-#JPGT=./libjpeg-turbo-gcc64
 
 HEADERS=$(wildcard *.h)
 OBJECTS=aoimage.o
@@ -12,7 +10,7 @@ CC=gcc
 LD=gcc
 
 CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden \
-	-I$(STB) $(DEFINES)
+	 $(DEFINES)
 
 LDFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning -lpthread
 LIBS=-lturbojpeg

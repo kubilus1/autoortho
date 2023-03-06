@@ -1,7 +1,6 @@
 .SUFFIXES: .obj
 
 TARGET=main.exe
-STB=./stb
 JPGT=./libjpeg-turbo-gcc64
 
 HEADERS=$(wildcard *.h)
@@ -12,7 +11,7 @@ LD=x86_64-w64-mingw32-gcc
 
 CFLAGS+=-g -O2 -s -Wall -fdiagnostics-color -Wno-format-overflow  \
 	-DWIN32 \
-	-I$(STB) -I$(JPGT)/include $(DEFINES)
+	-I$(JPGT)/include $(DEFINES)
 
 CFLAGS_DLL=$(CFLAGS) -DAOI_EXPORTS -mdll
 
