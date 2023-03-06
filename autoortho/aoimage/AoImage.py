@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 class AoImage(Structure):
     _fields_ = [
-        ('_data', c_uint64),    # ctypes pointers are tricky when changed under the hut so we treat it as number
+        ('_data', c_uint64),    # ctypes pointers are tricky when changed under the hud so we treat it as number
         ('_width', c_uint32),
         ('_height', c_uint32),
         ('_stride', c_uint32),
