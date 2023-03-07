@@ -19,9 +19,12 @@ import flighttrack
 
 from functools import wraps, lru_cache
 
+from aoconfig import CFG
+import logging
+log = logging.getLogger(__name__)
+
 from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 #from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
-
 
 import getortho
 
@@ -31,10 +34,6 @@ import socket
 #from memory_profiler import profile
 import tracemalloc
 
-from aoconfig import CFG
-
-import logging
-log = logging.getLogger(__name__)
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
@@ -71,10 +70,11 @@ class AutoOrtho(Operations):
 
     fh = 1000
 
-    default_uid = 0
-    default_gid = 0
+    default_uid = -1
+    default_gid = -1
 
     startup = True
+
 
     def __init__(self, root, cache_dir='.cache'):
         log.info(f"ROOT: {root}")
@@ -133,7 +133,7 @@ class AutoOrtho(Operations):
             log.debug(f"GETATTR: {path}: MATCH!")
             if self.startup:
                 # First matched file
-                log.info("First matched DDS file detected.  Start flight tracker.")
+                log.info(f"First matched DDS file {path} detected.  Start flight tracker.")
                 flighttrack.ft.start()
                 self.startup = False
 
@@ -144,7 +144,8 @@ class AutoOrtho(Operations):
                 'st_ctime': 1649857251.726115, 
                 'st_gid': self.default_gid,
                 'st_uid': self.default_uid,
-                'st_mode': 33204,
+                #'st_mode': 33204,
+                'st_mode': 33206,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
                 'st_size': 22369744, 
@@ -152,6 +153,9 @@ class AutoOrtho(Operations):
                 #'st_blksize': 16384
                 #'st_blksize': 8192
                 #'st_blksize': 4096
+                # Windows specific stuff
+                #'st_ino': 844424931910150,
+                #'st_dev': 1421433975
             }
         else:
             full_path = self._full_path(path)
@@ -159,9 +163,9 @@ class AutoOrtho(Operations):
             log.debug(f"GETATTR FULLPATH {full_path}  Exists? {exists}")
             full_path = self._full_path(path)
             st = os.lstat(full_path)
-            #log.info(st)
+            log.debug(f"GETATTR: Orig stat: {st}")
             attrs = dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
-                        'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
+                        'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid', 'st_ino', 'st_dev'))
 
             #if os.path.isdir(full_path):
             #    attrs['st_nlink'] = 2
@@ -178,7 +182,7 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def readdir(self, path, fh):
-        log.debug(f"READDIR: {path}")
+        log.info(f"READDIR: {path} {fh}")
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -189,8 +193,9 @@ class AutoOrtho(Operations):
         else:
             dirents = self.path_dict.get(path)
 
-        for r in dirents:
-            yield r
+        return dirents
+        #for r in dirents:
+        #    yield r
 
     def readlink(self, path):
         pathname = os.readlink(self._full_path(path))
@@ -210,6 +215,7 @@ class AutoOrtho(Operations):
     def mkdir(self, path, mode):
         return os.mkdir(self._full_path(path), mode)
 
+    @lru_cache
     def statfs(self, path):
         log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
@@ -228,6 +234,7 @@ class AutoOrtho(Operations):
                     'f_frsize':1024, 
                     'f_namemax':1024
             }
+            stats = {}
             return stats
             # st = os.stat(full_path)
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
@@ -284,19 +291,11 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             t = self.tc._open_tile(row, col, maptype, zoom) 
-            #t.refs += 1
-            # if not platform.system() == 'Windows':
-            #     with self.path_condition:
-            #         while path in self.open_paths:
-            #             log.info(f"{path} already open. {self.open_paths}  wait.")
-            #             self.path_condition.wait(10)
-
-            #         log.info(f"Opening for {path} : {self.open_paths}....")
-            #         self.open_paths.append(path)
         else:
-            h = os.open(full_path, flags)
+            #h = os.open(full_path, flags)
+            h = os.open(full_path, flags|os.O_BINARY)
 
-        #log.info(f"FH: {h}")
+        log.debug(f"OPEN: FH= {h}")
         return h
 
     def _create(self, path, mode, fi=None):
@@ -310,6 +309,8 @@ class AutoOrtho(Operations):
     #@lru_cache
     def read(self, path, length, offset, fh):
         log.debug(f"READ: {path} {offset} {length} {fh}")
+        #if length > 32768:
+        #    log.info(f"READ: {path} {offset} {length} {fh}")
         data = None
         
         #full_path = self._full_path(path)
@@ -345,6 +346,7 @@ class AutoOrtho(Operations):
         if not data:
             os.lseek(fh, offset, os.SEEK_SET)
             data = os.read(fh, length)
+            log.debug(f"READ: Read {len(data)} bytes.")
 
         return data
 
@@ -421,13 +423,15 @@ def run(ao, mountpoint, nothreads=False):
         foreground=True, 
         allow_other=True,
         #auto_cache=True,
+        #max_read=32768,
         #max_read=16384,
         #kernel_cache=True,
-        #uid=-1,
-        #gid=-1,
+        uid=-1,
+        gid=-1,
         #debug=True,
         #mode="0777",
         #umask="777",
+        #FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
         #FileSecurity="D:P(A;;FA;;;OW)",
         #FileSecurity="D:P(A;;0x1200A9;;;WD)",
         #FileSecurity="D:P(A;OICI;FA;;;WD)(A;OICI;FA;;;BU)(A;OICI;FA;;;BA)(A;OICI;FA;;;OW)",
