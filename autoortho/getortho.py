@@ -697,8 +697,9 @@ class Tile(object):
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
             ret = chunk.ready.wait()
-            if not ret:
+            if not ret or chunk.data == None:
                 log.error("Failed to get chunk.")
+                continue
 
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
