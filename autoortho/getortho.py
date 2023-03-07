@@ -377,7 +377,8 @@ class Tile(object):
         else:
             use_ispc=False
 
-        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc)
+        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc,
+                dxt_format=CFG.pydds.format)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
 
     def __lt__(self, other):
@@ -551,7 +552,11 @@ class Tile(object):
         
         log.debug(f"Retrieving {length} bytes from mipmap {mipmap} offset {offset}")
 
-        bytes_per_row = 1048576 >> mipmap
+        if CFG.pydds.format == "BC1":
+            bytes_per_row = 524288 >> mipmap
+        else:
+            bytes_per_row = 1048576 >> mipmap
+
         rows_per_mipmap = 16 >> mipmap
 
         # how deep are we in a mipmap
