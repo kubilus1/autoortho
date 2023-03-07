@@ -66,14 +66,14 @@ mm_averages = {
     1:-1,
     2:-1,
     3:-1,
-    4:-1
+    4:-1,
 }
 mm_counts = {
     0:-1,
     1:-1,
     2:-1,
     3:-1,
-    4:-1
+    4:-1,
 }
 zl_counts = {}
 
@@ -351,7 +351,10 @@ class Tile(object):
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
         self.refs = 0
+
         self.bytes_read = 0
+        self.lowest_offset = 99999999
+
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -548,7 +551,6 @@ class Tile(object):
             self.get_mipmap(mipmap)
             return True
         
-        STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
         log.debug(f"Retrieving {length} bytes from mipmap {mipmap} offset {offset}")
 
         bytes_per_row = 1048576 >> mipmap
@@ -572,10 +574,13 @@ class Tile(object):
 
         self.ready.clear()
         #log.info(new_im.size)
-       
+        
+        start_time = time.time()
+
         # Only attempt partial compression from mipmap start
         if offset == 0:
-            compress_len = length - 128
+            compress_len = length
+            #compress_len = length - 128
         else:
             compress_len = 0
 
@@ -586,13 +591,25 @@ class Tile(object):
 
         # We haven't fully retrieved so unset flag
         self.dds.mipmap_list[mipmap].retrieved = False
+        end_time = time.time()
         self.ready.set()
+
+        if compress_len:
+            STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
+            tile_time = end_time - start_time
+            mm_counts[f"p{mipmap}"] = mm_counts.get(f"p{mipmap}", 0) + 1
+            mm_fetch_times.setdefault(f"p{mipmap}", collections.deque(maxlen=25)).append(tile_time)
+            mm_averages[f"p{mipmap}"] = round(sum(mm_fetch_times.get(f"p{mipmap}"))/len(mm_fetch_times.get(f"p{mipmap}")), 2)
+            STATS['mm_averages'] = mm_averages
 
         return True
 
     def read_dds_bytes(self, offset, length):
         log.debug(f"READ DDS BYTES: {offset} {length}")
-        
+       
+        if offset > 0 and offset < self.lowest_offset:
+            self.lowest_offset = offset
+
         mm_idx = self.find_mipmap_pos(offset)
         mipmap = self.dds.mipmap_list[mm_idx]
 
@@ -601,10 +618,13 @@ class Tile(object):
             log.debug("TILE: Read header")
             self.get_bytes(0, length)
         #elif offset < 32768:
-        elif offset < 131072:
+        elif offset < 65536:
+        #elif offset < 131072:
         #elif offset < 262144:
         #elif offset < 1048576:
-            # How far into mipmap 0 do we go before just getting the whole thing
+        #elif offset < 4194304:
+        #elif offset < 4500000:
+        #    # How far into mipmap 0 do we go before just getting the whole thing
             log.debug("TILE: Middle of mipmap 0")
             self.get_bytes(0, length + offset)
         elif (offset + length) < mipmap.endpos:
@@ -622,7 +642,7 @@ class Tile(object):
 
             # Get the entire next mipmap
             self.get_mipmap(mm_idx + 1)
-
+        
         self.bytes_read += length
         # Seek and return data
         self.dds.seek(offset)
@@ -775,7 +795,7 @@ class Tile(object):
     def should_close(self):
         if self.dds.mipmap_list[0].retrieved:
             if self.bytes_read < self.dds.mipmap_list[0].length:
-                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}. Lowest offset: {self.lowest_offset}")
                 return False
             else:
                 #log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
@@ -789,7 +809,7 @@ class Tile(object):
 
         if self.dds.mipmap_list[0].retrieved:
             if self.bytes_read < self.dds.mipmap_list[0].length:
-                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}. Lowest offset: {self.lowest_offset}")
             else:
                 log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
 
@@ -955,7 +975,7 @@ class TileCacher(object):
 
             t.refs -= 1
 
-            if self.enable_cache:
+            if self.enable_cache and not t.should_close():
                 log.debug(f"Cache enabled.  Delay tile close for {tile_id}")
                 return True
 

@@ -270,20 +270,20 @@ class DDS(Structure):
                     # Mipmap has more than enough remaining length for request
                     # ~We have remaining length in current mipmap~
                     #
-                    #if mipmap.databuffer is None:
-                    #    log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
-                    #    #data = b''
-                    #    data = b'\x88' * length
-                    #    log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
-                    #else:
-                    log.debug("We have a mipmap and adequated remaining length")
-                    mipmap.databuffer.seek(mipmap_pos)
-                    data = mipmap.databuffer.read(length)
-                    ret_len = length - len(data)
-                    if ret_len != 0:
-                        # This should be impossible
-                        log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len} for {mipmap.idx}")
-                        data += b'\xFF' * ret_len
+                    if mipmap.databuffer is None:
+                        log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
+                        #data = b''
+                        data = b'\x88' * length
+                        log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
+                    else:
+                        log.debug("We have a mipmap and adequated remaining length")
+                        mipmap.databuffer.seek(mipmap_pos)
+                        data = mipmap.databuffer.read(length)
+                        ret_len = length - len(data)
+                        if ret_len != 0:
+                            # This should be impossible
+                            log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes.  This is not good! mmpos: {mipmap_pos} retlen: {ret_len} reqlen: {length} mm:{mipmap.idx}")
+                            data += b'\xFF' * ret_len
                                 
                     outdata += data
                     self.position += length
@@ -404,7 +404,7 @@ class DDS(Structure):
         #    maxmipmaps = len(self.mipmap_list)
 
         #if not maxmipmaps:
-        #    maxmipmaps = 0
+        #    maxmipmaps = 8
 
         with self.lock:
 
@@ -431,12 +431,12 @@ class DDS(Structure):
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
 
-                    if mipmap >= 7:
-                        # Avoid compressing tiny mipmaps that will likely never be used.
-                        #self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
-                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=b'\x00' * self.mipmap_list[mipmap].length)
-                        self.mipmap_list[mipmap].retrieved = True
-                        continue
+                    #  if mipmap >= 8:
+                    #      # Avoid compressing tiny mipmaps that will likely never be used.
+                    #      #self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
+                    #      self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=b'\x00' * self.mipmap_list[mipmap].length)
+                    #      self.mipmap_list[mipmap].retrieved = True
+                    #      continue
 
                     # Only squares for now
                     reduction_ratio = int(img_width // desired_width)

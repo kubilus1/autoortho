@@ -23,8 +23,8 @@ from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
-from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-#from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+#from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
 import getortho
 
@@ -182,6 +182,7 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def readdir(self, path, fh):
+        return ['.','..']
         log.info(f"READDIR: {path} {fh}")
 
         if path not in self.path_dict:
@@ -223,18 +224,29 @@ class AutoOrtho(Operations):
             #stv = os.statvfs(full_path)
             #log.info(stv)
             stats = {
-                    'f_bavail':1024, 
-                    'f_bfree':1024,
-                    'f_blocks':1204, 
+                    'f_bavail':47602498, 
+                    'f_bfree':47602498,
+                    'f_blocks':124699647, 
                     'f_bsize':4096, 
-                    'f_favail':1024, 
-                    'f_ffree':1024, 
-                    'f_files':1024, 
-                    'f_flag':0,
-                    'f_frsize':1024, 
-                    'f_namemax':1024
+                    'f_favail':1000000, 
+                    'f_ffree':1000000, 
+                    'f_files':999, 
+                    'f_flag':1024,
+                    'f_frsize':4096,
+                    'f_fsid':0x01,
+                    'f_namemax':255
             }
-            stats = {}
+            stats = {
+                    'f_bavail':47602498, 
+                    'f_bfree':47602498,
+                    'f_blocks':124699647, 
+                    'f_favail':1000000, 
+                    'f_ffree':1000000, 
+                    'f_files':999, 
+                    'f_frsize':4096,
+                    'f_flag':1024,
+                    'f_bsize':4096 
+            }
             return stats
             # st = os.stat(full_path)
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
@@ -291,9 +303,10 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             t = self.tc._open_tile(row, col, maptype, zoom) 
-        else:
-            #h = os.open(full_path, flags)
+        elif platform.system() == 'Windows':
             h = os.open(full_path, flags|os.O_BINARY)
+        else:
+            h = os.open(full_path, flags)
 
         log.debug(f"OPEN: FH= {h}")
         return h
