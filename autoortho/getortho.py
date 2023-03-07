@@ -696,15 +696,12 @@ class Tile(object):
 
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
-            new_im.paste(
-                #chunk.img, 
-                AoImage.load_from_memory(chunk.data),
-                (
-                    start_x,
-                    start_y
-                )
-            )
-        
+            chunk_img = AoImage.load_from_memory(chunk.data)
+            if chunk_img:
+                new_im.paste(chunk_img, (start_x, start_y))
+            else:
+                log.warning(f"Could not decode {chunk.cache_path}")
+
         return new_im
 
 
