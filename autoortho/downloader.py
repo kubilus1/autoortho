@@ -243,12 +243,12 @@ class OrthoRegion(object):
             log.info(f"Region {self.region_id} version {self.latest_version} not downloaded!")
             return
 
-
         if self.ortho_dirs:
             log.info(f"Detected existing scenery dirs for {self.region_id}.  Cleanup first")
             self.cur_activity['status'] = f"Detected existing scenery dirs for {self.region_id}.  Cleanup first."
             for o in self.ortho_dirs:
-                shutil.rmtree(o)
+                if os.path.exists(o):
+                    shutil.rmtree(o)
 
         log.info(f"Ready to extract archives for {self.region_id} v{self.latest_version}!")
         self.cur_activity['status'] = f"Extracting archives for {self.region_id} v{self.latest_version}"
@@ -520,6 +520,9 @@ if __name__ == "__main__":
 
     parser_list = subparser.add_parser('list')
     parser_fetch = subparser.add_parser('fetch')
+
+    if TESTMODE:
+        REGION_LIST.append('test')
 
     parser_fetch.add_argument(
         "region",

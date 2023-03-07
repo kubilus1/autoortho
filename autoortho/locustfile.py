@@ -67,7 +67,9 @@ class DDSClient():
         #col = (random.randint(0, 256) * 16) + 30000
         row = self.row + 16
         col = self.col + 16
+        
         testfile = os.path.join(self.path, f"{row}_{col}_BI16.dds")
+        #print(testfile)
 
         with open(testfile, "rb") as h:
             header = h.read(128)
@@ -115,7 +117,10 @@ class DDSRead(User):
 
 class DDSUser(DDSRead):
     #path = "./mount"
-    path = "/home/mkubilus/Software/xplane/autoortho/Custom Scenery/z_autoortho/textures"
+    #path = "/home/mkubilus/Software/xplane/autoortho/Custom Scenery/z_autoortho/textures"
+    print(CFG.paths)
+    path = os.path.join(CFG.paths.scenery_path, 'z_autoortho', 'textures')
+    print(f"Testing against {path}")
 
     @task(1)
     def read_mm0(self):
@@ -125,7 +130,7 @@ class DDSUser(DDSRead):
     def read_header(self):
         self.client.read_header()
 
-    @task(50)
+    @task(20)
     def read_mm4(self):
         self.client.read_mm_4()
 

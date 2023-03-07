@@ -9,6 +9,7 @@ import threading
 import aoconfig
 import aostats
 import flighttrack
+import winsetup
 
 import logging
 log = logging.getLogger(__name__)
@@ -46,13 +47,12 @@ def main():
     args = parser.parse_args()
 
     CFG = aoconfig.CFG
-    if (not CFG.ready) or args.configure or (CFG.showconfig and not args.headless):
-        CFG.setup(headless = args.headless)
+    cfgui = aoconfig.ConfigUI(CFG)
+    if (not CFG.ready) or args.configure or (CFG.general.showconfig and not args.headless):
+        cfgui.setup(headless = args.headless)
 
     if not args.root or not args.mountpoint:
-        CFG.verify()
-        CFG.prepdirs()
-
+        cfgui.verify()
         root = CFG.root
         mountpoint = CFG.mountpoint
     else:
@@ -63,41 +63,64 @@ def main():
     print("mountpoint:", mountpoint)
 
     stats = aostats.AOStats()
-    stats.start()
 
     ftrack = threading.Thread(
         target=flighttrack.run,
         daemon=True
     )
-    ftrack.start()
 
-    winfuse = False
-    if platform.system() == 'Windows':
-        log.info("Running in Windows WinFSP mode.")
-        import autoortho_winfsp
-        autoortho_winfsp.main(root, mountpoint)
-    elif winfuse == True:
-        log.info("Logging in FUSE mode.")
-        import autoortho_fuse
-        root = os.path.expanduser(root)
-        mountpoint = os.path.expanduser(mountpoint)
-        nothreads=False
-
-        if CFG.fuse.threading:
-            log.info("Running in multi-threaded mode.")
-            nothreads = False
-        else:
-            log.info("Running in single-threaded mode.")
-            nothreads = True
-
-        log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-        autoortho_fuse.run(
-                autoortho_fuse.AutoOrtho(root), 
-                mountpoint, 
-                nothreads
-        )
+    if CFG.fuse.threading:
+        log.info("Running in multi-threaded mode.")
+        nothreads = False
     else:
-        log.info("Logging in FUSE mode.")
+        log.info("Running in single-threaded mode.")
+        nothreads = True
+
+    if platform.system() == 'Windows':
+        # Windows user mode FS support is kind of a mess, so try a few things.
+        
+        wintype, libpath = winsetup.find_win_libs()
+        if wintype == "dokan-FUSE":
+            log.info("Running in Windows FUSE mode with Dokan.")
+            os.environ['FUSE_LIBRARY_PATH'] = libpath
+            root = os.path.expanduser(root)
+            mountpoint = os.path.expanduser(mountpoint)
+            winsetup.setup_dokan_mount(mountpoint) 
+            import autoortho_fuse
+            stats.start()
+            ftrack.start()
+            log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
+            autoortho_fuse.run(
+                    autoortho_fuse.AutoOrtho(root), 
+                    mountpoint, 
+                    nothreads
+            )
+        elif wintype == "winfsp-FUSE":
+            log.info("Running in Windows FUSE mode with WinFSP.")
+            root = os.path.expanduser(root)
+            mountpoint = os.path.expanduser(mountpoint)
+            winsetup.setup_winfsp_mount(mountpoint) 
+            import autoortho_fuse
+            stats.start()
+            ftrack.start()
+            log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
+            autoortho_fuse.run(
+                    autoortho_fuse.AutoOrtho(root), 
+                    mountpoint, 
+                    nothreads
+            )
+        elif wintype == "winfsp-raw":
+            log.info("Running in Windows WinFSP mode.")
+            root = os.path.expanduser(root)
+            mountpoint = os.path.expanduser(mountpoint)
+            winsetup.setup_winfsp_mount(mountpoint) 
+            import autoortho_winfsp
+            stats.start()
+            ftrack.start()
+            log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
+            autoortho_winfsp.main(root, mountpoint)
+    else:
+        log.info("Running in FUSE mode.")
         import autoortho_fuse
         root = os.path.expanduser(root)
         mountpoint = os.path.expanduser(mountpoint)
@@ -108,14 +131,8 @@ def main():
             log.error(f"WARNING: {mountpoint} is not a directory.  Exiting.")
             sys.exit(1)
 
-
-        if CFG.fuse.threading:
-            log.info("Running in multi-threaded mode.")
-            nothreads = False
-        else:
-            log.info("Running in single-threaded mode.")
-            nothreads = True
-
+        stats.start()
+        ftrack.start()
         log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
         autoortho_fuse.run(
                 autoortho_fuse.AutoOrtho(root), 
