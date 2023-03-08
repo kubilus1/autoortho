@@ -754,14 +754,15 @@ class Tile(object):
         STATS['mm_counts'] = mm_counts
         STATS['mm_averages'] = mm_averages
 
-        if mipmap == 0:
-            log.debug("Will close all chunks.")
-            for z,chunks in self.chunks.items():
-                for chunk in chunks:
-                    chunk.close()
-            self.chunks = {}
-                    #del(chunk.data)
-                    #del(chunk.img)
+        # the tile is still open!
+        # if mipmap == 0:
+            # log.debug("Will close all chunks.")
+            # for z,chunks in self.chunks.items():
+                # for chunk in chunks:
+                    # chunk.close()
+            # self.chunks = {}
+                    # #del(chunk.data)
+                    # #del(chunk.img)
         #return outfile
         log.debug("Results:")
         log.debug(self.dds.mipmap_list)
