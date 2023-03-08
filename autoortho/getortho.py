@@ -202,7 +202,7 @@ class Chunk(object):
     cache_dir = 'cache'
     
     attempt = 0
-
+    max_attempt = 3
     starttime = 0
     fetchtime = 0
 
@@ -253,6 +253,10 @@ class Chunk(object):
             return False
 
     def save_cache(self):
+        if self.data == None or len(self.data) == 0:
+            log.warning(f"not saving {self}: data == None or empty")
+            return
+
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
@@ -302,14 +306,19 @@ class Chunk(object):
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
-            return False
+            if (self.attempt <= self.max_attempt):
+                return False    # results in resubmit
+
+            log.warning(f"Giving up on {self}")
+            self.data = None    # don't hang forever, chunk is ready but no data, results in a black hole
         finally:
             if resp:
                 resp.close()
 
         self.fetchtime = time.time() - self.starttime
 
-        self.save_cache()
+        if self.data:
+            self.save_cache()
         self.ready.set()
         return True
 
