@@ -297,9 +297,10 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             t = self.tc._open_tile(row, col, maptype, zoom) 
-        else:
-            #h = os.open(full_path, flags)
+        elif platform.system() == 'Windows':
             h = os.open(full_path, flags|os.O_BINARY)
+        else:
+            h = os.open(full_path, flags)
 
         log.debug(f"OPEN: FH= {h}")
         return h
