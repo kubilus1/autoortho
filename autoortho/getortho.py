@@ -33,7 +33,6 @@ log = logging.getLogger(__name__)
 #from memory_profiler import profile
 
 def do_url(url, headers={}):
-    print(url)
     req = Request(url, headers=headers)
     resp = urlopen(req, timeout=5)
     if resp.status != 200:

@@ -9,7 +9,7 @@ from PIL import Image
 import platform
 import threading
 
-from functools import lru_cache, cache
+#from functools import lru_cache, cache
 
 #from memory_profiler import profile
 from aoconfig import CFG
@@ -200,7 +200,7 @@ class DDS(Structure):
 
         for m in self.mipmap_list:
             log.debug(m)
-            print(m)
+
         #log.debug(self.mipmap_list)
         log.debug(self.pitchOrLinearSize)
         #print(self.pitchOrLinearSize)
