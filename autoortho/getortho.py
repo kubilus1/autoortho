@@ -219,7 +219,6 @@ class Chunk(object):
         self.zoom = zoom
         self.maptype = maptype
         self.cache_dir = cache_dir
-        self.cache_dir = CFG.paths.cache_dir
         
         # Hack override maptype
         #self.maptype = "BI"
