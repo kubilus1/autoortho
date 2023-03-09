@@ -5,7 +5,9 @@ import sys
 import time
 import math
 import tempfile
+import platform
 import threading
+
 import subprocess
 import collections
 
@@ -31,6 +33,7 @@ log = logging.getLogger(__name__)
 #from memory_profiler import profile
 
 def do_url(url, headers={}):
+    print(url)
     req = Request(url, headers=headers)
     resp = urlopen(req, timeout=5)
     if resp.status != 200:
@@ -217,6 +220,7 @@ class Chunk(object):
         self.zoom = zoom
         self.maptype = maptype
         self.cache_dir = cache_dir
+        self.cache_dir = CFG.paths.cache_dir
         
         # Hack override maptype
         #self.maptype = "BI"
@@ -340,7 +344,7 @@ class Tile(object):
 
     refs = None
 
-    def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir='.cache'):
+    def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir=None):
         self.row = int(row)
         self.col = int(col)
         self.maptype = maptype
@@ -349,7 +353,6 @@ class Tile(object):
         self.cache_file = (-1, None)
         self.ready = threading.Event()
         self._lock = threading.RLock()
-        self.cache_dir = cache_dir
         self.refs = 0
         self.bytes_read = 0
 
@@ -357,6 +360,10 @@ class Tile(object):
         if min_zoom:
             self.min_zoom = int(min_zoom)
 
+        if cache_dir:
+            self.cache_dir = cache_dir
+        else:
+            self.cache_dir = CFG.paths.cache_dir
         
         # Hack override maptype
         #self.maptype = "BI"
@@ -562,12 +569,18 @@ class Tile(object):
         # how deep are we in a mipmap
         mm_offset = max(0, offset - self.dds.mipmap_list[mipmap].startpos)
         log.debug(f"MM_offset: {mm_offset}  Offset {offset}.  Startpos {self.dds.mipmap_list[mipmap]}")
+    
+        if CFG.pydds.format == "BC1":
+            # Calculate which row 'offset' is in
+            startrow = mm_offset >> (19 - mipmap)
+            # Calculate which row 'offset+length' is in
+            endrow = (mm_offset + length) >> (19 - mipmap)
+        else:  
+            # Calculate which row 'offset' is in
+            startrow = mm_offset >> (20 - mipmap)
+            # Calculate which row 'offset+length' is in
+            endrow = (mm_offset + length) >> (20 - mipmap)
 
-        # Calculate which row 'offset' is in
-        startrow = mm_offset >> (20 - mipmap)
-        # Calculate which row 'offset+length' is in
-        endrow = (mm_offset + length) >> (20 - mipmap)
-       
         log.debug(f"Startrow: {startrow} Endrow: {endrow}")
         
         new_im = self.get_img(mipmap, startrow, endrow)
@@ -837,8 +850,8 @@ class TileCacher(object):
     misses = 0
 
     enable_cache = False
-    cache_mem_lim = pow(2,30) * 4
-    cache_tile_lim = 150
+    cache_mem_lim = pow(2,30) * 2
+    cache_tile_lim = 100
 
     open_count = {}
     
@@ -860,6 +873,10 @@ class TileCacher(object):
 
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
         self.clean_t.start()
+
+        if platform.system() == 'Windows':
+            # Windows doesn't handle FS cache the same way so enable here.
+            self.enable_cache = True
 
     def _to_tile_id(self, row, col, map_type, zoom):
         if self.maptype_override:

@@ -153,9 +153,10 @@ class DDS(Structure):
 
         if dxt_format == 'BC3':
             self.fourCC = b'DXT5'
-
+            self.blocksize = 16
         else:
             self.fourCC = b'DXT1'
+            self.blocksize = 8
         
         self.caps = 0x1000 | 0x400000
         self.mipMapCount = 0
@@ -174,28 +175,32 @@ class DDS(Structure):
         self.mipmap_list = []
 
         self.position = 0
+        self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
 
         curbytes = 128
         while (width >= 4) and (height >= 4):
             mipmap = MipMap()
             mipmap.idx = self.mipMapCount
             mipmap.startpos = curbytes
-            if dxt_format == 'BC3':
-                curbytes += width*height
-            else:
-                curbytes += int((width*height)/2)
+            curbytes += max(1, (width*height >> 4)) * self.blocksize
+            #if dxt_format == 'BC3':
+            #    curbytes += width*height
+            #else:
+            #    curbytes += int((width*height)/2)
             mipmap.length = curbytes - mipmap.startpos
             mipmap.endpos = mipmap.startpos + mipmap.length 
-            width = int(width/2)
-            height = int(height/2)
-            self.mipMapCount+=1
             self.mipmap_list.append(mipmap)
+            width = width >> 1
+            height = height >> 1
+            self.mipMapCount+=1
         # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
-        self.pitchOrLinearSize = curbytes 
+        #self.pitchOrLinearSize = curbytes 
+        self.total_size = curbytes
         self.dump_header()
 
         for m in self.mipmap_list:
             log.debug(m)
+            print(m)
         #log.debug(self.mipmap_list)
         log.debug(self.pitchOrLinearSize)
         #print(self.pitchOrLinearSize)
@@ -223,8 +228,7 @@ class DDS(Structure):
             # Make sure we complete the full file size
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
-                #h.seek(self.pitchOrLinearSize+126)
-                h.seek(self.pitchOrLinearSize-2)
+                h.seek(self.total_size - 2)
                 h.write(b'x\00')
 
 
