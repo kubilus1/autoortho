@@ -465,6 +465,8 @@ class DDS(Structure):
 
                     try:
                         dxtdata = self.compress(width, height, min_size, imgdata)
+                    except:
+                        log.warning("dds compress failed")
                     finally:
                         pass
                         imgdata = None
