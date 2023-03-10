@@ -298,15 +298,16 @@ class Chunk(object):
         req = Request(url, headers=header)
         resp = 0
         try:
-            resp = urlopen(req, timeout=10)
+            resp = urlopen(req, timeout=5)
             if resp.status != 200:
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
             self.data = resp.read()
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
-            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
-            if (self.attempt <= self.max_attempt):
+            attempts_left = self.max_attempt - self.attempt
+            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}, attempts left: {attempts_left}")
+            if (attempts_left > 0):
                 return False    # results in resubmit
 
             log.warning(f"Giving up on {self}")
