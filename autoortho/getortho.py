@@ -804,13 +804,13 @@ class Tile(object):
 
 
     def close(self):
-        log.info(f"Closing {self}")
+        log.debug(f"Closing {self}")
 
         if self.dds.mipmap_list[0].retrieved:
             if self.bytes_read < self.dds.mipmap_list[0].length:
                 log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
             else:
-                log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+                log.debug(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
 
 
         if self.refs > 0:
