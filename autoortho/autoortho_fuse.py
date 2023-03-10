@@ -23,8 +23,8 @@ from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
-from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-#from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+#from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
 import getortho
 
@@ -189,6 +189,7 @@ class AutoOrtho(Operations):
     @lru_cache
     def readdir(self, path, fh):
         log.info(f"READDIR: {path} {fh}")
+        return ['.', '..']
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
