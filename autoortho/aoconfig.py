@@ -395,6 +395,8 @@ min_zoom = 12
 [pydds]
 # ISPC or STB for dds file compression
 compressor = ISPC
+# BC1 or BC3 for dxt1 or dxt5 respectively
+format = BC1
 
 [scenery]
 # Don't cleanup downloads

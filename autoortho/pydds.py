@@ -9,6 +9,8 @@ from PIL import Image
 import platform
 import threading
 
+#from functools import lru_cache, cache
+
 #from memory_profiler import profile
 from aoconfig import CFG
 
@@ -88,15 +90,14 @@ STB_DXT_HIGHQUAL = 2
 #def get_size(width, height):
 #    return ((width+3) >> 2) * ((height+3) >> 2) * 16
 
-
 class MipMap(object):
-    def __init__(self):
-        self.idx = 0
-        self.startpos = 0
-        self.endpos = 0
-        self.length = 0
-        self.retrieved = False
-        self.databuffer = None
+    def __init__(self, idx=0, startpos=0, endpos=0, length=0, retrieved=False, databuffer=None):
+        self.idx = idx
+        self.startpos = startpos
+        self.endpos = endpos
+        self.length = length
+        self.retrieved = retrieved
+        self.databuffer = databuffer
         #self.databuffer = BytesIO()
 
     def __repr__(self):
@@ -138,7 +139,7 @@ class DDS(Structure):
     ]
 
 
-    def __init__(self, width, height, ispc=True):
+    def __init__(self, width, height, ispc=True, dxt_format="BC3"):
         self.magic = b"DDS "  
         self.size = 124
         self.flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_MIPMAPCOUNT | DDSD_LINEARSIZE
@@ -149,7 +150,14 @@ class DDS(Structure):
         #self.reserved1 = b"pydds"
         self.pfSize = 32
         self.pfFlags = 0x4
-        self.fourCC = b'DXT5'
+
+        if dxt_format == 'BC3':
+            self.fourCC = b'DXT5'
+            self.blocksize = 16
+        else:
+            self.fourCC = b'DXT1'
+            self.blocksize = 8
+        
         self.caps = 0x1000 | 0x400000
         self.mipMapCount = 0
        
@@ -158,6 +166,7 @@ class DDS(Structure):
         self.header = BytesIO()
                 
         self.ispc = ispc        
+        self.dxt_format = dxt_format
         self.mipmap_map = {}
 
         #[pow(2,x)*pow(2,x) for x in range(int(math.log(width,2)),1,-1) ]
@@ -166,25 +175,32 @@ class DDS(Structure):
         self.mipmap_list = []
 
         self.position = 0
+        self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
 
         curbytes = 128
         while (width >= 4) and (height >= 4):
             mipmap = MipMap()
             mipmap.idx = self.mipMapCount
             mipmap.startpos = curbytes
-            curbytes += width*height
+            curbytes += max(1, (width*height >> 4)) * self.blocksize
+            #if dxt_format == 'BC3':
+            #    curbytes += width*height
+            #else:
+            #    curbytes += int((width*height)/2)
             mipmap.length = curbytes - mipmap.startpos
             mipmap.endpos = mipmap.startpos + mipmap.length 
-            width = int(width/2)
-            height = int(height/2)
-            self.mipMapCount+=1
             self.mipmap_list.append(mipmap)
+            width = width >> 1
+            height = height >> 1
+            self.mipMapCount+=1
         # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
-        self.pitchOrLinearSize = curbytes 
+        #self.pitchOrLinearSize = curbytes 
+        self.total_size = curbytes
         self.dump_header()
 
         for m in self.mipmap_list:
             log.debug(m)
+
         #log.debug(self.mipmap_list)
         log.debug(self.pitchOrLinearSize)
         #print(self.pitchOrLinearSize)
@@ -212,8 +228,7 @@ class DDS(Structure):
             # Make sure we complete the full file size
             mipmap = self.mipmap_list[-1]
             if not mipmap.retrieved:
-                #h.seek(self.pitchOrLinearSize+126)
-                h.seek(self.pitchOrLinearSize-2)
+                h.seek(self.total_size - 2)
                 h.write(b'x\00')
 
 
@@ -322,12 +337,6 @@ class DDS(Structure):
             log.debug(f"Compressed images must have dimensions that are multiples of 4. We got {width}x{height}")
             return None
 
-        is_rgba = True
-        
-        blocksize = 16
-        dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * 16
-        
-        outdata = create_string_buffer(dxt_size)
         
         #outdata = b'\x00'*dxt_size
         
@@ -335,7 +344,11 @@ class DDS(Structure):
         #outdata = bio.getbuffer().tobytes()
 
 
-        if self.ispc:
+        if self.ispc and self.dxt_format == "BC3":
+            blocksize = 16
+            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * blocksize
+            outdata = create_string_buffer(dxt_size)
+            #print(f"LEN: {len(outdata)}")
             s = rgba_surface()
             s.data = c_char_p(data)
             s.width = c_uint32(width)
@@ -352,8 +365,37 @@ class DDS(Structure):
                 s, outdata
             )
             result = True
+        elif self.ispc and self.dxt_format == "BC1":
+            #print("BC1")
+            blocksize = 8
+            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * blocksize
+            outdata = create_string_buffer(dxt_size)
+            #print(f"LEN: {len(outdata)}")
+        
+            s = rgba_surface()
+            s.data = c_char_p(data)
+            s.width = c_uint32(width)
+            s.height = c_uint32(height)
+            s.stride = c_uint32(width * 4)
+            
+            #print("Will do ispc")
+            _ispc.CompressBlocksBC1.argtypes = (
+                POINTER(rgba_surface),
+                c_char_p
+            )
+
+            _ispc.CompressBlocksBC1(
+                s, outdata
+            )
+            result = True
         else:
+            is_rgba = True
             #print("Will use stb")
+            blocksize = 16
+            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * blocksize
+            outdata = create_string_buffer(dxt_size)
+
+            #print(f"LEN: {len(outdata)}")
             _stb.compress_pixels.argtypes = (
                     c_char_p,
                     c_char_p, 
