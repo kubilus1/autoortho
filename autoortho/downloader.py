@@ -521,6 +521,9 @@ if __name__ == "__main__":
     parser_list = subparser.add_parser('list')
     parser_fetch = subparser.add_parser('fetch')
 
+    if TESTMODE:
+        REGION_LIST.append('test')
+
     parser_fetch.add_argument(
         "region",
         nargs = "?",

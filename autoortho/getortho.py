@@ -18,7 +18,8 @@ import pydds
 
 
 import psutil
-from PIL import Image
+#from PIL import Image
+from aoimage import AoImage
 
 from aoconfig import CFG
 from aostats import STATS
@@ -201,7 +202,7 @@ class Chunk(object):
     cache_dir = 'cache'
     
     attempt = 0
-
+    max_attempt = 3
     starttime = 0
     fetchtime = 0
 
@@ -229,8 +230,8 @@ class Chunk(object):
         if maptype == "Null":
             self.maptype = "EOX"
 
-        if not os.path.exists(self.cache_dir):
-            os.makedirs(self.cache_dir)
+        #if not os.path.exists(self.cache_dir):
+        #    os.makedirs(self.cache_dir)
 
         self.cache_path = os.path.join(self.cache_dir, f"{self.chunk_id}.jpg")
 
@@ -252,6 +253,10 @@ class Chunk(object):
             return False
 
     def save_cache(self):
+        if self.data == None or len(self.data) == 0:
+            log.warning(f"not saving {self}: data == None or empty")
+            return
+
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
@@ -293,22 +298,28 @@ class Chunk(object):
         req = Request(url, headers=header)
         resp = 0
         try:
-            resp = urlopen(req, timeout=10)
+            resp = urlopen(req, timeout=5)
             if resp.status != 200:
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
             self.data = resp.read()
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
-            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
-            return False
+            attempts_left = self.max_attempt - self.attempt
+            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}, attempts left: {attempts_left}")
+            if (attempts_left > 0):
+                return False    # results in resubmit
+
+            log.warning(f"Giving up on {self}")
+            self.data = None    # don't hang forever, chunk is ready but no data, results in a black hole
         finally:
             if resp:
                 resp.close()
 
         self.fetchtime = time.time() - self.starttime
 
-        self.save_cache()
+        if self.data:
+            self.save_cache()
         self.ready.set()
         return True
 
@@ -351,7 +362,7 @@ class Tile(object):
         self._lock = threading.RLock()
         self.cache_dir = cache_dir
         self.refs = 0
-        self.cache_dds = CFG.config['winfsp'].getboolean("cache_dds", fallback = False)
+        self.bytes_read = 0
 
         #self.tile_condition = threading.Condition()
         if min_zoom:
@@ -527,9 +538,11 @@ class Tile(object):
         for m in self.dds.mipmap_list:
             if offset < m.endpos:
                 return m.idx
-
+        return self.dds.mipmap_list[-1].idx
 
     def get_bytes(self, offset, length):
+
+        STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
         mipmap = self.find_mipmap_pos(offset)
         log.debug(f"Get_bytes for mipmap {mipmap} ...")
         if mipmap > 4:
@@ -595,7 +608,10 @@ class Tile(object):
             # If offset = 0, read the header
             log.debug("TILE: Read header")
             self.get_bytes(0, length)
+        #elif offset < 32768:
         elif offset < 131072:
+        #elif offset < 262144:
+        #elif offset < 1048576:
             # How far into mipmap 0 do we go before just getting the whole thing
             log.debug("TILE: Middle of mipmap 0")
             self.get_bytes(0, length + offset)
@@ -615,6 +631,7 @@ class Tile(object):
             # Get the entire next mipmap
             self.get_mipmap(mm_idx + 1)
 
+        self.bytes_read += length
         # Seek and return data
         self.dds.seek(offset)
         return self.dds.read(length)
@@ -686,24 +703,22 @@ class Tile(object):
         #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
         log.debug(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
-        new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
+        new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
             ret = chunk.ready.wait()
-            if not ret:
+            if not ret or chunk.data == None:
                 log.error("Failed to get chunk.")
+                continue
 
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
-            new_im.paste(
-                #chunk.img, 
-                Image.open(BytesIO(chunk.data)).convert("RGBA"),
-                (
-                    start_x,
-                    start_y
-                )
-            )
-        
+            chunk_img = AoImage.load_from_memory(chunk.data)
+            if chunk_img:
+                new_im.paste(chunk_img, (start_x, start_y))
+            else:
+                log.warning(f"Could not decode {chunk.cache_path}")
+
         return new_im
 
 
@@ -722,14 +737,14 @@ class Tile(object):
         start_time = time.time()
         try:
             #with self.tile_lock:
-            if self.cache_dds and mipmap == 0:
-                self.dds.gen_mipmaps(new_im, 0, 99)    # it's cheap to create full mipmaps
-                dds_name = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}{self.zoom}.dds")
-                self.dds.write(dds_name)
-                self.priority = 0   # no longer of use in the cache
-                log.info(f"DDS: {dds_name} written")
+            if mipmap == 0:
+                self.dds.gen_mipmaps(new_im, mipmap, 1) 
             else:
-                self.dds.gen_mipmaps(new_im, mipmap)
+                self.dds.gen_mipmaps(new_im, mipmap) 
+            #if mipmap == 0:
+            #    self.dds.gen_mipmaps(new_im, mipmap, 1) 
+            #else:
+            #    self.dds.gen_mipmaps(new_im, mipmap, mipmap+1) 
         finally:
             new_im.close()
 
@@ -749,22 +764,42 @@ class Tile(object):
         STATS['mm_counts'] = mm_counts
         STATS['mm_averages'] = mm_averages
 
-        if mipmap == 0:
-            log.debug("Will close all chunks.")
-            for z,chunks in self.chunks.items():
-                for chunk in chunks:
-                    chunk.close()
-            self.chunks = {}
-                    #del(chunk.data)
-                    #del(chunk.img)
+        # the tile is still open!
+        # if mipmap == 0:
+            # log.debug("Will close all chunks.")
+            # for z,chunks in self.chunks.items():
+                # for chunk in chunks:
+                    # chunk.close()
+            # self.chunks = {}
+                    # #del(chunk.data)
+                    # #del(chunk.img)
         #return outfile
         log.debug("Results:")
         log.debug(self.dds.mipmap_list)
         return True
 
 
+    def should_close(self):
+        if self.dds.mipmap_list[0].retrieved:
+            if self.bytes_read < self.dds.mipmap_list[0].length:
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+                return False
+            else:
+                #log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+                return True
+        else:
+            return True
+
+
     def close(self):
         log.debug(f"Closing {self}")
+
+        if self.dds.mipmap_list[0].retrieved:
+            if self.bytes_read < self.dds.mipmap_list[0].length:
+                log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
+            else:
+                log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+
 
         if self.refs > 0:
             log.warning(f"TILE: Trying to close, but has refs: {self.refs}")
@@ -811,13 +846,20 @@ class TileCacher(object):
     misses = 0
 
     enable_cache = False
+    cache_mem_lim = pow(2,30) * 4
+    cache_tile_lim = 150
 
+    open_count = {}
+    
     def __init__(self, cache_dir='.cache'):
         if MEMTRACE:
             tracemalloc.start()
 
         self.maptype_override = CFG.autoortho.maptype_override
-        log.info(f"Maptype override set to {self.maptype_override}")
+        if self.maptype_override:
+            log.info(f"Maptype override set to {self.maptype_override}")
+        else:
+            log.info(f"Maptype override not set, will use default.")
         log.info(f"Will use Compressor: {CFG.pydds.compressor}")
         self.tc_lock = threading.RLock()
         
@@ -837,12 +879,12 @@ class TileCacher(object):
     def show_stats(self):
         process = psutil.Process(os.getpid())
         cur_mem = process.memory_info().rss
-        log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-        log.info(f"NUM TILES CACHED: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+        if self.enable_cache:
+            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.info(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
 
     def clean(self):
-        memlimit = pow(2,30) * 2
-        log.info(f"Started tile clean thread.  Mem limit {memlimit}")
+        log.info(f"Started tile clean thread.  Mem limit {self.cache_mem_lim}")
         while True:
             process = psutil.Process(os.getpid())
             cur_mem = process.memory_info().rss
@@ -853,7 +895,7 @@ class TileCacher(object):
             if not self.enable_cache:
                 continue
 
-            while len(self.tiles) >= 25 and cur_mem > memlimit:
+            while len(self.tiles) >= self.cache_tile_lim and cur_mem > self.cache_mem_lim:
                 log.info("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
@@ -899,10 +941,13 @@ class TileCacher(object):
                     cache_dir = self.cache_dir,
                     min_zoom = self.min_zoom)
                 self.tiles[idx] = tile
+                self.open_count[idx] = self.open_count.get(idx, 0) + 1
+                if self.open_count[idx] > 1:
+                    log.debug(f"Tile: {idx} opened for the {self.open_count[idx]} time.")
             elif tile.refs <= 0:
                 # Only in this case would this cache have made a difference
                 self.hits += 1
-
+                
             tile.refs += 1
         return tile
 
