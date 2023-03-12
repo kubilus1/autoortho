@@ -23,8 +23,8 @@ from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
-from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-#from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+#from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
 import getortho
 
@@ -139,6 +139,12 @@ class AutoOrtho(Operations):
 
             #row, col, maptype, zoom = m.groups()
             #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
+
+            if CFG.pydds.format == "BC1":
+                dds_size = 11184936
+            else:
+                dds_size = 22369744
+
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -148,7 +154,7 @@ class AutoOrtho(Operations):
                 'st_mode': 33206,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
-                'st_size': 22369744, 
+                'st_size': dds_size, 
                 'st_blksize': 32768
                 #'st_blksize': 16384
                 #'st_blksize': 8192
@@ -183,6 +189,7 @@ class AutoOrtho(Operations):
     @lru_cache
     def readdir(self, path, fh):
         log.info(f"READDIR: {path} {fh}")
+        return ['.', '..']
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -291,9 +298,10 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             t = self.tc._open_tile(row, col, maptype, zoom) 
-        else:
-            #h = os.open(full_path, flags)
+        elif platform.system() == 'Windows':
             h = os.open(full_path, flags|os.O_BINARY)
+        else:
+            h = os.open(full_path, flags)
 
         log.debug(f"OPEN: FH= {h}")
         return h

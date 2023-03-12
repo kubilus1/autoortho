@@ -135,7 +135,6 @@ def test_mm0_dxt1(tmpdir):
     for m in dds.mipmap_list:
         print(m)
 
-    assert True == False
 #assert False
 
 

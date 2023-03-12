@@ -5,7 +5,9 @@ import sys
 import time
 import math
 import tempfile
+import platform
 import threading
+
 import subprocess
 import collections
 
@@ -351,7 +353,7 @@ class Tile(object):
 
     refs = None
 
-    def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir='.cache'):
+    def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir=None):
         self.row = int(row)
         self.col = int(col)
         self.maptype = maptype
@@ -360,7 +362,6 @@ class Tile(object):
         self.cache_file = (-1, None)
         self.ready = threading.Event()
         self._lock = threading.RLock()
-        self.cache_dir = cache_dir
         self.refs = 0
         self.bytes_read = 0
 
@@ -368,6 +369,10 @@ class Tile(object):
         if min_zoom:
             self.min_zoom = int(min_zoom)
 
+        if cache_dir:
+            self.cache_dir = cache_dir
+        else:
+            self.cache_dir = CFG.paths.cache_dir
         
         # Hack override maptype
         #self.maptype = "BI"
@@ -388,7 +393,8 @@ class Tile(object):
         else:
             use_ispc=False
 
-        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc)
+        self.dds = pydds.DDS(self.width*256, self.height*256, ispc=use_ispc,
+                dxt_format=CFG.pydds.format)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
 
     def __lt__(self, other):
@@ -562,18 +568,28 @@ class Tile(object):
         
         log.debug(f"Retrieving {length} bytes from mipmap {mipmap} offset {offset}")
 
-        bytes_per_row = 1048576 >> mipmap
+        if CFG.pydds.format == "BC1":
+            bytes_per_row = 524288 >> mipmap
+        else:
+            bytes_per_row = 1048576 >> mipmap
+
         rows_per_mipmap = 16 >> mipmap
 
         # how deep are we in a mipmap
         mm_offset = max(0, offset - self.dds.mipmap_list[mipmap].startpos)
         log.debug(f"MM_offset: {mm_offset}  Offset {offset}.  Startpos {self.dds.mipmap_list[mipmap]}")
+    
+        if CFG.pydds.format == "BC1":
+            # Calculate which row 'offset' is in
+            startrow = mm_offset >> (19 - mipmap)
+            # Calculate which row 'offset+length' is in
+            endrow = (mm_offset + length) >> (19 - mipmap)
+        else:  
+            # Calculate which row 'offset' is in
+            startrow = mm_offset >> (20 - mipmap)
+            # Calculate which row 'offset+length' is in
+            endrow = (mm_offset + length) >> (20 - mipmap)
 
-        # Calculate which row 'offset' is in
-        startrow = mm_offset >> (20 - mipmap)
-        # Calculate which row 'offset+length' is in
-        endrow = (mm_offset + length) >> (20 - mipmap)
-       
         log.debug(f"Startrow: {startrow} Endrow: {endrow}")
         
         new_im = self.get_img(mipmap, startrow, endrow)
@@ -593,6 +609,7 @@ class Tile(object):
             new_im.close()
 
         # We haven't fully retrieved so unset flag
+        log.debug(f"UNSETTING RETRIEVED! {self}")
         self.dds.mipmap_list[mipmap].retrieved = False
         self.ready.set()
 
@@ -606,22 +623,23 @@ class Tile(object):
 
         if offset == 0:
             # If offset = 0, read the header
-            log.debug("TILE: Read header")
+            log.debug("READ_DDS_BYTES: Read header")
             self.get_bytes(0, length)
         #elif offset < 32768:
         elif offset < 131072:
         #elif offset < 262144:
         #elif offset < 1048576:
             # How far into mipmap 0 do we go before just getting the whole thing
-            log.debug("TILE: Middle of mipmap 0")
+            log.debug("READ_DDS_BYTES: Middle of mipmap 0")
             self.get_bytes(0, length + offset)
         elif (offset + length) < mipmap.endpos:
             # Total length is within this mipmap.  Make sure we have it.
-            log.debug(f"TILE: Detected middle read for mipmap {mipmap.idx}")
+            log.debug(f"READ_DDS_BYTES: Detected middle read for mipmap {mipmap.idx}")
             if not mipmap.retrieved:
-                log.debug(f"TILE: Retrieve {mipmap.idx}")
+                log.debug(f"READ_DDS_BYTES: Retrieve {mipmap.idx}")
                 self.get_mipmap(mipmap.idx)
         else:
+            log.debug(f"READ_DDS_BYTES: Start before this mipmap {mipmap.idx}")
             # We already know we start before the end of this mipmap
             # We must extend beyond the length.
             
@@ -661,14 +679,14 @@ class Tile(object):
 
         # Get effective zoom
         zoom = self.zoom - mipmap
-        log.debug(f"Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
+        log.debug(f"GET_IMG: Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
         col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom)
         log.debug(f"Will use:  Zoom: {zoom},  Mipmap: {mipmap}")
 
     
-        log.debug(self.dds.mipmap_list)
+        log.debug(f"GET_IMG: MM List before { {x.idx:x.retrieved for x in self.dds.mipmap_list} }")
         if self.dds.mipmap_list[mipmap].retrieved:
-            log.debug(f"We already have mipmap {mipmap} for {self}")
+            log.debug(f"GET_IMG: We already have mipmap {mipmap} for {self}")
             return
 
         startchunk = 0
@@ -685,11 +703,12 @@ class Tile(object):
         chunks = self.chunks[zoom][startchunk:endchunk]
         log.debug(f"Start chunk: {startchunk}  End chunk: {endchunk}  Chunklen {len(self.chunks[zoom])}")
 
-        log.debug(f"TILE: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
+        log.debug(f"GET_IMG: {self} : Retrieve mipmap for ZOOM: {zoom} MIPMAP: {mipmap}")
         data_updated = False
+        log.debug(f"GET_IMG: {self} submitting chunks.")
         for chunk in chunks:
             if not chunk.ready.is_set():
-                # ??
+                #log.info(f"SUBMIT: {chunk}")
                 chunk.priority = self.min_zoom - mipmap 
                 chunk_getter.submit(chunk)
                 data_updated = True
@@ -702,7 +721,7 @@ class Tile(object):
 
         #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
-        log.debug(f"Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
+        log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
         new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
@@ -718,33 +737,38 @@ class Tile(object):
                 new_im.paste(chunk_img, (start_x, start_y))
             else:
                 log.warning(f"Could not decode {chunk.cache_path}")
-
         return new_im
 
 
     #@profile
+    @locked
     def get_mipmap(self, mipmap=0):
-       
+        #
+        # Protect this method to avoid simultaneous threads attempting mm builds at the same time.
+        # Otherwise we risk contention such as waiting get_img call attempting to build an image as 
+        # another thread closes chunks.
+        #
+
+        log.debug(f"GET_MIPMAP: {self}")
+
         if mipmap > self.max_mipmap:
             mipmap = self.max_mipmap
 
+        # We can have multiple threads wait on get_img ...
+        log.debug(f"GET_MIPMAP: Next call is get_img which may block!.............")
         new_im = self.get_img(mipmap)
         if not new_im:
-            log.debug("No updates, so no image generated")
+            log.debug("GET_MIPMAP: No updates, so no image generated")
             return True
 
         self.ready.clear()
         start_time = time.time()
         try:
-            #with self.tile_lock:
+            #self.dds.gen_mipmaps(new_im, mipmap) 
             if mipmap == 0:
                 self.dds.gen_mipmaps(new_im, mipmap, 1) 
             else:
                 self.dds.gen_mipmaps(new_im, mipmap) 
-            #if mipmap == 0:
-            #    self.dds.gen_mipmaps(new_im, mipmap, 1) 
-            #else:
-            #    self.dds.gen_mipmaps(new_im, mipmap, mipmap+1) 
         finally:
             new_im.close()
 
@@ -764,15 +788,14 @@ class Tile(object):
         STATS['mm_counts'] = mm_counts
         STATS['mm_averages'] = mm_averages
 
-        # the tile is still open!
-        # if mipmap == 0:
-            # log.debug("Will close all chunks.")
-            # for z,chunks in self.chunks.items():
-                # for chunk in chunks:
-                    # chunk.close()
-            # self.chunks = {}
-                    # #del(chunk.data)
-                    # #del(chunk.img)
+        if mipmap == 0:
+            log.debug("GET_MIPMAP: Will close all chunks.")
+            for z,chunks in self.chunks.items():
+                for chunk in chunks:
+                    chunk.close()
+            self.chunks = {}
+                    #del(chunk.data)
+                    #del(chunk.img)
         #return outfile
         log.debug("Results:")
         log.debug(self.dds.mipmap_list)
@@ -798,7 +821,7 @@ class Tile(object):
             if self.bytes_read < self.dds.mipmap_list[0].length:
                 log.warning(f"TILE: {self} retrieved mipmap 0, but only read {self.bytes_read}.")
             else:
-                log.info(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
+                log.debug(f"TILE: {self} retrieved mipmap 0, full read of mipmap! {self.bytes_read}.")
 
 
         if self.refs > 0:
@@ -846,8 +869,8 @@ class TileCacher(object):
     misses = 0
 
     enable_cache = False
-    cache_mem_lim = pow(2,30) * 4
-    cache_tile_lim = 150
+    cache_mem_lim = pow(2,30) * 2
+    cache_tile_lim = 100
 
     open_count = {}
     
@@ -869,6 +892,10 @@ class TileCacher(object):
 
         self.clean_t = threading.Thread(target=self.clean, daemon=True)
         self.clean_t.start()
+
+        if platform.system() == 'Windows':
+            # Windows doesn't handle FS cache the same way so enable here.
+            self.enable_cache = True
 
     def _to_tile_id(self, row, col, map_type, zoom):
         if self.maptype_override:

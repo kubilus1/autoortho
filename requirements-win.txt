@@ -17,7 +17,7 @@ colorama==0.4.6
     # via click
 flask==2.2.2
     # via -r .\requirements-win.in
-fusepy==3.0.1
+refuse==0.0.4
     # via -r requirements.in
 itsdangerous==2.1.2
     # via flask
