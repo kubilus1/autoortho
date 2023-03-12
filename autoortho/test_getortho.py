@@ -5,6 +5,10 @@ import os
 import time
 import pytest
 import psutil
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 import getortho
 
 #getortho.ISPC = False
@@ -48,13 +52,14 @@ def test_get_bytes(tmpdir):
 
 def test_get_bytes_mip1(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(16777344, 1024)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mmstart = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mmstart, 1024)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
-        h.seek(16777344)
+        h.seek(mmstart)
         data = h.read(8)
 
     assert data != b'\x00'*8
@@ -62,14 +67,15 @@ def test_get_bytes_mip1(tmpdir):
 
 def test_get_bytes_mip_end(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(20970000, 1024)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mmend = tile.dds.mipmap_list[0].endpos
+    ret = tile.get_bytes(mmend-1024, 1024)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
         #h.seek(20709504)
-        h.seek(20971640)
+        h.seek(mmend-1024)
         data = h.read(8)
 
     assert data != b'\x00'*8
@@ -77,17 +83,19 @@ def test_get_bytes_mip_end(tmpdir):
 
 def test_get_bytes_mip_span(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(20955264, 32768)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mm0end = tile.dds.mipmap_list[0].endpos
+    mm1start = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mm0end-16384, 32768)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
         #h.seek(20709504)
 
-        h.seek(20955264)
+        h.seek(mm0end-16384)
         data0 = h.read(8)
-        h.seek(20971648)
+        h.seek(mm1start)
         data1 = h.read(8)
 
     assert data0 != b'\x00'*8
@@ -96,13 +104,14 @@ def test_get_bytes_mip_span(tmpdir):
 
 def test_get_bytes_row_span(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(17825792, 4096)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mm1start = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mm1start + 261144, 4096)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
-        h.seek(17825792)
+        h.seek(mm1start + 262144)
         data = h.read(8)
 
     assert data != b'\x00'*8
@@ -111,13 +120,16 @@ def test_get_bytes_row_span(tmpdir):
 def test_find_mipmap_pos():
     tile = getortho.Tile(2176, 3232, 'Null', 13)
 
-    m = tile.find_mipmap_pos(129)
+    mm0start = tile.dds.mipmap_list[0].startpos
+    m = tile.find_mipmap_pos(mm0start + 1)
     assert m == 0
 
-    m = tile.find_mipmap_pos(16777344)
+    mm1start = tile.dds.mipmap_list[1].startpos
+    m = tile.find_mipmap_pos(mm1start + 262144)
     assert m == 1
 
-    m = tile.find_mipmap_pos(20971650)
+    mm2start = tile.dds.mipmap_list[2].startpos
+    m = tile.find_mipmap_pos(mm2start + 32)
     assert m == 2
 
 

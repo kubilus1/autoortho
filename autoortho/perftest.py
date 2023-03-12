@@ -22,9 +22,9 @@ import timeit
 #def test_conv(inimg, outfile):
 #    conv.conv(inimg, outfile) 
 
-def test_pydds(inimg, outfile, mmstart, mmend, ispc, clen=0):
+def test_pydds(inimg, outfile, mmstart, mmend, ispc, fmt='BC3', clen=0):
     #print(f"TESTING {inimg} {outfile} {mmstart} {mmend} {ispc}")
-    dds = pydds.DDS(4096, 4096, ispc=ispc)
+    dds = pydds.DDS(4096, 4096, ispc=ispc, dxt_format=fmt)
     #inimg = inimg.convert('RGBA')
     dds.gen_mipmaps(inimg, mmstart, mmend, clen)
 
@@ -58,18 +58,22 @@ def main():
 
     
     tests = [
-        ("PYDDS MM0 PART", "test_pydds(testimg_rgba, 'out.dds', 0, 0, True, 1048576)"),
-        ("PYDDS MM1 PART", "test_pydds(testimg_rgba, 'out.dds', 1, 0, True, 1048576)"),
-        ("PYDDS MM3 PART", "test_pydds(testimg_rgba, 'out.dds', 3, 0, True, 1048576)"),
-        ("PYDDS NOMM PART", "test_pydds(testimg_rgba, 'out.dds', 0, 1, True, 1048576)"),
+        ("PYDDS MM0 PART", "test_pydds(testimg_rgba, 'out.dds', 0, 0, True, clen=1048576)"),
+        ("PYDDS MM1 PART", "test_pydds(testimg_rgba, 'out.dds', 1, 0, True, clen=1048576)"),
+        ("PYDDS MM3 PART", "test_pydds(testimg_rgba, 'out.dds', 3, 0, True, clen=1048576)"),
+        ("PYDDS NOMM PART", "test_pydds(testimg_rgba, 'out.dds', 0, 1, True, clen=1048576)"),
         ("PYDDS MM0 STB", "test_pydds(testimg_rgba, 'out.dds', 0, 0, False)"),
         ("PYDDS MM1 STB", "test_pydds(testimg_rgba, 'out.dds', 1, 0, False)"),
         ("PYDDS MM3 STB", "test_pydds(testimg_rgba, 'out.dds', 3, 0, False)"),
         ("PYDDS NOMM STB", "test_pydds(testimg_rgba, 'out.dds', 0, 1, False)"),
-        ("PYDDS MM0 ISPC", "test_pydds(testimg_rgba, 'out.dds', 0, 0, True)"),
-        ("PYDDS MM1 ISPC", "test_pydds(testimg_rgba, 'out.dds', 1, 0, True)"),
-        ("PYDDS MM3 ISPC", "test_pydds(testimg_rgba, 'out.dds', 3, 0, True)"),
-        ("PYDDS NOMM ISPC", "test_pydds(testimg_rgba, 'out.dds', 0, 1, True)"),
+        ("PYDDS MM0 ISPC BC1", "test_pydds(testimg_rgba, 'out.dds', 0, 0, True, fmt='BC1')"),
+        ("PYDDS MM1 ISPC BC1", "test_pydds(testimg_rgba, 'out.dds', 1, 0, True, fmt='BC1')"),
+        ("PYDDS MM3 ISPC BC1", "test_pydds(testimg_rgba, 'out.dds', 3, 0, True, fmt='BC1')"),
+        ("PYDDS NOMM ISPC BC1", "test_pydds(testimg_rgba, 'out.dds', 0, 1, True, fmt='BC1')"),
+        ("PYDDS MM0 ISPC BC3", "test_pydds(testimg_rgba, 'out.dds', 0, 0, True)"),
+        ("PYDDS MM1 ISPC BC3", "test_pydds(testimg_rgba, 'out.dds', 1, 0, True)"),
+        ("PYDDS MM3 ISPC BC3", "test_pydds(testimg_rgba, 'out.dds', 3, 0, True)"),
+        ("PYDDS NOMM ISPC BC3", "test_pydds(testimg_rgba, 'out.dds', 0, 1, True)"),
         ("NVCOMPRESS", "test_nvcompress(testimg, 'out.dds', True)"),
         ("NVCOMPRESS NOMM", "test_nvcompress(testimg, 'out.dds', False)")
     ]
