@@ -895,7 +895,8 @@ class TileCacher(object):
 
         if platform.system() == 'Windows':
             # Windows doesn't handle FS cache the same way so enable here.
-            self.enable_cache = True
+            #self.enable_cache = True
+            pass
 
     def _to_tile_id(self, row, col, map_type, zoom):
         if self.maptype_override:
