@@ -68,10 +68,15 @@ class FlightTracker(object):
                 self.connected = False
                 log.debug("Socket timeout.  Reset.")
                 RequestDataRefs(self.sock)
+                time.sleep(2)
                 continue
             except ConnectionResetError: 
                 log.debug("Connection reset.")
                 time.sleep(2)
+                continue
+            except Exception as err:
+                log.debug(f"Some other error {err}")
+                time.sleep(5)
                 continue
 
             if not self.connected:

@@ -469,7 +469,7 @@ class Tile(object):
 
         outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{zoom}.dds")
 
-        new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
+        new_im = Image.new('RGB', (256*width,256*height), (250,250,250))
         try:
             for chunk in self.chunks[zoom]:
                 ret = chunk.ready.wait()
@@ -482,7 +482,7 @@ class Tile(object):
                 #end_y = int(start_y + chunk.height)
 
                 new_im.paste(
-                    Image.open(BytesIO(chunk.data)).convert("RGBA"),
+                    Image.open(BytesIO(chunk.data)),
                     (
                         start_x,
                         start_y
@@ -611,7 +611,8 @@ class Tile(object):
             log.debug("READ_DDS_BYTES: Read header")
             self.get_bytes(0, length)
         #elif offset < 32768:
-        elif offset < 131072:
+        elif offset < 65536:
+        #elif offset < 131072:
         #elif offset < 262144:
         #elif offset < 1048576:
             # How far into mipmap 0 do we go before just getting the whole thing
@@ -707,7 +708,7 @@ class Tile(object):
         #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
         log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
-        new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
+        new_im = Image.new('RGB', (256*width,256*height), (0,0,0))
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
             ret = chunk.ready.wait()
@@ -718,7 +719,7 @@ class Tile(object):
             start_y = int((chunk.height) * (chunk.row - row))
 
             new_im.paste(
-                Image.open(BytesIO(chunk.data)).convert("RGBA"),
+                Image.open(BytesIO(chunk.data)),
                 (
                     start_x,
                     start_y
@@ -912,7 +913,7 @@ class TileCacher(object):
                 continue
 
             while len(self.tiles) >= self.cache_tile_lim and cur_mem > self.cache_mem_lim:
-                log.info("Hit cache limit.  Remove oldest 20")
+                log.debug("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
                         t = self.tiles.get(i)

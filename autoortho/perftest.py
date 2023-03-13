@@ -11,7 +11,8 @@ import subprocess
 TESTIMG = os.path.join("testfiles", "test_tile2.jpg")
 TESTIMG_small = os.path.join("testfiles", "test_tile_small.jpg")
 testimg = Image.open(TESTIMG)
-testimg_rgba = testimg.convert('RGBA')
+#testimg_rgba = testimg.convert('RGBA')
+testimg_rgba = testimg
 smallimg = Image.open(TESTIMG_small)
 #wand_img = wand_image.Image(filename=TESTIMG)
 #testimg.convert('RGBA')

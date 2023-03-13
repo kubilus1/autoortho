@@ -139,7 +139,7 @@ class DDS(Structure):
     ]
 
 
-    def __init__(self, width, height, ispc=True, dxt_format="BC3"):
+    def __init__(self, width, height, ispc=True, dxt_format="BC1"):
         self.magic = b"DDS "  
         self.size = 124
         self.flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_MIPMAPCOUNT | DDSD_LINEARSIZE
@@ -453,6 +453,9 @@ class DDS(Structure):
 
                     timg = img.reduce(reduction_ratio)
 
+                    if timg.mode == "RGB":
+                        timg = timg.convert("RGBA")
+
                     imgdata = timg.tobytes()
                     width, height = timg.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {timg.size}")
@@ -491,8 +494,8 @@ class DDS(Structure):
 
 
 def to_dds(img, outpath):
-    if img.mode == "RGB":
-        img = img.convert("RGBA")
+    #if img.mode == "RGB":
+    #    img = img.convert("RGBA")
     width, height = img.size
 
     dds = DDS(width, height)
