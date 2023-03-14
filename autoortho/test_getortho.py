@@ -14,20 +14,20 @@ import getortho
 #getortho.ISPC = False
 
 @pytest.fixture
-def chunk():
-    return getortho.Chunk(2176, 3232, 'EOX', 13)
+def chunk(tmpdir):
+    return getortho.Chunk(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
 
 def test_chunk_get(chunk):
     ret = chunk.get()
     assert ret == True
 
-def test_null_chunk():
-    c = getortho.Chunk(2176, 3232, 'Null', 13)
+def test_null_chunk(tmpdir):
+    c = getortho.Chunk(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     ret = c.get()
     assert ret
 
-def test_chunk_getter():
-    c = getortho.Chunk(2176, 3232, 'EOX', 13)
+def test_chunk_getter(tmpdir):
+    c = getortho.Chunk(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
     getortho.chunk_getter.submit(c)
     ready = c.ready.wait(5)
     assert ready == True
