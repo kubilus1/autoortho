@@ -176,7 +176,7 @@ class DDS(Structure):
 
         self.position = 0
         self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
-
+        
         curbytes = 128
         while (width >= 1) and (height >= 1):
             mipmap = MipMap()
@@ -197,6 +197,11 @@ class DDS(Structure):
         #self.pitchOrLinearSize = curbytes 
         self.total_size = curbytes
         self.dump_header()
+
+        # The smallest effective MM we can have is a size 4x4 block.  However
+        # XPlane expects MM down to theoretical 1x1.  Therefore the smallest
+        # real MM is the len of our list - 2
+        self.smallest_mm = len(self.mipmap_list) - 2
 
         for m in self.mipmap_list:
             log.debug(m)
@@ -427,16 +432,24 @@ class DDS(Structure):
 
             # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
 
+            if not maxmipmaps:
+                maxmipmaps = len(self.mipmap_list)
+
             width, height = img.size
             mipmap = startmipmap
-            if maxmipmaps > 10:
-                maxmipmaps = 10
+            # I believe XP only references up to MM8, so might be able to trim
+            # this down more
+            # maxmipmaps == 0 indicates we want all mipmaps so set to len
+            # of our mipmap_list
+            if maxmipmaps > self.smallest_mm:
+                maxmipmaps = self.smallest_mm
 
             log.debug(self.mipmap_list)
 
+            # Initial reduction of image size before mipmap processing 
             steps = 0
             if mipmap > 0:
-                desired_width = 4096 >> mipmap
+                desired_width = self.width >> mipmap
                 while width > desired_width:
                     width >>= 1
                     steps += 1
@@ -447,7 +460,8 @@ class DDS(Structure):
 
             #print(f"gen_mipmaps: after initial scale SIZE: {img.size}")
 
-            while True:
+            #while True:
+            while mipmap < maxmipmaps and mipmap < len(self.mipmap_list):
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
                     #img.write_jpg(f"dds_{mipmap}.jpg")
@@ -460,41 +474,24 @@ class DDS(Structure):
                         dxtdata = self.compress(width, height, imgdata)
                     except:
                         log.warning("dds compress failed")
-                    finally:
-                        pass
-                        imgdata = None
 
                     if dxtdata is not None:
-                    #    self.mipmap_list[mipmap].databuffer.seek(0)
-                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
-                    #    print(f"DXTLEN: {len(dxtdata)}")
                         self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
-                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
                         self.mipmap_list[mipmap].retrieved = True
-                    #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
 
-                        # we are already at 4x4 so push result forward to 11+12
-                        if mipmap == 10:
-                            self.mipmap_list[11].databuffer = BytesIO(initial_bytes=dxtdata)
-                            self.mipmap_list[11].retrieved = True
-                            self.mipmap_list[12].databuffer = BytesIO(initial_bytes=dxtdata)
-                            self.mipmap_list[12].retrieved = True
+                        # we are already at 4x4 so push result forward to
+                        # remaining MMs
+                        if mipmap == self.smallest_mm:
+                            for mm in self.mipmap_list[self.smallest_mm:]:
+                                mm.databuffer = BytesIO(initial_bytes=dxtdata)
+                                mm.retrieved = True
+                                mipmap += 1
 
                     dxtdata = None
 
-                    #print(f"REF: {sys.getrefcount(dxtdata)}")
-
-
                 mipmap += 1
-                if mipmap > 10:
-                    break
 
-                if maxmipmaps and mipmap >= maxmipmaps:
-                    break
-
-                if mipmap >= len(self.mipmap_list):
-                    break
-
+                # Halve the image
                 img = img.reduce_2()
 
             self.dump_header()
