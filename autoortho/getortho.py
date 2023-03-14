@@ -719,16 +719,22 @@ class Tile(object):
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
 
+            if not chunk.data:
+                log.error(f"BAD CHUNK DATA")
+
             chunk_img = AoImage.load_from_memory(chunk.data)
-            new_im.paste(
-                chunk_img,
-                #Image.open(BytesIO(chunk.data)).convert("RGBA"),
-                (
-                    start_x,
-                    start_y
+            if chunk_img:
+                new_im.paste(
+                    chunk_img,
+                    #Image.open(BytesIO(chunk.data)).convert("RGBA"),
+                    (
+                        start_x,
+                        start_y
+                    )
                 )
-            )
-       
+            else:
+                log.warning(f"Failed {chunk}")
+
         log.debug(f"GET_IMG: DONE!  IMG created {new_im}")
         return new_im
 

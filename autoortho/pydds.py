@@ -468,7 +468,6 @@ class DDS(Structure):
                         log.warning("dds compress failed")
 
                     if dxtdata is not None:
-                        log.info(f"Got MM {mipmap}!")
                         self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
                         self.mipmap_list[mipmap].retrieved = True
 
@@ -489,8 +488,6 @@ class DDS(Structure):
                 img = img.reduce_2()
 
             self.dump_header()
-
-
 
 
 def to_dds(img, outpath):
