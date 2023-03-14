@@ -232,9 +232,6 @@ class Chunk(object):
         if maptype == "Null":
             self.maptype = "EOX"
 
-        if not os.path.exists(self.cache_dir):
-            os.makedirs(self.cache_dir)
-
         self.cache_path = os.path.join(self.cache_dir, f"{self.chunk_id}.jpg")
 
     def __lt__(self, other):
