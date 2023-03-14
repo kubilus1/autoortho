@@ -178,7 +178,7 @@ class DDS(Structure):
         self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
 
         curbytes = 128
-        while (width >= 4) and (height >= 4):
+        while (width >= 1) and (height >= 1):
             mipmap = MipMap()
             mipmap.idx = self.mipMapCount
             mipmap.startpos = curbytes
@@ -417,8 +417,91 @@ class DDS(Structure):
         self.compress_count += 1
         return outdata
 
+    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0, mm0_partial = 0):
+
+        #if maxmipmaps <= len(self.mipmap_list):
+        #    maxmipmaps = len(self.mipmap_list)
+
+        with self.lock:
+            #print(f"gen_mipmaps: MIPMAP: {startmipmap} input SIZE: {img.size}")
+
+            # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
+
+            width, height = img.size
+            mipmap = startmipmap
+            if maxmipmaps > 10:
+                maxmipmaps = 10
+
+            log.debug(self.mipmap_list)
+
+            steps = 0
+            if mipmap > 0:
+                desired_width = 4096 >> mipmap
+                while width > desired_width:
+                    width >>= 1
+                    steps += 1
+
+            if steps > 0:        
+                #img = img.reduce(pow(2, steps))
+                img = img.reduce_2(steps)
+
+            #print(f"gen_mipmaps: after initial scale SIZE: {img.size}")
+
+            while True:
+                #if True:
+                if not self.mipmap_list[mipmap].retrieved:
+                    #img.write_jpg(f"dds_{mipmap}.jpg")
+                    imgdata = img.data_ptr()
+                    width, height = img.size
+                    log.debug(f"MIPMAP: {mipmap} SIZE: {img.size}")
+                    #print(f"MIPMAP: {mipmap} SIZE: {img.size}")
+
+                    try:
+                        dxtdata = self.compress(width, height, imgdata)
+                    except:
+                        log.warning("dds compress failed")
+                    finally:
+                        pass
+                        imgdata = None
+
+                    if dxtdata is not None:
+                    #    self.mipmap_list[mipmap].databuffer.seek(0)
+                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                    #    print(f"DXTLEN: {len(dxtdata)}")
+                        self.mipmap_list[mipmap].databuffer = BytesIO(initial_bytes=dxtdata)
+                    #    self.mipmap_list[mipmap].databuffer.write(dxtdata)
+                        self.mipmap_list[mipmap].retrieved = True
+                    #    print(f"BUFSIZE: {sys.getsizeof(dxtdata)}")
+
+                        # we are already at 4x4 so push result forward to 11+12
+                        if mipmap == 10:
+                            self.mipmap_list[11].databuffer = BytesIO(initial_bytes=dxtdata)
+                            self.mipmap_list[11].retrieved = True
+                            self.mipmap_list[12].databuffer = BytesIO(initial_bytes=dxtdata)
+                            self.mipmap_list[12].retrieved = True
+
+                    dxtdata = None
+
+                    #print(f"REF: {sys.getrefcount(dxtdata)}")
+
+
+                mipmap += 1
+                if mipmap > 10:
+                    break
+
+                if maxmipmaps and mipmap >= maxmipmaps:
+                    break
+
+                if mipmap >= len(self.mipmap_list):
+                    break
+
+                img = img.reduce_2()
+
+            self.dump_header()
+
+
     #@profile
-    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0):
+    def _gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0):
     
         #if maxmipmaps <= len(self.mipmap_list):
         #    maxmipmaps = len(self.mipmap_list)
@@ -451,7 +534,8 @@ class DDS(Structure):
                             break
                         continue
 
-                    timg = img.reduce(reduction_ratio)
+                    #timg = img.reduce(reduction_ratio)
+                    timg = img.reduce_2(reduction_ratio)
 
                     imgdata = timg.tobytes()
                     width, height = timg.size

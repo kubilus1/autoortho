@@ -21,6 +21,7 @@ import pydds
 
 import psutil
 from PIL import Image
+from aoimage import AoImage
 
 from aoconfig import CFG
 from aostats import STATS
@@ -707,7 +708,11 @@ class Tile(object):
         #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
         log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
-        new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
+        
+        #new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
+        new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
+        
+
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
             ret = chunk.ready.wait()
@@ -717,8 +722,10 @@ class Tile(object):
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
 
+            chunk_img = AoImage.load_from_memory(chunk.data)
             new_im.paste(
-                Image.open(BytesIO(chunk.data)).convert("RGBA"),
+                chunk_img,
+                #Image.open(BytesIO(chunk.data)).convert("RGBA"),
                 (
                     start_x,
                     start_y
