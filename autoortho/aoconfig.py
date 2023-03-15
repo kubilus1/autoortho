@@ -405,10 +405,10 @@ noclean = False
 [fuse]
 # Enable or disable multi-threading when using FUSE
 threading = True
-# Enable Windows to use FUSE mode
-winfuse = False
 
 [winfsp]
+# Enable Windows to use WinFSP mode instead of FUSE mode.  This is not typically recommended
+winfsp_raw = False
 
 """
 

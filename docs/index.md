@@ -24,7 +24,9 @@ Assumptions:
 
 * You are running 64bit Windows 10+
 * You have install X-Plane 11.50+
-* You have setup and configured [WinFSP](https://github.com/winfsp/winfsp)
+* You have setup and configured [Dokan](https://github.com/dokan-dev/dokany/releases/latest)
+* * NOTE: As a backup you can try [WinFSP](https://github.com/winfsp/winfsp)
+    but Dokan is now recommended.
 
 Steps:
 
