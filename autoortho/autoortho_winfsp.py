@@ -57,11 +57,11 @@ def operation(fn):
             else:
                 result = fn(self, *args, **kwargs)
         except Exception as exc:
-            traceback.print_exc()
-            logging.info(f" NOK | {name:20} | {head!r:20} | {tail!r:20} | {exc!r}")
+            #traceback.print_exc()
+            logging.debug(f" NOK | {name:20} | {head!r:20} | {tail!r:20} | {exc!r}")
             raise
         else:
-            logging.info(f" OK! | {name:20} | {head!r:20} | {tail!r:20} | {result!r}")
+            logging.debug(f" OK! | {name:20} | {head!r:20} | {tail!r:20} | {result!r}")
             return result
 
     return wrapper
@@ -137,7 +137,8 @@ class OpenedObj:
         return f"{type(self).__name__}:{self.file_obj.file_name}"
 
 
-class AutoorthoOperations(OperationsShim):
+#class AutoorthoOperations(OperationsShim):
+class AutoorthoOperations(BaseFileSystemOperations):
     def __init__(self, root, volume_label, tile_cache, read_only=False):
         super().__init__()
         if len(volume_label) > 31:
@@ -168,8 +169,8 @@ class AutoorthoOperations(OperationsShim):
         self.tc = tile_cache
 
         # Do lots of locking
-        #self.biglock = True
-        self.biglock = False
+        self.biglock = True
+        #self.biglock = False
 
         self.startup = True
 
@@ -294,7 +295,10 @@ class AutoorthoOperations(OperationsShim):
         m = self.dds_re.match(path)
         if m:
             #print(f"MATCH: Set file size")
-            file_context.file_obj.file_size = 22369744
+            if CFG.pydds.format == "BC1":
+                file_context.file_obj.file_size = 11184936
+            else:
+                file_context.file_obj.file_size = 22369744
         else:
             full_path = self._full_path(path)
             if os.path.isfile(full_path):
@@ -309,7 +313,7 @@ class AutoorthoOperations(OperationsShim):
 
     #@operation
     @lru_cache
-    def read_directory(self, file_context, marker, buffer_len):
+    def read_directory(self, file_context, marker):
         print(f"READ_DIRECTORY {file_context} {marker}")
         entries = []
         file_obj = file_context.file_obj
@@ -330,7 +334,6 @@ class AutoorthoOperations(OperationsShim):
             dirents.extend(self.listlocal(full_path))
 
         if marker:
-            #print(f"MARKER! {marker} {buffer_len}")
             marker_idx = dirents.index(marker)
             dirents = dirents[marker_idx + 1 : marker_idx + 1024]
             #print(f"DIRENTS LEN: {len(dirents)}")
