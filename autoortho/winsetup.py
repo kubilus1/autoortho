@@ -7,18 +7,20 @@ log = logging.getLogger(__name__)
 
 from ctypes.util import find_library
 
+
 def find_win_libs():
 
-    if CFG.fuse.winfuse:
-        log.info("WinFUSE requested, First looking for Dokan ...")
-        _libfuse_path = find_library('dokanfuse2.dll')
-        if _libfuse_path:
-            log.info(f"Dokan found at {_libfuse_path}")
-            return "dokan-FUSE", _libfuse_path
+    # Find dokan
+    log.info("Looking for Dokan ...")
+    _lib_dokan= find_library('dokanfuse2.dll')
+    if _lib_dokan:
+        log.info(f"Dokan found at {_lib_dokan}")
+    else:
+        log.info("Dokan not found.") 
 
-        log.info("Dokan not found, looking for WinFSP ...")
+    log.info("Looking for WinFSP ...")
 
-
+    # Find WinFSP
     try:
         import _winreg as reg
     except ImportError:
@@ -34,21 +36,31 @@ def find_win_libs():
             if key is not None:
                 reg.CloseKey(key)
         return val
-    _libfuse_path = Reg32GetValue(reg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WinFsp", r"InstallDir")
-    if _libfuse_path:
-        _libfuse_path += r"bin\winfsp-%s.dll" % ("x64" if sys.maxsize > 0xffffffff else "x86")
+    _lib_winfsp = Reg32GetValue(reg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WinFsp", r"InstallDir")
+    if _lib_winfsp:
+        _lib_winfsp += r"bin\winfsp-%s.dll" % ("x64" if sys.maxsize > 0xffffffff else "x86")
   
-    if os.path.exists(_libfuse_path):
-        log.info(f"Found WinFSP at {_libfuse_path}")
-        if CFG.fuse.winfuse:
-            log.info(f"WinFSP-FUSE mode.")
-            return "winfsp-FUSE", _libfuse_path
-        else:
-            log.info(f"WinFSP Raw mode.")
-            return "winfsp-raw", _libfuse_path
+    if os.path.exists(_lib_winfsp):
+        log.info(f"Found WinFSP at {_lib_winfsp}")
+    else:
+        log.info("WinFSP not found.")
 
-    log.warning(f"No required Windows libs detected.  Please install DokanyV2 or WinFSP.")
-    return None, None
+
+    if CFG.winfsp.winfsp_raw and _lib_winfsp:
+        log.info(f"WinFSP Raw mode.")
+        return "winfsp-raw", _lib_winfsp
+    elif CFG.winfsp.winfsp_raw and not _lib_winfsp:
+        log.error("WinfSP Raw mode requested, but WinFSP not found!")
+        return None, None
+    elif _lib_dokan:
+        log.info("Dokan mode.")
+        return "dokan-FUSE", _lib_dokan
+    elif _lib_winfsp:
+        log.info(f"WinFSP-FUSE mode.")
+        return "winfsp-FUSE", _lib_winfsp
+    else:
+        log.error(f"No required Windows libs detected!  Please install DokanyV2 or WinFSP.")
+        return None, None
 
 
 def setup_winfsp_mount(path):

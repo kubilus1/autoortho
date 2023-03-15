@@ -111,6 +111,7 @@ def main():
             )
         elif wintype == "winfsp-raw":
             log.info("Running in Windows WinFSP mode.")
+            log.warning("****This mode is DEPRECATED and may be removed in the future!****")
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_winfsp_mount(mountpoint) 
