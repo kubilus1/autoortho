@@ -468,14 +468,6 @@ class DDS(Structure):
 
             log.debug(self.mipmap_list)
             
-            if compress_len:
-                # If we are attempting to compress just part of this,
-                # calculate new height to use
-                log.debug(f"Desired compress len: {compress_len}")
-                partial_height = int((compress_len * 16) // (width * self.blocksize))
-                log.debug(f"compressing partial height: {partial_height}")
-
-
             # Initial reduction of image size before mipmap processing 
             steps = 0
             if mipmap > 0:
