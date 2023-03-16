@@ -27,7 +27,10 @@ main.exe: main.c aoimage.dll $(HEADERS)
 	$(CC) $(CFLAGS) -o main.exe \
 		main.c -L. -laoimage 
 
-aoimage.dll: $(OBJECTS)
+libjpeg-turbo-gcc64:
+	tar -xvzf libjpeg-turbo-gcc64.tgz
+
+aoimage.dll: $(OBJECTS) libjpeg-turbo-gcc64
 	$(LD) -o $@ $(LDFLAGS) $(OBJECTS) $(LIBS)
 
 clean:

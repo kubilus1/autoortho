@@ -1,6 +1,7 @@
 .SUFFIXES: .obj
 
 TARGET=main
+JPGT=.
 
 HEADERS=$(wildcard *.h)
 OBJECTS=aoimage.o
@@ -14,7 +15,8 @@ CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden \
 
 LDFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning -lpthread
 #LIBS=-lturbojpeg
-LIBS=./libturbojpeg.a
+#LIBS=./libturbojpeg.a
+LIBS=-L$(JPGT)/lib -lturbojpeg
 
 all: $(TARGET)
 
