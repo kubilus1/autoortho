@@ -18,18 +18,13 @@ import itertools
 import flighttrack
 
 from functools import wraps, lru_cache
-from ctypes.util import find_library
 
-if platform.system() == 'Windows':
-    _libfuse_path = find_library('dokanfuse2.dll')
-    if not _libfuse_path:
-        print("Dokan v2 install required for Windows FUSE mode. See: https://github.com/dokan-dev/dokany/releases/latest/download/DokanSetup.exe")
-        input("Press any key to continue")
-        sys.exit(1)
-    os.environ['FUSE_LIBRARY_PATH'] = _libfuse_path
+from aoconfig import CFG
+import logging
+log = logging.getLogger(__name__)
 
-from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-#from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+#from fuse import FUSE, FuseOSError, Operations, fuse_get_context
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
 import getortho
 
@@ -39,10 +34,6 @@ import socket
 #from memory_profiler import profile
 import tracemalloc
 
-from aoconfig import CFG
-
-import logging
-log = logging.getLogger(__name__)
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
@@ -148,6 +139,12 @@ class AutoOrtho(Operations):
 
             #row, col, maptype, zoom = m.groups()
             #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
+
+            if CFG.pydds.format == "BC1":
+                dds_size = 11184936
+            else:
+                dds_size = 22369744
+
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -157,7 +154,7 @@ class AutoOrtho(Operations):
                 'st_mode': 33206,
                 'st_mtime': 1649857251.726115, 
                 'st_nlink': 1, 
-                'st_size': 22369776, 
+                'st_size': dds_size, 
                 'st_blksize': 32768
                 #'st_blksize': 16384
                 #'st_blksize': 8192
@@ -192,6 +189,7 @@ class AutoOrtho(Operations):
     @lru_cache
     def readdir(self, path, fh):
         log.info(f"READDIR: {path} {fh}")
+        return ['.', '..']
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -300,9 +298,10 @@ class AutoOrtho(Operations):
             col = int(col)
             zoom = int(zoom)
             t = self.tc._open_tile(row, col, maptype, zoom) 
-        else:
-            #h = os.open(full_path, flags)
+        elif platform.system() == 'Windows':
             h = os.open(full_path, flags|os.O_BINARY)
+        else:
+            h = os.open(full_path, flags)
 
         log.debug(f"OPEN: FH= {h}")
         return h

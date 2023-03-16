@@ -1,0 +1,38 @@
+.SUFFIXES: .obj
+
+TARGET=main.exe
+JPGT=./libjpeg-turbo-gcc64
+
+HEADERS=$(wildcard *.h)
+OBJECTS=aoimage.o
+
+CC=x86_64-w64-mingw32-gcc
+LD=x86_64-w64-mingw32-gcc
+
+CFLAGS+=-g -O2 -s -Wall -fdiagnostics-color -Wno-format-overflow  \
+	-DWIN32 \
+	-I$(JPGT)/include $(DEFINES)
+
+CFLAGS_DLL=$(CFLAGS) -DAOI_EXPORTS -mdll
+
+LDFLAGS=-shared -static-libgcc -static
+LIBS=-L$(JPGT)/lib -lturbojpeg
+
+all: $(TARGET)
+
+.c.o: $(HEADERS)
+	$(CC) $(CFLAGS_DLL) -c $<
+
+main.exe: main.c aoimage.dll $(HEADERS)
+	$(CC) $(CFLAGS) -o main.exe \
+		main.c -L. -laoimage 
+
+libjpeg-turbo-gcc64:
+	tar -xvzf libjpeg-turbo-gcc64.tgz
+
+aoimage.dll: $(OBJECTS) libjpeg-turbo-gcc64
+	$(LD) -o $@ $(LDFLAGS) $(OBJECTS) $(LIBS)
+
+clean:
+	rm -f $(OBJECTS) $(TARGET)
+

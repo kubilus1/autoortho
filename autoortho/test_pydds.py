@@ -7,7 +7,8 @@ import platform
 import pydds
 
 import pytest
-from PIL import Image
+#from PIL import Image
+from aoimage import AoImage as Image
 #TESTPNG=os.path.join('testfiles', 'test_tile.png')
 TESTJPG=os.path.join('testfiles', 'test_tile2.jpg')
 
@@ -58,12 +59,14 @@ def test_mid_dds(tmpdir):
     outpath = os.path.join(tmpdir, 'test_empty.dds')
     timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
-    if timg.mode == "RGB":
-        timg = timg.convert("RGBA")
-    dds.gen_mipmaps(timg, 4)
+    #if timg.mode == "RGB":
+    #    timg = timg.convert("RGBA")
     
+    dds.gen_mipmaps(timg, 4)
+  
     for m in dds.mipmap_list:
         if m.idx >= 4:
+            print(m)
             assert m.retrieved == True
             assert m.databuffer is not None
         else:
@@ -75,8 +78,8 @@ def test_read_mm0(tmpdir):
     timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
 
-    if timg.mode == "RGB":
-        timg = timg.convert("RGBA")
+    #if timg.mode == "RGB":
+    #    timg = timg.convert("RGBA")
     dds.gen_mipmaps(timg)
 
     data = dds.read(1024)
@@ -87,8 +90,8 @@ def test_read_mid(tmpdir):
     outpath = os.path.join(tmpdir, 'test_read_mid.dds')
     timg = Image.open(TESTJPG)
     dds = pydds.DDS(4096, 4096)
-    if timg.mode == "RGB":
-        timg = timg.convert("RGBA")
+    #if timg.mode == "RGB":
+    #    timg = timg.convert("RGBA")
 
     dds.gen_mipmaps(timg, 4)
 
@@ -116,6 +119,24 @@ def test_read_mid(tmpdir):
     actualbytes = os.path.getsize(outpath)
     assert expectedbytes == actualbytes
 
+
+def test_mm0_dxt1(tmpdir):
+    outpath = os.path.join(tmpdir, 'test_mm0.dds')
+    timg = Image.open(TESTJPG)
+    dds = pydds.DDS(4096, 4096, dxt_format='BC1')
+
+    #if timg.mode == "RGB":
+    #    timg = timg.convert("RGBA")
+    dds.gen_mipmaps(timg)
+
+    data = dds.read(1024)
+    assert data
+    
+    outpath = os.path.join(tmpdir, 'test.dds')
+    dds.write(outpath)
+
+    for m in dds.mipmap_list:
+        print(m)
 
 #assert False
 

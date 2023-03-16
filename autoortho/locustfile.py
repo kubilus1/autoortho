@@ -43,7 +43,7 @@ class DDSClient():
         #self.row = (random.randint(0, 256) * 16) + 2000
         #self.col = (random.randint(0, 256) * 16) + 3000
         self.row = 20000
-        self.col = 30000
+        self.col = 10000
 
     @stats
     def get_mm(self, mm=0):
@@ -119,8 +119,8 @@ class DDSUser(DDSRead):
     #path = "./mount"
     #path = "/home/mkubilus/Software/xplane/autoortho/Custom Scenery/z_autoortho/textures"
     print(CFG.paths)
-    print(CFG.paths.mountpoint)
-    path = os.path.join(CFG.paths.mountpoint, 'textures')
+    path = os.path.join(CFG.paths.scenery_path, 'z_autoortho', 'textures')
+    print(f"Testing against {path}")
 
     @task(1)
     def read_mm0(self):
@@ -130,7 +130,7 @@ class DDSUser(DDSRead):
     def read_header(self):
         self.client.read_header()
 
-    @task(50)
+    @task(20)
     def read_mm4(self):
         self.client.read_mm_4()
 
