@@ -141,9 +141,11 @@ class AutoOrtho(Operations):
             #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
 
             if CFG.pydds.format == "BC1":
-                dds_size = 11184936
+                #dds_size = 11184936
+                dds_size = 11184944
             else:
-                dds_size = 22369744
+                #dds_size = 22369744
+                dds_size = 22369776
 
             attrs = {
                 'st_atime': 1649857250.382081, 
@@ -188,6 +190,7 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def readdir(self, path, fh):
+        return ['.','..']
         log.info(f"READDIR: {path} {fh}")
         return ['.', '..']
 
@@ -230,18 +233,29 @@ class AutoOrtho(Operations):
             #stv = os.statvfs(full_path)
             #log.info(stv)
             stats = {
-                    'f_bavail':1024, 
-                    'f_bfree':1024,
-                    'f_blocks':1204, 
+                    'f_bavail':47602498, 
+                    'f_bfree':47602498,
+                    'f_blocks':124699647, 
                     'f_bsize':4096, 
-                    'f_favail':1024, 
-                    'f_ffree':1024, 
-                    'f_files':1024, 
-                    'f_flag':0,
-                    'f_frsize':1024, 
-                    'f_namemax':1024
+                    'f_favail':1000000, 
+                    'f_ffree':1000000, 
+                    'f_files':999, 
+                    'f_flag':1024,
+                    'f_frsize':4096,
+                    'f_fsid':0x01,
+                    'f_namemax':255
             }
-            stats = {}
+            stats = {
+                    'f_bavail':47602498, 
+                    'f_bfree':47602498,
+                    'f_blocks':124699647, 
+                    'f_favail':1000000, 
+                    'f_ffree':1000000, 
+                    'f_files':999, 
+                    'f_frsize':4096,
+                    'f_flag':1024,
+                    'f_bsize':4096 
+            }
             return stats
             # st = os.stat(full_path)
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',

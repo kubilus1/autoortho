@@ -141,7 +141,7 @@ class DDS(Structure):
     ]
 
 
-    def __init__(self, width, height, ispc=True, dxt_format="BC3"):
+    def __init__(self, width, height, ispc=True, dxt_format="BC1"):
         self.magic = b"DDS "  
         self.size = 124
         self.flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_MIPMAPCOUNT | DDSD_LINEARSIZE
@@ -196,6 +196,10 @@ class DDS(Structure):
             width = width >> 1
             height = height >> 1
             self.mipMapCount+=1
+            
+            if (width == 1) and (height == 1):
+                break
+ 
         # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
         #self.pitchOrLinearSize = curbytes 
         self.total_size = curbytes
@@ -281,20 +285,20 @@ class DDS(Structure):
                     # Mipmap has more than enough remaining length for request
                     # ~We have remaining length in current mipmap~
                     #
-                    #if mipmap.databuffer is None:
-                    #    log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
-                    #    #data = b''
-                    #    data = b'\x88' * length
-                    #    log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
-                    #else:
-                    log.debug("We have a mipmap and adequated remaining length")
-                    mipmap.databuffer.seek(mipmap_pos)
-                    data = mipmap.databuffer.read(length)
-                    ret_len = length - len(data)
-                    if ret_len != 0:
-                        # This should be impossible
-                        log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes {ret_len} for {mipmap.idx}")
-                        data += b'\xFF' * ret_len
+                    if mipmap.databuffer is None:
+                        log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
+                        #data = b''
+                        data = b'\x88' * length
+                        log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
+                    else:
+                        log.debug("We have a mipmap and adequated remaining length")
+                        mipmap.databuffer.seek(mipmap_pos)
+                        data = mipmap.databuffer.read(length)
+                        ret_len = length - len(data)
+                        if ret_len != 0:
+                            # This should be impossible
+                            log.error(f"PYDDS  Didn't retrieve full length.  Fill empty bytes.  This is not good! mmpos: {mipmap_pos} retlen: {ret_len} reqlen: {length} mm:{mipmap.idx}")
+                            data += b'\xFF' * ret_len
                                 
                     outdata += data
                     self.position += length
@@ -360,8 +364,7 @@ class DDS(Structure):
 
 
         if self.ispc and self.dxt_format == "BC3":
-            blocksize = 16
-            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * blocksize
+            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize
             outdata = create_string_buffer(dxt_size)
             #print(f"LEN: {len(outdata)}")
             s = rgba_surface()
@@ -383,7 +386,7 @@ class DDS(Structure):
         elif self.ispc and self.dxt_format == "BC1":
             #print("BC1")
             blocksize = 8
-            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * blocksize
+            dxt_size = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize
             outdata = create_string_buffer(dxt_size)
             #print(f"LEN: {len(outdata)}")
         
@@ -443,7 +446,7 @@ class DDS(Structure):
         #    maxmipmaps = len(self.mipmap_list)
 
         #if not maxmipmaps:
-        #    maxmipmaps = 0
+        #    maxmipmaps = 8
 
         with self.lock:
             #print(f"gen_mipmaps: MIPMAP: {startmipmap} input SIZE: {img.size}")
@@ -464,6 +467,14 @@ class DDS(Structure):
                 maxmipmaps = self.smallest_mm
 
             log.debug(self.mipmap_list)
+            
+            if compress_len:
+                # If we are attempting to compress just part of this,
+                # calculate new height to use
+                log.debug(f"Desired compress len: {compress_len}")
+                partial_height = int((compress_len * 16) // (width * self.blocksize))
+                log.debug(f"compressing partial height: {partial_height}")
+
 
             # Initial reduction of image size before mipmap processing 
             steps = 0
