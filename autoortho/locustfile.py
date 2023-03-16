@@ -43,7 +43,7 @@ class DDSClient():
         #self.row = (random.randint(0, 256) * 16) + 2000
         #self.col = (random.randint(0, 256) * 16) + 3000
         self.row = 20000
-        self.col = 30000
+        self.col = 10000
 
     @stats
     def get_mm(self, mm=0):

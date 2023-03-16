@@ -131,9 +131,8 @@ def test_read_dsf(mount):
             shell=True
         )
 
-
     log.info(f"FINAL STATS: ID: {aostats.STATS}")
-    assert True == False
+    #assert True == False
 
 
 def test_autoortho(mount):
