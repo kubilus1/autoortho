@@ -609,7 +609,8 @@ class Tile(object):
             log.debug("READ_DDS_BYTES: Read header")
             self.get_bytes(0, length)
         #elif offset < 32768:
-        elif offset < 131072:
+        elif offset < 65536:
+        #elif offset < 131072:
         #elif offset < 262144:
         #elif offset < 1048576:
             # How far into mipmap 0 do we go before just getting the whole thing
@@ -922,7 +923,7 @@ class TileCacher(object):
                 continue
 
             while len(self.tiles) >= self.cache_tile_lim and cur_mem > self.cache_mem_lim:
-                log.info("Hit cache limit.  Remove oldest 20")
+                log.debug("Hit cache limit.  Remove oldest 20")
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
                         t = self.tiles.get(i)
