@@ -589,12 +589,13 @@ class Tile(object):
        
         # Only attempt partial compression from mipmap start
         if offset == 0:
-            compress_len = length - 128
+            #compress_len = length - 128
+            compress_len = length
         else:
             compress_len = 0
 
         try:
-            self.dds.gen_mipmaps(new_im, mipmap, 1, compress_len)
+            self.dds.gen_mipmaps(new_im, mipmap, mipmap, compress_len)
         finally:
             new_im.close()
 
@@ -616,8 +617,8 @@ class Tile(object):
             log.debug("READ_DDS_BYTES: Read header")
             self.get_bytes(0, length)
         #elif offset < 32768:
-        elif offset < 65536:
-        #elif offset < 131072:
+        #elif offset < 65536:
+        elif offset < 131072:
         #elif offset < 262144:
         #elif offset < 1048576:
             # How far into mipmap 0 do we go before just getting the whole thing

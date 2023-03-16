@@ -2,6 +2,7 @@
 
 import os
 import sys
+import math
 from io import BytesIO
 from binascii import hexlify
 from ctypes import *
@@ -432,10 +433,10 @@ class DDS(Structure):
         return outdata
 
     #@profile
-    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=0, compress_bytes=0):
+    def gen_mipmaps(self, img, startmipmap=0, maxmipmaps=99, compress_bytes=0):
         # img : PIL/Pillow image
         # startmipmap : Mipmap to start compressing
-        # maxmipmaps : Maximum mipmap to compress.  0 = all mipmaps
+        # maxmipmaps : Maximum mipmap to compress.  99 = all mipmaps
         # compress_bytes : Optionally limit compression to number of bytes
 
         #if maxmipmaps <= len(self.mipmap_list):
@@ -449,8 +450,8 @@ class DDS(Structure):
 
             # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
 
-            if not maxmipmaps:
-                maxmipmaps = len(self.mipmap_list)
+            #if not maxmipmaps:
+            #maxmipmaps = len(self.mipmap_list)
 
             width, height = img.size
             mipmap = startmipmap
@@ -458,7 +459,7 @@ class DDS(Structure):
             # this down more
             # maxmipmaps == 0 indicates we want all mipmaps so set to len
             # of our mipmap_list
-            if maxmipmaps > self.smallest_mm or not maxmipmaps:
+            if maxmipmaps > self.smallest_mm:
                 log.debug(f"Setting maxmipmaps to {self.smallest_mm}")
                 maxmipmaps = self.smallest_mm
 
@@ -467,10 +468,10 @@ class DDS(Structure):
             # Initial reduction of image size before mipmap processing 
             steps = 0
             if mipmap > 0:
-                compress_bytes >> mipmap
                 desired_width = self.width >> mipmap
                 while width > desired_width:
                     width >>= 1
+                    compress_bytes >>= 2
                     steps += 1
 
             if steps > 0:        
@@ -486,10 +487,12 @@ class DDS(Structure):
                     log.debug(f"MIPMAP: {mipmap} SIZE: {img.size}")
 
                     if compress_bytes:
-                        height = int((compress_bytes * 16) // (width * self.blocksize))
+                        # Get how many rows we need to process for requested number of bytes
+                        height = math.ceil((compress_bytes * 16) / (width * self.blocksize))
+                        # Make the rows a factor of 4
                         height = max(4, ((height + 3) // 4) * 4) 
-                        #print(f"compressing partial height: {height}")
-                        compress_bytes >> 1
+                        log.debug(f"Doing partial compress of {compress_bytes} bytes.  Height: {height}")
+                        compress_bytes >>= 2
 
                     try:
                         dxtdata = self.compress(width, height, imgdata)
