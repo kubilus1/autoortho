@@ -39,11 +39,10 @@ def find_win_libs():
     _lib_winfsp = Reg32GetValue(reg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WinFsp", r"InstallDir")
     if _lib_winfsp:
         _lib_winfsp += r"bin\winfsp-%s.dll" % ("x64" if sys.maxsize > 0xffffffff else "x86")
-  
         if os.path.exists(_lib_winfsp):
             log.info(f"Found WinFSP at {_lib_winfsp}")
-        else:
-            log.info("WinFSP not found.")
+    else:
+        log.info("WinFSP not found.")
 
 
     if CFG.winfsp.winfsp_raw and _lib_winfsp:
