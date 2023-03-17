@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import os
-from PIL import Image
+#from PIL import Image
+from aoimage import AoImage as Image
+
 #import conv
 import pydds
 import subprocess
