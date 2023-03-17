@@ -283,6 +283,10 @@ class OrthoRegion(object):
                 zips.append(o)
 
         for zipfile_out, part_list in split_zips.items():
+            #if os.path.exists(zipfile_out):
+            #    log.info(f"{zipfile_out} already assembled.  Continue.")
+            #    continue
+
             # alphanumeric sort could have limits for large number of splits
             part_list.sort()
             with open(zipfile_out, 'wb') as out_h:
@@ -316,11 +320,14 @@ class OrthoRegion(object):
                 log.info(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
                 self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
                 #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
+                os.remove(z)
                 return False
-            finally:
-                if not self.noclean:
-                    log.info(f"Cleaning up parts for {z}")
-                    os.remove(z)
+
+        # Cleanup
+        for z in zips:
+            if os.path.exists(z) and not self.noclean:
+                log.info(f"Cleaning up parts for {z}")
+                os.remove(z)
 
 
         ###########################################333
