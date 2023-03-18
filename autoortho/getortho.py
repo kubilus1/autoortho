@@ -24,7 +24,7 @@ from PIL import Image
 from aoimage import AoImage
 
 from aoconfig import CFG
-from aostats import STATS
+from aostats import STATS, StatTracker
 
 MEMTRACE = False
 
@@ -51,34 +51,10 @@ import struct
 ##
 
 # Track average fetch times
-tile_fetch_times = {}
-tile_averages = {
-    20:-1,
-    19:-1,
-    18:-1,
-    17:-1,
-    16:-1,
-    15:-1,
-    14:-1,
-    13:-1,
-    12:-1
-}
-mm_fetch_times = {}
-mm_averages = {
-    0:-1,
-    1:-1,
-    2:-1,
-    3:-1,
-    4:-1,
-}
-mm_counts = {
-    0:-1,
-    1:-1,
-    2:-1,
-    3:-1,
-    4:-1,
-}
-zl_counts = {}
+tile_stats = StatTracker(20, 12)
+mm_stats = StatTracker(0, 5)
+partial_stats = StatTracker()
+
 
 def _gtile_to_quadkey(til_x, til_y, zoomlevel):
     """
@@ -522,9 +498,9 @@ class Tile(object):
         end_time = time.time()
         tile_time = end_time - start_time
         log.info(f"Retrieved tile cachefile: {self.cache_file} in {tile_time} seconds.")
-        tile_fetch_times.setdefault(zoom, collections.deque(maxlen=10)).append(tile_time)
-        tile_averages[zoom] = sum(tile_fetch_times.get(zoom))/len(tile_fetch_times.get(zoom))      
-        log.info(f"Fetch times: {tile_averages}")
+        #tile_fetch_times.setdefault(zoom, collections.deque(maxlen=10)).append(tile_time)
+        #tile_averages[zoom] = sum(tile_fetch_times.get(zoom))/len(tile_fetch_times.get(zoom))      
+        #log.info(f"Fetch times: {tile_averages}")
 
         self._find_cache_file()
         return self.cache_file[1]
@@ -612,10 +588,8 @@ class Tile(object):
         if compress_len:
             STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
             tile_time = end_time - start_time
-            mm_counts[f"p{mipmap}"] = mm_counts.get(f"p{mipmap}", 0) + 1
-            mm_fetch_times.setdefault(f"p{mipmap}", collections.deque(maxlen=25)).append(tile_time)
-            mm_averages[f"p{mipmap}"] = round(sum(mm_fetch_times.get(f"p{mipmap}"))/len(mm_fetch_times.get(f"p{mipmap}")), 2)
-            STATS['mm_averages'] = mm_averages
+            partial_stats.set(mipmap, tile_time)
+            STATS['mm_averages'] = partial_stats.averages
 
         return True
 
@@ -801,16 +775,13 @@ class Tile(object):
 
         zoom = self.zoom - mipmap
         tile_time = end_time - start_time
-        mm_counts[mipmap] = mm_counts.get(mipmap, 0) + 1
-        mm_fetch_times.setdefault(mipmap, collections.deque(maxlen=25)).append(tile_time)
-        mm_averages[mipmap] = round(sum(mm_fetch_times.get(mipmap))/len(mm_fetch_times.get(mipmap)), 2)
-        
+        mm_stats.set(mipmap, tile_time)
 
         #log.info(f"Compress MM {mipmap} for ZL {zoom} in {tile_time} seconds")
         #log.info(f"Average compress times: {mm_averages}")
         #log.info(f"MM counts: {mm_counts}")
-        STATS['mm_counts'] = mm_counts
-        STATS['mm_averages'] = mm_averages
+        STATS['mm_counts'] = mm_stats.counts
+        STATS['mm_averages'] = mm_stats.averages
 
         if mipmap == 0:
             log.debug("GET_MIPMAP: Will close all chunks.")

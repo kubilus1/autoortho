@@ -178,11 +178,8 @@ class DDS(Structure):
 
         # https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
         # pitchOrLinearSize is the total number of bytes in the top level texture for a compressed texture
-        #self.pitchOrLinearSize = ((width+3) >> 2) * ((height+3) >> 2) * self.blocksize 
         self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
-
         self.position = 0
-        self.pitchOrLinearSize = max(1, (width*height >> 4)) * self.blocksize
         
         curbytes = 128
         while (width >= 1) and (height >= 1):
@@ -481,8 +478,7 @@ class DDS(Structure):
                 #img = img.reduce(pow(2, steps))
                 img = img.reduce_2(steps)
 
-            #while True:
-            while mipmap < (maxmipmaps + 1) and mipmap < len(self.mipmap_list):
+            while True:
                 #if True:
                 if not self.mipmap_list[mipmap].retrieved:
                     imgdata = img.data_ptr()
@@ -519,6 +515,10 @@ class DDS(Structure):
                     dxtdata = None
 
                 mipmap += 1
+            
+                if mipmap >= (maxmipmaps + 1) or mipmap >= self.smallest_mm:
+                    # We've hit or max requested or possible mipmaps
+                    break
 
                 # Halve the image
                 img = img.reduce_2()
