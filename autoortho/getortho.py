@@ -586,10 +586,11 @@ class Tile(object):
         self.ready.set()
 
         if compress_len:
-            STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
+            #STATS['partial_mm'] = STATS.get('partial_mm', 0) + 1
             tile_time = end_time - start_time
             partial_stats.set(mipmap, tile_time)
-            STATS['mm_averages'] = partial_stats.averages
+            STATS['partial_mm_averages'] = partial_stats.averages
+            STATS['partial_mm_counts'] = partial_stats.counts
 
         return True
 

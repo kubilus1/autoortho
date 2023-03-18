@@ -45,14 +45,18 @@ class StatTracker(object):
         if maxlen:
             self.maxlen = maxlen
 
-        if start and end:
-            for i in range(start, end):
+        if start is not None and end is not None:
+            if end < start:
+                inc = -1
+            else:
+                inc = 1
+
+            for i in range(start, end, inc):
                 self.averages[i] = default
-                self.fetch_times[i] = default
                 self.counts[i] = default
 
 
     def set(self, key, value):
         self.counts[key] = self.counts.get(key, 0) + 1
         self.fetch_times.setdefault(key, collections.deque(maxlen=self.maxlen)).append(value)
-        self.averages[key] = round(sum(self.fetch_times.get(key))/len(self.fetch_times.get(key)), 2)
+        self.averages[key] = round(sum(self.fetch_times.get(key))/len(self.fetch_times.get(key)), 3)
