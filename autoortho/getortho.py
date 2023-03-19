@@ -985,7 +985,7 @@ class TileCacher(object):
 
             t.refs -= 1
 
-            if self.enable_cache and not t.should_close():
+            if self.enable_cache: # and not t.should_close():
                 log.debug(f"Cache enabled.  Delay tile close for {tile_id}")
                 return True
 

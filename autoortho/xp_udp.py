@@ -37,7 +37,7 @@ def RequestDataRefs(sock):
     # Give them an index number and a frequency in Hz.
     # To disable sending you send frequency 0. 
     cmd = b"RREF\x00"
-    freq=1
+    freq=2
     string = datarefs[idx][0].encode()
     message = struct.pack("<5sii400s", cmd, freq, idx, string)
     assert(len(message)==413)
