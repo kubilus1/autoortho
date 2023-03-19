@@ -141,8 +141,7 @@ class AutoOrtho(Operations):
             #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
 
             if CFG.pydds.format == "BC1":
-                #dds_size = 11184936
-                dds_size = 11184944
+                dds_size = 11184952
             else:
                 #dds_size = 22369744
                 dds_size = 22369776
@@ -230,21 +229,6 @@ class AutoOrtho(Operations):
         log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
         if platform.system() == 'Windows':
-            #stv = os.statvfs(full_path)
-            #log.info(stv)
-            stats = {
-                    'f_bavail':47602498, 
-                    'f_bfree':47602498,
-                    'f_blocks':124699647, 
-                    'f_bsize':4096, 
-                    'f_favail':1000000, 
-                    'f_ffree':1000000, 
-                    'f_files':999, 
-                    'f_flag':1024,
-                    'f_frsize':4096,
-                    'f_fsid':0x01,
-                    'f_namemax':255
-            }
             stats = {
                     'f_bavail':47602498, 
                     'f_bfree':47602498,

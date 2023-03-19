@@ -29,7 +29,7 @@ def test_dds_conv(tmpdir):
     outpath = os.path.join(tmpdir, 'test_tile.dds')
     pydds.to_dds(timg, outpath)
     
-    expectedbytes = 11184968 
+    expectedbytes = 11184952 
     actualbytes = os.path.getsize(outpath)
 
     assert expectedbytes == actualbytes
@@ -45,7 +45,7 @@ def test_empty_dds(tmpdir):
     dds.write(outpath)
    
     # suspicious
-    expectedbytes = 11184944 
+    expectedbytes = 11184952 
     actualbytes = os.path.getsize(outpath)
     assert expectedbytes == actualbytes
 
@@ -120,7 +120,7 @@ def test_read_mid(tmpdir):
     assert data2[:128] == b'\x88'*128
 
     dds.write(outpath)
-    expectedbytes = 11184968 
+    expectedbytes = 11184952 
     actualbytes = os.path.getsize(outpath)
     assert expectedbytes == actualbytes
 

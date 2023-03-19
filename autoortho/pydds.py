@@ -194,9 +194,6 @@ class DDS(Structure):
             height = height >> 1
             self.mipMapCount+=1
             
-            if (width == 1) and (height == 1):
-                break
- 
         # Size of all mipmaps: sum([pow(2,x)*pow(2,x) for x in range(12,1,-1) ])
         #self.pitchOrLinearSize = curbytes 
         self.total_size = curbytes
@@ -514,12 +511,12 @@ class DDS(Structure):
 
                     dxtdata = None
 
-                mipmap += 1
             
-                if mipmap >= (maxmipmaps + 1) or mipmap >= self.smallest_mm:
+                if mipmap >= maxmipmaps: #(maxmipmaps + 1) or mipmap >= self.smallest_mm:
                     # We've hit or max requested or possible mipmaps
                     break
 
+                mipmap += 1
                 # Halve the image
                 img = img.reduce_2()
 
