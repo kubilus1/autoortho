@@ -28,12 +28,16 @@ class FlightTracker(object):
     spd = -1
     t = None
 
+    
+
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, # Internet
                             socket.SOCK_DGRAM) # UDP
 
         self.sock.settimeout(5.0)
         self.connected = False
+        self.num_failures = 0
+
 
     def start(self):
         self.running = True
@@ -53,6 +57,7 @@ class FlightTracker(object):
 
         return (lat, lon, alt, hdg, spd)
 
+
     def _udp_listen(self):
         log.debug("Listen!")
         RequestDataRefs(self.sock)
@@ -60,12 +65,19 @@ class FlightTracker(object):
             try:
                 data, addr = self.sock.recvfrom(1024)
             except socket.timeout:
+
                 if self.connected:
+                    # We were connected but lost a packet.  First just log
+                    # this
+                    self.num_failures += 1
+                    log.info("We are connected but a packet timed out.  NBD.")
+
+                if self.num_failures > 3:
                     # We are transitioning states
                     log.info("FT: Flight disconnected.")
                     self.start_time = time.time()
+                    self.connected = False
 
-                self.connected = False
                 log.debug("Socket timeout.  Reset.")
                 RequestDataRefs(self.sock)
                 continue
@@ -74,6 +86,8 @@ class FlightTracker(object):
                 time.sleep(2)
                 continue
 
+
+            self.num_failures = 0
             if not self.connected:
                 # We are transitioning states
                 log.info("FT: Flight is starting.")
@@ -98,7 +112,7 @@ class FlightTracker(object):
             self.hdg = hdg
             self.spd = spd
 
-            time.sleep(0.5)
+            time.sleep(1)
 
         log.info("UDP listen thread exiting...")
 
@@ -144,13 +158,13 @@ def metrics():
     return STATS
 
 def run():
-    app.run(host='0.0.0.0', debug=True, threaded=True, use_reloader=False)
+    app.run(host='0.0.0.0', debug=CFG.general.debug, threaded=True, use_reloader=False)
 
 
 def main():
     ft.start()
     try:
-        app.run(host='0.0.0.0', debug=True, threaded=True, use_reloader=False)
+        app.run(host='0.0.0.0', debug=False, threaded=True, use_reloader=False)
     except KeyboardInterrupt:
         print("Shutdown requested.")
     finally:

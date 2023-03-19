@@ -39,16 +39,20 @@ def tile(tmpdir):
 
 def test_get_bytes(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    ret = tile.get_bytes(0, 131073)
+    # Requesting just more than a 4x4 even row of blocks worth
+    ret = tile.get_bytes(0, 131208)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
         h.seek(128)
         data = h.read(8)
-
+        # Verify that we still get data for the read on this odd row
+        h.seek(131200)
+        mmdata = h.read(8)
     assert data != b'\x00'*8
-   
+    assert mmdata != b'\x00'*8
+
 
 def test_get_bytes_mip1(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
