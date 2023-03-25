@@ -5,7 +5,6 @@ import sys
 from ctypes import *
 import platform
 
-
 import logging
 log = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class AoImage(Structure):
         assert mode == "RGBA", "Sorry, only conversion to RGBA supported"
         new = AoImage()
         if not _aoi.aoimage_2_rgba(self, new):
-            log.error(f"AoImage.reduce_2 error: {new._errmsg.decode()}")
+            log.debug(f"AoImage.reduce_2 error: {new._errmsg.decode()}")
             return None
 
         return new
@@ -59,19 +58,23 @@ class AoImage(Structure):
             orig = half
             half = AoImage()
             if not _aoi.aoimage_reduce_2(orig, half):
-                log.error(f"AoImage.reduce_2 error: {new._errmsg.decode()}")
+                log.debug(f"AoImage.reduce_2 error: {new._errmsg.decode()}")
                 return None
            
             steps -= 1
 
         return half
 
+    def resize(self, newsize):
+        # Not implemented yet
+        pass
+
     def write_jpg(self, filename, quality = 90):
         """
         Convenience function to write jpeg.
         """   
         if not _aoi.aoimage_write_jpg(filename.encode(), self, quality):
-            log.error(f"AoImage.new error: {new._errmsg.decode()}")
+            log.debug(f"AoImage.new error: {new._errmsg.decode()}")
     
     def tobytes(self):
         """
@@ -101,7 +104,7 @@ def new(mode, wh, color):
     assert(mode == "RGBA")
     new = AoImage()
     if not _aoi.aoimage_create(new, wh[0], wh[1], color[0], color[1], color[2]):
-        log.error(f"AoImage.new error: {new._errmsg.decode()}")
+        log.debug(f"AoImage.new error: {new._errmsg.decode()}")
         return None
 
     return new
@@ -110,7 +113,7 @@ def new(mode, wh, color):
 def load_from_memory(mem):
     new = AoImage()
     if not _aoi.aoimage_from_memory(new, mem, len(mem)):
-        log.error(f"AoImage.load_from_memory error: {new._errmsg.decode()}")
+        log.debug(f"AoImage.load_from_memory error: {new._errmsg.decode()}")
         return None
 
     return new
@@ -118,7 +121,7 @@ def load_from_memory(mem):
 def open(filename):
     new = AoImage()
     if not _aoi.aoimage_read_jpg(filename.encode(), new):
-        log.error(f"AoImage.open error for {filename}: {new._errmsg.decode()}")
+        log.debug(f"AoImage.open error for {filename}: {new._errmsg.decode()}")
         return None
 
     return new
@@ -166,13 +169,15 @@ def main():
     log.info("Trying non jpg")
     img = open("main.c")
 
-    img = open("../testfiles/test_tile.jpg")
+    img = open("../testfiles/test_tile2.jpg")
     log.info(f"AoImage.open {img}")
 
     img2 = img.reduce_2()
     log.info(f"img2: {img2}")
 
     img2.write_jpg("test_tile_2.jpg")
+
+    img2.resize((8096,8096))
 
     green.paste(img2, (1024, 1024))
     green.write_jpg("test_tile_p.jpg")
@@ -183,6 +188,9 @@ def main():
 
     img.paste(img4, (0, 2048))
     img.write_jpg("test_tile_p2.jpg")
+
+
+
 
 if __name__ == "__main__":
     main()

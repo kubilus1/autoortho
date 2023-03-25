@@ -187,6 +187,7 @@ class Chunk(object):
     ready = None
     data = None
     img = None
+    url = None
 
     serverlist=['a','b','c','d']
 
@@ -222,6 +223,10 @@ class Chunk(object):
             STATS['chunk_hit'] = STATS.get('chunk_hit', 0) + 1
             with open(self.cache_path, 'rb') as h:
                 self.data = h.read()
+                #if data[:3] != b'\xFF\xD8\xFF':
+                #    log.warning(f"{self} not a JPEG! {data[:3]}  Cache file: {self.cache_path}")
+                #    return False
+            #self.data = data
             return True
         else:
             STATS['chunk_miss'] = STATS.get('chunk_miss', 0) + 1
@@ -257,7 +262,7 @@ class Chunk(object):
             "USGS": f"https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "FIREFLY": f"https://fly.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Firefly/MapServer/tile/{self.zoom}/{self.row}/{self.col}"
         }
-        url = MAPTYPES[self.maptype.upper()]
+        self.url = MAPTYPES[self.maptype.upper()]
         #log.debug(f"{self} getting {url}")
         header = {
                 "user-agent": "curl/7.68.0"
@@ -266,14 +271,20 @@ class Chunk(object):
         time.sleep((self.attempt/10))
         self.attempt += 1
 
-        req = Request(url, headers=header)
+        req = Request(self.url, headers=header)
         resp = 0
         try:
             resp = urlopen(req, timeout=5)
             if resp.status != 200:
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
-            self.data = resp.read()
+            data = resp.read()
+            if data[:3] != b'\xFF\xD8\xFF':
+                log.debug(f"Loading file {self} not a JPEG! {data[:3]} URL: {self.url}")
+            #    return False
+                self.data = b''
+            else:
+                self.data = data
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
@@ -315,6 +326,9 @@ class Tile(object):
     dds = None
 
     refs = None
+
+    maxchunk_wait = None #0.5
+    #mm4_img = None
 
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir=None):
         self.row = int(row)
@@ -569,8 +583,8 @@ class Tile(object):
 
         # Only attempt partial compression from mipmap start
         if offset == 0:
-            compress_len = length
-            #compress_len = length - 128
+            #compress_len = length
+            compress_len = length - 128
         else:
             compress_len = 0
 
@@ -709,18 +723,24 @@ class Tile(object):
         #new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
         new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
         
+        #if self.mm4_img:
+        #    startimg = Image.open(BytesIO(self.mm4_img.data_ptr()))
+        #    startimg = startimg.resize(256*width, 256*height)
+        #    new_img.paste(startimg.tobytes(), (0,0))
 
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
-            ret = chunk.ready.wait()
+            ret = chunk.ready.wait(self.maxchunk_wait)
             if not ret:
-                log.error("Failed to get chunk.")
+                log.error(f"Did not get chunk {chunk} in time.  Continue....")
+                continue
             
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
 
             if not chunk.data:
-                log.error(f"BAD CHUNK DATA")
+                log.debug(f"Empty chunk data.  Skip.")
+                continue
 
             chunk_img = AoImage.load_from_memory(chunk.data)
             if chunk_img:
@@ -733,7 +753,7 @@ class Tile(object):
                     )
                 )
             else:
-                log.warning(f"Failed {chunk}")
+                log.debug(f"Failed {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:32]}")
 
         log.debug(f"GET_IMG: DONE!  IMG created {new_im}")
         return new_im
@@ -759,6 +779,9 @@ class Tile(object):
         if not new_im:
             log.debug("GET_MIPMAP: No updates, so no image generated")
             return True
+
+        #if mipmap <= 4:
+        #    self.mm4_img = new_im
 
         self.ready.clear()
         start_time = time.time()
