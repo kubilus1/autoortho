@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 class AoImage(Structure):
     _fields_ = [
         ('_data', c_uint64),    # ctypes pointers are tricky when changed under the hud so we treat it as number
+        #('_data', POINTER(c_uint64)),    # ctypes pointers are tricky when changed under the hud so we treat it as number
         ('_width', c_uint32),
         ('_height', c_uint32),
         ('_stride', c_uint32),
@@ -20,6 +21,7 @@ class AoImage(Structure):
 
     def __init__(self):
         self._data = 0
+        #self._data = cast('\x00', POINTER(c_uint64))
         self._width = 0
         self._height = 0
         self._stride = 0
@@ -65,9 +67,14 @@ class AoImage(Structure):
 
         return half
 
-    def resize(self, newsize):
-        # Not implemented yet
-        pass
+    def scale(self, factor=2):
+        scaled = AoImage()
+        orig = self
+        if not _aoi.aoimage_scale(orig, scaled, factor):
+            log.debug(f"AoImage.scale error: {new._errmsg.decode()}")
+            return None
+        
+        return scaled
 
     def write_jpg(self, filename, quality = 90):
         """
@@ -92,7 +99,12 @@ class AoImage(Structure):
 
     def paste(self, p_img, pos):
         _aoi.aoimage_paste(self, p_img, pos[0], pos[1])
-        return None
+        return True
+
+    def crop(self, c_img, pos):
+        _aoi.aoimage_crop(self, c_img, pos[0], pos[1])
+        return True
+
 
     @property
     def size(self):
@@ -110,9 +122,11 @@ def new(mode, wh, color):
     return new
 
 
-def load_from_memory(mem):
+def load_from_memory(mem, datalen=None):
+    if not datalen:
+        datalen = len(mem)
     new = AoImage()
-    if not _aoi.aoimage_from_memory(new, mem, len(mem)):
+    if not _aoi.aoimage_from_memory(new, mem, datalen):
         log.debug(f"AoImage.load_from_memory error: {new._errmsg.decode()}")
         return None
 
@@ -140,11 +154,13 @@ _aoi.aoimage_read_jpg.argtypes = (c_char_p, POINTER(AoImage))
 _aoi.aoimage_write_jpg.argtypes = (c_char_p, POINTER(AoImage), c_int32)
 _aoi.aoimage_2_rgba.argtypes = (POINTER(AoImage), POINTER(AoImage))
 _aoi.aoimage_reduce_2.argtypes = (POINTER(AoImage), POINTER(AoImage))
+_aoi.aoimage_scale.argtypes = (POINTER(AoImage), POINTER(AoImage), c_uint32)
 _aoi.aoimage_delete.argtypes = (POINTER(AoImage),)
 _aoi.aoimage_create.argtypes = (POINTER(AoImage), c_uint32, c_uint32, c_uint32, c_uint32, c_uint32)
 _aoi.aoimage_tobytes.argtypes = (POINTER(AoImage), c_char_p)
 _aoi.aoimage_from_memory.argtypes = (POINTER(AoImage), c_char_p, c_uint32)
 _aoi.aoimage_paste.argtypes = (POINTER(AoImage), POINTER(AoImage), c_uint32, c_uint32)
+_aoi.aoimage_crop.argtypes = (POINTER(AoImage), POINTER(AoImage), c_uint32, c_uint32)
 
 def main():
     logging.basicConfig(level = logging.DEBUG)
@@ -177,7 +193,13 @@ def main():
 
     img2.write_jpg("test_tile_2.jpg")
 
-    img2.resize((8096,8096))
+    img3 = open("../testfiles/test_tile_small.jpg")
+    big = img3.scale(16)
+    big.write_jpg('test_tile_big.jpg')
+
+    cropimg = new('RGBA', (256,256), (0,0,0))
+    img.crop(cropimg, (256,256))
+    cropimg.write_jpg("crop.jpg")
 
     green.paste(img2, (1024, 1024))
     green.write_jpg("test_tile_p.jpg")
@@ -188,6 +210,7 @@ def main():
 
     img.paste(img4, (0, 2048))
     img.write_jpg("test_tile_p2.jpg")
+
 
 
 

@@ -327,10 +327,11 @@ class Tile(object):
 
     refs = None
 
-    maxchunk_wait = None #0.5
-    #mm4_img = None
+    maxchunk_wait = 0.25
+    mm4_img = None
 
-    def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0, cache_dir=None):
+    def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0,
+            cache_dir=None, fetchmm4=True):
         self.row = int(row)
         self.col = int(col)
         self.maptype = maptype
@@ -377,6 +378,11 @@ class Tile(object):
                 dxt_format=CFG.pydds.format)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
 
+        if fetchmm4:
+            # Grab minimal image
+            self.mm4_img = self.get_img(4, min_zoom=4)
+
+
     def __lt__(self, other):
         return self.priority < other.priority
 
@@ -384,8 +390,8 @@ class Tile(object):
         return f"Tile({self.col}, {self.row}, {self.maptype}, {self.zoom}, {self.min_zoom}, {self.cache_dir})"
 
     @locked
-    def _create_chunks(self, quick_zoom=0):
-        col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom)
+    def _create_chunks(self, quick_zoom=0, min_zoom=None):
+        col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom, min_zoom)
 
         if not self.chunks.get(zoom):
             self.chunks[zoom] = []
@@ -410,12 +416,13 @@ class Tile(object):
         #log.info(f"No cache found for {self}!")
 
 
-    def _get_quick_zoom(self, quick_zoom=0):
+    def _get_quick_zoom(self, quick_zoom=0, min_zoom=None):
         if quick_zoom:
             # Max difference in steps this tile can support
             max_diff = min((self.zoom - int(quick_zoom)), self.max_mipmap)
-            # Minimum zoom level allowed
-            min_zoom = max((self.zoom - max_diff), self.min_zoom)
+            if not min_zoom:
+                # Minimum zoom level allowed
+                min_zoom = max((self.zoom - max_diff), self.min_zoom)
             
             # Effective zoom level we will use 
             quick_zoom = max(int(quick_zoom), min_zoom)
@@ -571,7 +578,8 @@ class Tile(object):
 
         log.debug(f"Startrow: {startrow} Endrow: {endrow}")
         
-        new_im = self.get_img(mipmap, startrow, endrow)
+        new_im = self.get_img(mipmap, startrow, endrow,
+                maxwait=self.maxchunk_wait)
         if not new_im:
             log.debug("No updates, so no image generated")
             return True
@@ -651,8 +659,6 @@ class Tile(object):
         self.dds.seek(offset)
         return self.dds.read(length)
 
-
-
     def write(self):
         outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
         self.ready.clear()
@@ -669,7 +675,7 @@ class Tile(object):
         return outfile
 
     @locked
-    def get_img(self, mipmap, startrow=0, endrow=None):
+    def get_img(self, mipmap, startrow=0, endrow=None, maxwait=5, min_zoom=None):
         #
         # Get an image for a particular mipmap
         #
@@ -677,7 +683,7 @@ class Tile(object):
         # Get effective zoom
         zoom = self.zoom - mipmap
         log.debug(f"GET_IMG: Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
-        col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom)
+        col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom, min_zoom)
         log.debug(f"Will use:  Zoom: {zoom},  Mipmap: {mipmap}")
 
     
@@ -696,7 +702,7 @@ class Tile(object):
             endchunk = (endrow * chunks_per_row) + chunks_per_row
 
 
-        self._create_chunks(zoom)
+        self._create_chunks(zoom, min_zoom)
         chunks = self.chunks[zoom][startchunk:endchunk]
         log.debug(f"Start chunk: {startchunk}  End chunk: {endchunk}  Chunklen {len(self.chunks[zoom])}")
 
@@ -721,28 +727,58 @@ class Tile(object):
         log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
         
         #new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
-        new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,0))
         
-        #if self.mm4_img:
+        # if self.mm4_img and mipmap < 4:
+        #     # Would be better to scale for each mm request
+        #     log.debug("GET_IMG: Using mm4")
+
+        #     scale_factor = 1<<(4 - mipmap)
+        #     new_im = self.mm4_img.scale(scale_factor)
+        #     #new_im = self.mm4_img
+        #     log.debug(f"GET_IMG: MM4img: {self.mm4_img}")
+        #     #new_im = AoImage.new('RGBA', (256*width,256*height), (255,0,0))
+        #     log.debug(f"GET_IMG: {new_im._width} x {new_im._height}")
+        # else:
+        new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,255))
+
+        log.debug(f"GET_IMG: Will use image {new_im}")
         #    startimg = Image.open(BytesIO(self.mm4_img.data_ptr()))
         #    startimg = startimg.resize(256*width, 256*height)
         #    new_img.paste(startimg.tobytes(), (0,0))
 
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
-            ret = chunk.ready.wait(self.maxchunk_wait)
-            if not ret:
-                log.error(f"Did not get chunk {chunk} in time.  Continue....")
-                continue
+            ret = chunk.ready.wait(maxwait)
             
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
 
-            if not chunk.data:
-                log.debug(f"Empty chunk data.  Skip.")
+            if ret and chunk.data:
+                # We returned and have data!
+                chunk_img = AoImage.load_from_memory(chunk.data)
+            elif self.mm4_img and mipmap < 4:
+                log.warning(f"GET_IMG: Tile {self} Grab a chunk of {self.mm4_img}")
+
+                mmdiff = 4 - mipmap
+
+                mm4_x = start_x >> mmdiff
+                mm4_y = start_y >> mmdiff
+                scalefactor = 1 << mmdiff
+
+                mm_w = 256 >> mmdiff
+                mm_h = 256 >> mmdiff
+
+                log.warning(f"GET_IMG: {self} Crop: {mm4_x}x{mm4_y} w:{mm_w} h:{mm_h}")
+                crop_img = AoImage.new('RGBA', (mm_w, mm_h), (0,255,0))
+                self.mm4_img.crop(crop_img, (mm4_x, mm4_y))
+                chunk_img = crop_img.scale(scalefactor)
+            elif not ret:
+                log.error(f"Did not get chunk {chunk} in time.  Continue....")
+                continue
+            elif not chunk.data:
+                log.warning(f"Empty chunk data.  Skip.")
                 continue
 
-            chunk_img = AoImage.load_from_memory(chunk.data)
             if chunk_img:
                 new_im.paste(
                     chunk_img,
@@ -775,13 +811,10 @@ class Tile(object):
 
         # We can have multiple threads wait on get_img ...
         log.debug(f"GET_MIPMAP: Next call is get_img which may block!.............")
-        new_im = self.get_img(mipmap)
+        new_im = self.get_img(mipmap, maxwait=self.maxchunk_wait)
         if not new_im:
             log.debug("GET_MIPMAP: No updates, so no image generated")
             return True
-
-        #if mipmap <= 4:
-        #    self.mm4_img = new_im
 
         self.ready.clear()
         start_time = time.time()
@@ -888,8 +921,8 @@ class TileCacher(object):
     misses = 0
 
     enable_cache = False
-    cache_mem_lim = pow(2,30) * 2
-    cache_tile_lim = 100
+    cache_mem_lim = pow(2,30) * 1
+    cache_tile_lim = 25
 
     open_count = {}
     
