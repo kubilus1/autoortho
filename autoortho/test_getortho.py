@@ -38,7 +38,7 @@ def tile(tmpdir):
     return t
 
 def test_get_bytes(tmpdir):
-    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir, fetchmm4=True)
+    tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     # Requesting just more than a 4x4 even row of blocks worth
     ret = tile.get_bytes(0, 131208)
     assert ret
@@ -278,7 +278,7 @@ def _test_tile_close(tmpdir):
 #     assert len(m.tiles) == len(files)
 
 def test_get_bytes_mm4_mm0(tmpdir):
-    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir, fetchmm4=True)
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
     #tile = getortho.Tile(21760, 32320, 'Null', 16, cache_dir=tmpdir)
     #tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     #ret = tile.get_bytes(8388672, 4194304)
