@@ -740,7 +740,7 @@ class Tile(object):
         log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
         
         #new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
-        new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,255))
+        new_im = AoImage.new('RGBA', (256*width,256*height), (66,77,55))
 
         log.debug(f"GET_IMG: Will use image {new_im}")
 
@@ -768,7 +768,7 @@ class Tile(object):
                     else:
                         STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
                 else:
-                    log.info(f"GET_IMG: SUCCESS! Getting backup chunk {chunk_img}")
+                    log.debug(f"GET_IMG: SUCCESS! Getting backup chunk {chunk_img}")
                     STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
             
             if chunk_img:
@@ -783,6 +783,7 @@ class Tile(object):
             else:
                 if not chunk.data:
                     log.warning(f"GET_IMG: Empty chunk data.  Skip.")
+                    STATS['chunk_missing_count'] = STATS.get('chunk_missing_count', 0) + 1
                 else:
                     log.warning(f"GET_IMG: FAILED! {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:8]}")
 
@@ -947,7 +948,7 @@ class TileCacher(object):
 
     enable_cache = True
     cache_mem_lim = pow(2,30) * 1
-    cache_tile_lim = 50
+    cache_tile_lim = 25
 
     open_count = {}
     
@@ -973,6 +974,7 @@ class TileCacher(object):
         if platform.system() == 'Windows':
             # Windows doesn't handle FS cache the same way so enable here.
             self.enable_cache = True
+            self.cache_tile_lim = 50
 
     def _to_tile_id(self, row, col, map_type, zoom):
         if self.maptype_override:
