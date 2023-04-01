@@ -222,7 +222,13 @@ class Chunk(object):
         if os.path.isfile(self.cache_path):
             STATS['chunk_hit'] = STATS.get('chunk_hit', 0) + 1
             with open(self.cache_path, 'rb') as h:
-                self.data = h.read()
+                data = h.read()
+                if data[:3] != b'\xFF\xD8\xFF':
+                    # FFD8FF identifies image as a JPEG
+                    log.debug(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
+                    self.data = b''
+                else:
+                    self.data = data
                 #if data[:3] != b'\xFF\xD8\xFF':
                 #    log.warning(f"{self} not a JPEG! {data[:3]}  Cache file: {self.cache_path}")
                 #    return False
@@ -280,6 +286,7 @@ class Chunk(object):
                 return False
             data = resp.read()
             if data[:3] != b'\xFF\xD8\xFF':
+                # FFD8FF identifies image as a JPEG
                 log.debug(f"Loading file {self} not a JPEG! {data[:3]} URL: {self.url}")
             #    return False
                 self.data = b''
@@ -701,11 +708,6 @@ class Tile(object):
         else:
             complete_img = False
 
-        #if complete_img and mipmap < 4 and len(self.imgs) == 0:
-        #    # We are requesting a large image, and the img list is empty.  Get
-        #    # a small image
-        #    self.get_img(4, min_zoom=1)
-
         startchunk = 0
         endchunk = None
         # Determine start and end chunk
@@ -735,29 +737,12 @@ class Tile(object):
         #    log.info("No updates to chunks.  Exit.")
         #    return False
 
-        #outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{self.zoom}.dds")
-        #new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
         log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
         
         #new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
-        
-        # if self.mm4_img and mipmap < 4:
-        #     # Would be better to scale for each mm request
-        #     log.debug("GET_IMG: Using mm4")
-
-        #     scale_factor = 1<<(4 - mipmap)
-        #     new_im = self.mm4_img.scale(scale_factor)
-        #     #new_im = self.mm4_img
-        #     log.debug(f"GET_IMG: MM4img: {self.mm4_img}")
-        #     #new_im = AoImage.new('RGBA', (256*width,256*height), (255,0,0))
-        #     log.debug(f"GET_IMG: {new_im._width} x {new_im._height}")
-        # else:
         new_im = AoImage.new('RGBA', (256*width,256*height), (0,0,255))
 
         log.debug(f"GET_IMG: Will use image {new_im}")
-        #    startimg = Image.open(BytesIO(self.mm4_img.data_ptr()))
-        #    startimg = startimg.resize(256*width, 256*height)
-        #    new_img.paste(startimg.tobytes(), (0,0))
 
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
@@ -771,21 +756,20 @@ class Tile(object):
                 # We returned and have data!
                 chunk_img = AoImage.load_from_memory(chunk.data)
             elif mipmap < 4:
-                #log.warning(f"GET_IMG: Tile {self} Try to find backup chunk.")
+                log.debug(f"GET_IMG: Tile {self} Try to find backup chunk.")
                 chunk_img = self.get_best_chunk(start_x, start_y, mipmap)
                 if not chunk_img:
-                    log.warning(f"GET_IMG: Getting a backup image for chunk {chunk}")
+                    log.debug(f"GET_IMG: Getting a backup image for chunk {chunk}")
                     self.get_img(4, min_zoom=1)
                     chunk_img = self.get_best_chunk(start_x, start_y, mipmap)
                     if not chunk_img:
                         log.error(f"GET_IMG: Failed again!  This should be impossible.")
-                    #log.warning(f"GET_IMG: Couldn't find backup image for chunk {chunk}. Wait a bit longer.")
-                    #ret = chunk.ready.wait(maxwait)
-                    #if ret and chunk.data:
-                    #    log.info(f"GET_IMG: SUCCESS!  Got chunk after additional wait. {chunk}")
-                    #    chunk_img = AoImage.load_from_memory(chunk.data)
+                        STATS['chunk_missing_count'] = STATS.get('chunk_missing_count', 0) + 1
+                    else:
+                        STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
                 else:
                     log.info(f"GET_IMG: SUCCESS! Getting backup chunk {chunk_img}")
+                    STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
             
             if chunk_img:
                 new_im.paste(
@@ -800,7 +784,7 @@ class Tile(object):
                 if not chunk.data:
                     log.warning(f"GET_IMG: Empty chunk data.  Skip.")
                 else:
-                    log.warning(f"GET_IMG: FAILED! {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:32]}")
+                    log.warning(f"GET_IMG: FAILED! {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:8]}")
 
         if complete_img and mipmap <= 4:
             log.debug(f"GET_IMG: Save complete image for later...")
