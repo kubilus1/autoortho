@@ -327,7 +327,7 @@ class Tile(object):
 
     refs = None
 
-    maxchunk_wait = 0.5
+    maxchunk_wait = CFG.autoortho.maxwait
     imgs = None
 
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0,
