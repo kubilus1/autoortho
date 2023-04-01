@@ -198,11 +198,19 @@ AOIAPI int32_t aoimage_write_jpg(const char *filename, aoimage_t *img, int32_t q
 }
 
 AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img) {
-    assert(s_img->channels == 4);
+    if (s_img->channels != 4) {
+		sprintf(d_img->errmsg, "channel error %d != 4", s_img->channels);
+        d_img->ptr = NULL;
+        return FALSE;
+    }
 
-    assert((s_img->width >= 4)
-           && (s_img->width == s_img->height)
-           && (0 == (s_img->width & 0x03)));
+    if ( (s_img->width < 4)
+           || (s_img->width != s_img->height)
+           || (0 != (s_img->width & 0x03)) ) {
+		sprintf(d_img->errmsg, "width error: %d", s_img->width);
+        d_img->ptr = NULL;
+        return FALSE;
+    }
 
     //aoimage_dump("aoimage_reduce_2 s_img", s_img);
 
@@ -320,9 +328,9 @@ AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t 
     d_img->channels = 4;
 
     //fprintf(stderr, "start: %p end: %p  expected: %p len: %d diff: %d \n", dest, dptr, (dest + dlen), dlen, (dest+dlen) - dptr); fflush(stderr);
-    assert(dptr == (dest + dlen));
+    //assert(dptr == (dest + dlen));
     //fprintf(stderr, "width: %d height: %d \n", d_img->width, d_img->height); fflush(stderr);
-    assert((s_img->width * s_img->height * 4) << factor == d_img->width * d_img->height * 4);
+    //assert((s_img->width * s_img->height * 4) << factor == d_img->width * d_img->height * 4);
     return TRUE;
 }
 

@@ -8,6 +8,9 @@ import platform
 import logging
 log = logging.getLogger(__name__)
 
+class AOImageException(Exception):
+    pass
+
 class AoImage(Structure):
     _fields_ = [
         ('_data', c_uint64),    # ctypes pointers are tricky when changed under the hud so we treat it as number
@@ -60,9 +63,10 @@ class AoImage(Structure):
             orig = half
             half = AoImage()
             if not _aoi.aoimage_reduce_2(orig, half):
-                log.debug(f"AoImage.reduce_2 error: {new._errmsg.decode()}")
-                return None
-           
+                log.debug(f"AoImage.reduce_2 error: {half._errmsg.decode()}")
+                raise AOImageException(f"AoImage.reduce_2 error: {half._errmsg.decode()}")
+                #return None
+
             steps -= 1
 
         return half
