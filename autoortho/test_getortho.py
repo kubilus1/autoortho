@@ -52,6 +52,7 @@ def test_get_bytes(tmpdir):
         mmdata = h.read(8)
     assert data != b'\x00'*8
     assert mmdata != b'\x00'*8
+    #assert True == False
 
 
 def test_get_bytes_mip1(tmpdir):
@@ -275,3 +276,20 @@ def _test_tile_close(tmpdir):
 # 
 #     files = os.listdir(tmpdir)
 #     assert len(m.tiles) == len(files)
+
+def test_get_bytes_mm4_mm0(tmpdir):
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
+    #tile = getortho.Tile(21760, 32320, 'Null', 16, cache_dir=tmpdir)
+    #tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mmstart = tile.dds.mipmap_list[4].startpos
+    ret = tile.read_dds_bytes(mmstart, 1024)
+    assert ret
+   
+    tile.maxchunk_wait = 0.05
+    mmstart = tile.dds.mipmap_list[0].startpos
+    ret = tile.read_dds_bytes(mmstart, 8388608)
+    assert ret
+
+    tile.write()
+    #assert True == False

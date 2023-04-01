@@ -22,6 +22,15 @@ def file_disksize(path):
 
     return ondisk_size
 
+def test_mm0(tmpdir):
+    timg = Image.open(TESTJPG)
+    dds = pydds.DDS(4096, 4096)
+    dds.gen_mipmaps(timg, 0, 0)
+
+    assert dds.mipmap_list[0].retrieved == True
+    assert dds.mipmap_list[1].retrieved == False
+
+    dds.write(os.path.join(tmpdir, "out.dds"))
 
 
 def test_dds_conv(tmpdir):

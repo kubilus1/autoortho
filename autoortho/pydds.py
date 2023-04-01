@@ -280,10 +280,10 @@ class DDS(Structure):
                     # ~We have remaining length in current mipmap~
                     #
                     if mipmap.databuffer is None:
-                        log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
+                        log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
                         #data = b''
                         data = b'\x88' * length
-                        log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
+                        log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
                     else:
                         log.debug("We have a mipmap and adequated remaining length")
                         mipmap.databuffer.seek(mipmap_pos)
@@ -311,10 +311,10 @@ class DDS(Structure):
                         # we *must* make sure the full size is available.
                         # 
                         #log.warning(f"PYDDS: No buffer for {mipmap.idx}, Attempt to fill {remaining_mipmap_len} bytes")
-                        log.debug(f"PYDDS: No buffer for {mipmap.idx}!")
+                        log.warning(f"PYDDS: No buffer for {mipmap.idx}!")
                         #data = b''
                         data = b'\x88' * remaining_mipmap_len
-                        log.debug(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
+                        log.warning(f"PYDDS: adding to outdata {remaining_mipmap_len} bytes for {mipmap.idx}.")
                     else:    
                         # Mipmap is retrieved
                         mipmap.databuffer.seek(mipmap_pos)
@@ -476,8 +476,8 @@ class DDS(Structure):
                 img = img.reduce_2(steps)
 
             while True:
-                #if True:
-                if not self.mipmap_list[mipmap].retrieved:
+                if True:
+                #if not self.mipmap_list[mipmap].retrieved:
                     imgdata = img.data_ptr()
                     width, height = img.size
                     log.debug(f"MIPMAP: {mipmap} SIZE: {img.size}")

@@ -42,6 +42,7 @@ AOIAPI int32_t aoimage_2_rgba(const aoimage_t *s_img, aoimage_t *d_img);
 AOIAPI int32_t aoimage_read_jpg(const char *filename, aoimage_t *img);
 AOIAPI int32_t aoimage_write_jpg(const char *filename, aoimage_t *img, int32_t quality);
 AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img);
+AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t factor);
 AOIAPI void aoimage_delete(aoimage_t *img);
 AOIAPI int32_t aoimage_create(aoimage_t *img, uint32_t width, uint32_t height, uint32_t r, uint32_t g, uint32_t b);
 AOIAPI int32_t aoimage_from_memory(aoimage_t *img, const uint8_t *data, uint32_t len);
@@ -49,4 +50,5 @@ AOIAPI void aoimage_tobytes(aoimage_t *img, uint8_t *data);
 
 // in place: img + pasted(p_img)
 AOIAPI int32_t aoimage_paste(aoimage_t *img, const aoimage_t *p_img, uint32_t x, uint32_t y);
+AOIAPI int32_t aoimage_crop(aoimage_t *img, const aoimage_t *c_img, uint32_t x, uint32_t y);
 #endif

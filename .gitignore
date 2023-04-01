@@ -5,4 +5,5 @@ autoortho.log
 out.dds
 /cache
 .release_info
-*/libjpeg-turbo-gcc64
+**/libjpeg-turbo-gcc64
+tags
