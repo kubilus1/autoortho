@@ -11,7 +11,7 @@ enter:
 	docker run --rm -it -v `pwd`:/code ubuntu:jammy /bin/bash
 
 bin:
-	python3 -m nuitka --verbose --verbose-output=nuitka.log \
+	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
 		--linux-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=tk-inter \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
@@ -24,6 +24,7 @@ bin:
 autoortho_win.exe:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
+		--disable-ccache \
 		--enable-plugin=tk-inter \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
