@@ -8,7 +8,7 @@ autoortho_lin.bin: autoortho/*.py
 	docker run --rm -v `pwd`:/code ubuntu:focal /bin/bash -c "cd /code; ./buildreqs.sh; time make bin"
 
 enter:
-	docker run --rm -it -v `pwd`:/code ubuntu:jammy /bin/bash
+	docker run --rm -it -v `pwd`:/code ubuntu:focal /bin/bash
 
 bin:
 	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
