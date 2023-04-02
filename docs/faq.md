@@ -1,5 +1,8 @@
 # FAQ and Troubleshooting
 
+## On Windows the executable/zip is detected as a malware/virus by Windows Defender
+That is a false positive.  Unfortunately, Windows is very dev and opensource unfriendly.  You can choose to ignore this false positive or not, it's your computer.  Alternatively, you can run this directly via source.
+
 ## On Linux this does not start/gives a FUSE error
 Make sure that your `/etc/fuse.conf` files is set to `user_allow_other`.  You may need to uncomment a line.
 
