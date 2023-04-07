@@ -337,6 +337,9 @@ class Tile(object):
     maxchunk_wait = float(CFG.autoortho.maxwait)
     imgs = None
 
+    # a global zoom out of everything
+    global_zoom_out = 1
+
     def __init__(self, col, row, maptype, zoom, min_zoom=0, priority=0,
             cache_dir=None):
         self.row = int(row)
@@ -688,18 +691,20 @@ class Tile(object):
         #
 
         # Get effective zoom
-        zoom = self.zoom - mipmap
+        gzo_effective = min(self.global_zoom_out, max(0, 4 - mipmap))
+        zoom = self.zoom - (mipmap + gzo_effective)
+
         log.debug(f"GET_IMG: Default zoom: {self.zoom}, Requested Mipmap: {mipmap}, Requested mipmap zoom: {zoom}")
         col, row, width, height, zoom, mipmap = self._get_quick_zoom(zoom, min_zoom)
         log.debug(f"Will use:  Zoom: {zoom},  Mipmap: {mipmap}")
         
         # Do we already have this img?
-        if mipmap in self.imgs:
-            log.debug(f"GET_IMG: Found saved image: {self.imgs[mipmap]}")
-            return self.imgs.get(mipmap)
+        if mipmap - gzo_effective in self.imgs:
+            log.debug(f"GET_IMG: Found saved image: {self.imgs[mipmap - gzo_effective]}")
+            return self.imgs.get(mipmap - gzo_effective)
 
         log.debug(f"GET_IMG: MM List before { {x.idx:x.retrieved for x in self.dds.mipmap_list} }")
-        if self.dds.mipmap_list[mipmap].retrieved:
+        if self.dds.mipmap_list[mipmap - gzo_effective].retrieved:
             log.debug(f"GET_IMG: We already have mipmap {mipmap} for {self}")
             return
 
@@ -713,8 +718,10 @@ class Tile(object):
         # Determine start and end chunk
         chunks_per_row = 16 >> mipmap
         if startrow:
+            startrow >>= gzo_effective
             startchunk = startrow * chunks_per_row
         if endrow is not None:
+            endrow >>= gzo_effective
             endchunk = (endrow * chunks_per_row) + chunks_per_row
 
         self._create_chunks(zoom, min_zoom)
@@ -787,11 +794,19 @@ class Tile(object):
                 else:
                     log.warning(f"GET_IMG: FAILED! {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:8]}")
 
-        if complete_img and mipmap <= 4:
+        if gzo_effective > 0:
+            height_only = 0
+            if endrow is not None:
+                height_only = min(height, (endrow + 1)) * 256    # endrow may reach beyond the current img
+
+            new_im = new_im.scale(1 << gzo_effective, height_only)
+
+        if complete_img and mipmap - gzo_effective <= 4:
             log.debug(f"GET_IMG: Save complete image for later...")
-            self.imgs[mipmap] = new_im
+            self.imgs[mipmap - gzo_effective] = new_im
 
         log.debug(f"GET_IMG: DONE!  IMG created {new_im}")
+
         # Return image along with mipmap and zoom level this was created at
         return new_im
 

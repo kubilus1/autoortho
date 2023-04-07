@@ -71,10 +71,10 @@ class AoImage(Structure):
 
         return half
 
-    def scale(self, factor=2):
+    def scale(self, factor=2, height_only = 0):
         scaled = AoImage()
         orig = self
-        if not _aoi.aoimage_scale(orig, scaled, factor):
+        if not _aoi.aoimage_scale(orig, scaled, factor, height_only):
             log.debug(f"AoImage.scale error: {new._errmsg.decode()}")
             return None
         
@@ -158,7 +158,7 @@ _aoi.aoimage_read_jpg.argtypes = (c_char_p, POINTER(AoImage))
 _aoi.aoimage_write_jpg.argtypes = (c_char_p, POINTER(AoImage), c_int32)
 _aoi.aoimage_2_rgba.argtypes = (POINTER(AoImage), POINTER(AoImage))
 _aoi.aoimage_reduce_2.argtypes = (POINTER(AoImage), POINTER(AoImage))
-_aoi.aoimage_scale.argtypes = (POINTER(AoImage), POINTER(AoImage), c_uint32)
+_aoi.aoimage_scale.argtypes = (POINTER(AoImage), POINTER(AoImage), c_uint32, c_uint32)
 _aoi.aoimage_delete.argtypes = (POINTER(AoImage),)
 _aoi.aoimage_create.argtypes = (POINTER(AoImage), c_uint32, c_uint32, c_uint32, c_uint32, c_uint32)
 _aoi.aoimage_tobytes.argtypes = (POINTER(AoImage), c_char_p)

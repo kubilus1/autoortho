@@ -259,7 +259,7 @@ AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img) {
     return TRUE;
 }
 
-AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t factor) {
+AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t factor, uint32_t height_only) {
     assert(s_img->channels == 4);
 
     assert((s_img->width >= 4)
@@ -268,8 +268,8 @@ AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t 
 
     uint32_t slen = s_img->width * s_img->height;
     uint32_t dlen = slen * 16 * factor;
-   
-    //fprintf(stderr, "malloc(%d)\n", (dlen*4)); fflush(stderr); 
+
+    //fprintf(stderr, "malloc(%d)\n", (dlen*4)); fflush(stderr);
     uint32_t *dest = malloc(dlen*4);
     if (NULL == dest) {
 		sprintf(d_img->errmsg, "can't malloc %d bytes", dlen);
@@ -279,8 +279,8 @@ AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t 
 
     //const uint8_t *srptr = s_img->ptr;      // source row start
     //const uint8_t *send = srptr + slen;
-   
-    // Start destination image pointer at the start 
+
+    // Start destination image pointer at the start
     uint32_t *dptr = dest;
 
     // Length of one row of the source image
@@ -290,13 +290,18 @@ AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t 
     //fprintf(stderr, "%p %d %d %d\n", srptr, slen, dlen, d_stride); fflush(stderr);
 
     const uint32_t *sptr = s_img->ptr;
-    
+
     int d_idx;
     int s_col_count = 0;
 
+    if (height_only > 0) {
+        assert(height_only <= s_img->height),
+        slen = s_img->width * height_only;
+    }
+
     // Iterate over source image
     for (int i=0; i<slen; i++) {
-        
+
         s_col_count++;
 
         // Grab 32 bits
@@ -310,14 +315,14 @@ AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t 
                 dptr[d_idx] = s_rgba;
             }
         }
-        
+
         dptr += factor;
 
         if (s_col_count == s_stride) {
             dptr += d_stride * (factor - 1);
             s_col_count = 0;
             //fprintf(stderr, "STARTROW %d %p %p\n", i, sptr, dptr); fflush(stderr);
-        } 
+        }
 
     }
 
