@@ -15,20 +15,20 @@ import platform
 import threading
 import itertools
 
-import flighttrack
+from . import flighttrack
 
 from functools import wraps, lru_cache
 
-from aoconfig import CFG
+from .aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
 #from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
 
-import getortho
+from . import getortho
 
-from xp_udp import DecodePacket, RequestDataRefs
+from .xp_udp import DecodePacket, RequestDataRefs
 import socket
 
 #from memory_profiler import profile

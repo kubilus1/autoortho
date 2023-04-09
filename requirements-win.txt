@@ -6,7 +6,7 @@
 #
 cffi==1.15.1
     # via winfspy
-https://download.lfd.uci.edu/pythonlibs/archived/Pillow_SIMD-9.0.0.post0-cp310-cp310-win_amd64.whl
+#https://download.lfd.uci.edu/pythonlibs/archived/Pillow_SIMD-9.0.0.post0-cp310-cp310-win_amd64.whl
 #pillow==9.2.0
 #    # via -r requirements-win.in
 #pillow-simd==9.0.0.post1

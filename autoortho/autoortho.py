@@ -6,10 +6,10 @@ import platform
 import argparse
 import threading
 
-import aoconfig
-import aostats
-import flighttrack
-import winsetup
+from . import aoconfig
+from . import aostats
+from . import flighttrack
+from . import winsetup
 
 import logging
 log = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ def main():
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_dokan_mount(mountpoint) 
-            import autoortho_fuse
+            from . import autoortho_fuse
             stats.start()
             ftrack.start()
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
@@ -100,7 +100,7 @@ def main():
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_winfsp_mount(mountpoint) 
-            import autoortho_fuse
+            from . import autoortho_fuse
             stats.start()
             ftrack.start()
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
@@ -115,14 +115,14 @@ def main():
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_winfsp_mount(mountpoint) 
-            import autoortho_winfsp
+            from . import autoortho_winfsp
             stats.start()
             ftrack.start()
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
             autoortho_winfsp.main(root, mountpoint)
     else:
         log.info("Running in FUSE mode.")
-        import autoortho_fuse
+        from . import autoortho_fuse
         root = os.path.expanduser(root)
         mountpoint = os.path.expanduser(mountpoint)
         nothreads=False

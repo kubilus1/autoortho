@@ -16,15 +16,15 @@ from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
 from functools import wraps, lru_cache
 
-import pydds
+from . import pydds
 
 
 import psutil
-from PIL import Image
-from aoimage import AoImage
+#from PIL import Image
+from .aoimage import AoImage
 
-from aoconfig import CFG
-from aostats import STATS, StatTracker
+from .aoconfig import CFG
+from .aostats import STATS, StatTracker
 
 MEMTRACE = False
 

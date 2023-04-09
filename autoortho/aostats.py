@@ -3,7 +3,7 @@ import time
 import threading
 import collections
 
-from aoconfig import CFG
+from .aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from io import BytesIO
 from binascii import hexlify
 from ctypes import *
 #from PIL import Image
-from aoimage import AoImage as Image
+from .aoimage import AoImage as Image
 
 import platform
 import threading
@@ -15,7 +15,7 @@ import threading
 #from functools import lru_cache, cache
 
 #from memory_profiler import profile
-from aoconfig import CFG
+from .aoconfig import CFG
 
 import logging
 log = logging.getLogger(__name__)

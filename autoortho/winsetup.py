@@ -1,6 +1,6 @@
 import os
 import sys
-from aoconfig import CFG
+from .aoconfig import CFG
 
 import logging
 log = logging.getLogger(__name__)
