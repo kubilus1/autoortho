@@ -16,8 +16,9 @@ import threading
 import itertools
 
 import flighttrack
+import pydds
 
-from functools import wraps, lru_cache
+from functools import wraps, lru_cache, cache
 
 from aoconfig import CFG
 import logging
@@ -75,6 +76,7 @@ class AutoOrtho(Operations):
 
     startup = True
 
+    zl_sizes = {}
 
     def __init__(self, root, cache_dir='.cache'):
         log.info(f"ROOT: {root}")
@@ -123,6 +125,20 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         return os.chown(full_path, uid, gid)
 
+
+    @cache
+    def _get_dds_size(self):
+        zoom_reduction = int(CFG.autoortho.zlreduce)
+        
+        width = 4096>>zoom_reduction
+        height = 4096>>zoom_reduction
+
+        dds = pydds.DDS(width, height, dxt_format = CFG.pydds.format)
+        dds_size = dds.total_size
+       
+        return dds_size
+
+
     @lru_cache(maxsize=1024)
     def getattr(self, path, fh=None):
         log.debug(f"GETATTR {path}")
@@ -131,21 +147,18 @@ class AutoOrtho(Operations):
         #if m and not exists:
         if m:
             log.debug(f"GETATTR: {path}: MATCH!")
+            row, col, maptype, zoom = m.groups()
+            row = int(row)
+            col = int(col)
+            zoom = int(zoom)
+
             if self.startup:
                 # First matched file
                 log.info(f"First matched DDS file {path} detected.  Start flight tracker.")
                 flighttrack.ft.start()
                 self.startup = False
 
-            #row, col, maptype, zoom = m.groups()
-            #log.debug(f"GETATTR: Fetch for {path}: %s" % str(m.groups()))
-
-            if CFG.pydds.format == "BC1":
-                dds_size = 11184952
-            else:
-                #dds_size = 22369744
-                dds_size = 22369776
-
+            dds_size = self._get_dds_size()
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -157,12 +170,6 @@ class AutoOrtho(Operations):
                 'st_nlink': 1, 
                 'st_size': dds_size, 
                 'st_blksize': 32768
-                #'st_blksize': 16384
-                #'st_blksize': 8192
-                #'st_blksize': 4096
-                # Windows specific stuff
-                #'st_ino': 844424931910150,
-                #'st_dev': 1421433975
             }
         else:
             full_path = self._full_path(path)
