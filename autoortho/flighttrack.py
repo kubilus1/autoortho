@@ -28,8 +28,6 @@ class FlightTracker(object):
     spd = -1
     t = None
 
-    
-
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, # Internet
                             socket.SOCK_DGRAM) # UDP
@@ -38,7 +36,6 @@ class FlightTracker(object):
         self.connected = False
         self.num_failures = 0
 
-
     def start(self):
         self.running = True
         self.start_time = time.time()
@@ -46,7 +43,7 @@ class FlightTracker(object):
         self.t.start()
 
     def get_info(self):
-        RequestDataRefs(self.sock)
+        RequestDataRefs(self.sock, CFG.flightdata.xplane_udp_port)
         data, addr = self.sock.recvfrom(1024)
         values = DecodePacket(data)
         lat = values[0][0]
@@ -57,11 +54,11 @@ class FlightTracker(object):
 
         return (lat, lon, alt, hdg, spd)
 
-
     def _udp_listen(self):
         log.debug("Listen!")
-        RequestDataRefs(self.sock)
+        RequestDataRefs(self.sock, CFG.flightdata.xplane_udp_port)
         while self.running:
+            time.sleep(1)
             try:
                 data, addr = self.sock.recvfrom(1024)
             except socket.timeout:
@@ -70,7 +67,7 @@ class FlightTracker(object):
                     # We were connected but lost a packet.  First just log
                     # this
                     self.num_failures += 1
-                    log.info("We are connected but a packet timed out.  NBD.")
+                    log.debug("We are connected but a packet timed out.  NBD.")
 
                 if self.num_failures > 3:
                     # We are transitioning states
@@ -78,12 +75,12 @@ class FlightTracker(object):
                     self.start_time = time.time()
                     self.connected = False
 
-                log.debug("Socket timeout.  Reset.")
-                RequestDataRefs(self.sock)
+                    log.debug("Socket timeout.  Reset.")
+                    RequestDataRefs(self.sock, CFG.flightdata.xplane_udp_port)
+
                 continue
             except ConnectionResetError: 
                 log.debug("Connection reset.")
-                time.sleep(2)
                 continue
 
 
@@ -112,7 +109,6 @@ class FlightTracker(object):
             self.hdg = hdg
             self.spd = spd
 
-            time.sleep(1)
 
         log.info("UDP listen thread exiting...")
 
@@ -142,7 +138,8 @@ def index():
 @app.route("/map")
 def map():
     return render_template(
-        "map.html"
+        "map.html",
+        mapkey = ""
     )
 
 @app.route("/stats")
@@ -158,7 +155,7 @@ def metrics():
     return STATS
 
 def run():
-    app.run(host='0.0.0.0', debug=CFG.general.debug, threaded=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=CFG.flightdata.webui_port, debug=CFG.general.debug, threaded=True, use_reloader=False)
 
 
 def main():

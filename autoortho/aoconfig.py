@@ -382,8 +382,11 @@ debug = False
 [paths]
 # X-Plane Custom Scenery path
 scenery_path =
+# Directory where satellite images are cached
 cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
+# Changing downloader_dir is currently not supported 
 download_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")}
+# Changing log_file dir is currently not supported
 log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "autoortho.log")}
 
 [autoortho]
@@ -394,7 +397,7 @@ min_zoom = 12
 # Max time to wait for images.  Higher numbers mean better quality, but more
 # stutters.  Lower numbers will be more responsive at the expense of
 # ocassional low quality tiles.
-maxwait = 0.5
+maxwait = 1
 
 [pydds]
 # ISPC or STB for dds file compression
@@ -413,6 +416,13 @@ threading = True
 [winfsp]
 # Enable Windows to use WinFSP mode instead of FUSE mode.  This is not typically recommended
 winfsp_raw = False
+
+[flightdata]
+# Local port for map and stats
+webui_port = 5000 
+# UDP port XPlane listens on
+xplane_udp_port = 49000
+
 
 """
 
