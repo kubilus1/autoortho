@@ -84,7 +84,7 @@
     }
 
     function parse_metrics(data) {
-        //console.log(data);
+        console.log(data);
         lastX += 5;
         for (const item in data) {
             update_chart(item, lastX, data[item]);    
@@ -92,18 +92,16 @@
     }
 
     function get_metrics() {
-        $.ajax({
-            type: "GET",
-            url: "{{ url_for('metrics') }}",
-            async: true,
-            success: function(data) {
-                parse_metrics(data);
-                setTimeout(get_metrics, 5000);
-            },
-            error: function(data) {
-                setTimeout(get_metrics, 5000);
-            }
+        console.log("Setup socket.");
+        const socket = io("http://localhost:5000");
 
+        socket.on('connect', function(msg) {
+                console.log("Connect!", msg);
+                socket.emit('handle_metrics');
+        });
+        
+        socket.on('metrics', function(data) {
+            parse_metrics(data);
         });
     }
 

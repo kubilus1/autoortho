@@ -44,14 +44,15 @@
 		.setContent('I am a standalone popup.')
 		.openOn(map);
 
-    */
 	function onMapClick(e) {
 		popup
 			.setLatLng(e.latlng)
 			.setContent('You clicked the map at ' + e.latlng.toString())
 			.openOn(map);
 	}
+    */
 
+	var marker = L.marker([51.5, -0.09]).addTo(map);
     var line = L.polyline([]).addTo(map);
     function track_latlon(lat, lon) {
         map.setView([lat, lon]);
@@ -60,27 +61,26 @@
     }
 
     function get_latlon() {
-        $.ajax({
-            type: "GET",
-            url: "{{ url_for('get_latlon') }}",
-            async: true,
-            success: function(data) {
-                lat = data.lat;
-                lon = data.lon;
-                console.log("Lat: " + lat + " Lon: " + lon);
-                track_latlon(lat, lon);
-                setTimeout(get_latlon, 1000);
-            },
-            error: function(data) {
-                setTimeout(get_latlon, 5000);
-            }
+        console.log("Setup socket.");
+        const socket = io("http://localhost:5000");
 
+        socket.on('connect', function(msg) {
+                console.log("Connect!", msg);
+                socket.emit('handle_latlon');
+        });
+
+        socket.on('latlon', function(data) {
+            console.log(data);
+            lat = data.lat;
+            lon = data.lon;
+            console.log("Lat: " + lat + " Lon: " + lon);
+            track_latlon(lat, lon);
         });
     }
 
     get_latlon();
 
-	map.on('click', onMapClick);
+	//map.on('click', onMapClick);
 
 </script>
 

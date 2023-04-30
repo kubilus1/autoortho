@@ -2,6 +2,7 @@
 
 import os
 import time
+import json
 import socket
 import threading
 from aoconfig import CFG
@@ -9,6 +10,7 @@ import logging
 log = logging.getLogger(__name__)
 
 from flask import Flask, render_template, url_for, request, jsonify
+from flask_socketio import SocketIO, send, emit
 
 from xp_udp import DecodePacket, RequestDataRefs
 
@@ -18,6 +20,9 @@ from aostats import STATS
 RUNNING=True
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
+
 
 class FlightTracker(object):
     
@@ -34,6 +39,7 @@ class FlightTracker(object):
 
         self.sock.settimeout(5.0)
         self.connected = False
+        self.running = False
         self.num_failures = 0
 
     def start(self):
@@ -58,7 +64,7 @@ class FlightTracker(object):
         log.debug("Listen!")
         RequestDataRefs(self.sock, CFG.flightdata.xplane_udp_port)
         while self.running:
-            time.sleep(1)
+            time.sleep(0.1)
             try:
                 data, addr = self.sock.recvfrom(1024)
             except socket.timeout:
@@ -74,13 +80,16 @@ class FlightTracker(object):
                     log.info("FT: Flight disconnected.")
                     self.start_time = time.time()
                     self.connected = False
+                    self.running = False
+                    self.num_failures = 0
 
-                    log.debug("Socket timeout.  Reset.")
-                    RequestDataRefs(self.sock, CFG.flightdata.xplane_udp_port)
-
+                    #log.debug("Socket timeout.  Reset.")
+                    #RequestDataRefs(self.sock, CFG.flightdata.xplane_udp_port)
+                time.sleep(1)
                 continue
             except ConnectionResetError: 
                 log.debug("Connection reset.")
+                time.sleep(1)
                 continue
 
 
@@ -121,6 +130,32 @@ class FlightTracker(object):
 
 ft = FlightTracker()
 
+@socketio.on('connect')
+def connect():
+    print('client connected',request.sid)
+
+@socketio.on('disconnect')
+def disconnect():
+    print('client disconnected',request.sid)
+
+@socketio.on('handle_latlon')
+def handle_latlon():
+    log.info("Handle lat lon.")
+    while True:
+        lat = ft.lat
+        lon = ft.lon
+        #lat, lon, alt, hdg, spd = ft.get_info()
+        log.debug(f"emit: {lat} X {lon}")
+        socketio.emit('latlon', {"lat":lat,"lon":lon})
+        socketio.sleep(2)
+
+@socketio.on("handle_metrics")
+def handle_metrics():
+    log.info("Handle metrics.")
+    while True:
+        socketio.emit('metrics', STATS or {"init": 1})
+        socketio.sleep(5)
+
 @app.route('/get_latlon')
 def get_latlon():
     lat = ft.lat
@@ -155,8 +190,9 @@ def metrics():
     return STATS
 
 def run():
-    app.run(host='0.0.0.0', port=CFG.flightdata.webui_port, debug=CFG.general.debug, threaded=True, use_reloader=False)
-
+    #app.run(host='0.0.0.0', port=CFG.flightdata.webui_port, debug=CFG.general.debug, threaded=True, use_reloader=False)
+    socketio.run(app, host='0.0.0.0', port=int(CFG.flightdata.webui_port))
+    
 
 def main():
     ft.start()
