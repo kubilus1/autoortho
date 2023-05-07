@@ -392,12 +392,12 @@ log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "au
 [autoortho]
 # Override map type with a different source
 maptype_override =
-# Minimum zoom level to allow
+# Minimum zoom level to allow.  THIS WILL NOT INCREASE THE MAX QUALITY OF SATELLITE IMAGERY
 min_zoom = 12
 # Max time to wait for images.  Higher numbers mean better quality, but more
 # stutters.  Lower numbers will be more responsive at the expense of
 # ocassional low quality tiles.
-maxwait = 1
+maxwait = 0.5
 
 [pydds]
 # ISPC or STB for dds file compression

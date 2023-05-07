@@ -293,3 +293,12 @@ def test_get_bytes_mm4_mm0(tmpdir):
 
     tile.write()
     #assert True == False
+
+def test_get_best_chunk(tmpdir):
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
+    
+    tile.get_img(2)
+    ret = tile.get_best_chunk(17408, 25857, 0, 16)
+    assert(ret)
+
+    ret.write_jpg(os.path.join(tmpdir, "chunk.jpg"))
