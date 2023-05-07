@@ -53,9 +53,15 @@ jobs:
     - name: Build
       run: |
         make autoortho_win.exe
+        ls
+        make autoortho_win.zip
+        mv __main__.dist autoortho_release
+        7z a autoortho_win.zip autoortho_release
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: winbin
-        path: autoortho_win.exe
+        path: |
+          autoortho_win.exe
+          autoortho_win.zip
