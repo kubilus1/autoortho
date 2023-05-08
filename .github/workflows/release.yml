@@ -21,6 +21,12 @@ jobs:
         make autoortho_lin.bin
         zip autoortho_lin.zip autoortho_lin.bin
 
+    - name: Save artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: linbin
+        path: autoortho_lin.bin
+
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
@@ -49,6 +55,12 @@ jobs:
       run: |
         make autoortho_win.exe
         7z a autoortho_win.zip autoortho_win.exe
+
+    - name: Save artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: winbin
+        path: autoortho_win.exe
 
     - name: Release
       uses: softprops/action-gh-release@v1
