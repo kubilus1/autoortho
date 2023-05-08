@@ -53,8 +53,8 @@ jobs:
     - name: Build
       run: |
         make autoortho_win.exe
-        ls
-        make autoortho_win.zip
+        ls __main__.dist
+        #make autoortho_win.zip
         mv __main__.dist autoortho_release
         7z a autoortho_win.zip autoortho_release
 
