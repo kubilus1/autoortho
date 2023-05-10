@@ -1,3 +1,5 @@
+ZIP?=zip
+
 autoortho.pyz:
 	mkdir -p build/autoortho
 	cp -r autoortho/* build/autoortho/.
@@ -37,7 +39,7 @@ autoortho_win.exe:
 		--onefile \
 		./autoortho/__main__.py -o autoortho_win.exe
 
-autoortho_win.zip:
+__main__.dist:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
 		--disable-ccache \
@@ -51,6 +53,9 @@ autoortho_win.zip:
 		--include-data-dir=./autoortho/imgs=imgs \
 		--standalone \
 		./autoortho/__main__.py -o autoortho_win.exe
+autoortho_win.zip: __main__.dist
+	mv __main__.dist autoortho_release
+	$(ZIP) $@ autoortho_release
 
 testperf:
 	python3.10 -m nuitka --verbose --verbose-output=nuitka.log  --include-data-dir=./autoortho/lib=lib --include-data-dir=./autoortho/testfiles=testfiles --onefile ./autoortho/perftest.py
