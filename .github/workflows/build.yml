@@ -52,7 +52,7 @@ jobs:
 
     - name: Build
       run: |
-        ZIP="7z a" make autoortho_win.zip
+        make autoortho_win.zip ZIP="7z a"
         ls autoortho_release
         make autoortho_win.exe
 
