@@ -756,19 +756,9 @@ class Tile(object):
                 # We returned and have data!
                 chunk_img = AoImage.load_from_memory(chunk.data)
             elif mipmap < 4:
-                log.debug(f"GET_IMG: Tile {self} Try to find backup chunk.")
-                chunk_img = self.get_best_chunk(start_x, start_y, mipmap)
-                if not chunk_img:
-                    log.debug(f"GET_IMG: Getting a backup image for chunk {chunk}")
-                    self.get_img(4, min_zoom=1)
-                    chunk_img = self.get_best_chunk(start_x, start_y, mipmap)
-                    if not chunk_img:
-                        log.error(f"GET_IMG: Failed again!  This should be impossible.")
-                        STATS['chunk_missing_count'] = STATS.get('chunk_missing_count', 0) + 1
-                    else:
-                        STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
-                else:
-                    log.debug(f"GET_IMG: SUCCESS! Getting backup chunk {chunk_img}")
+                log.info(f"GET_IMG: Tile {self} Try to find backup chunk.")
+                chunk_img = self.get_best_chunk(chunk.col, chunk.row, mipmap, zoom)
+                if chunk_img:
                     STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
             
             if chunk_img:
@@ -795,8 +785,58 @@ class Tile(object):
         # Return image along with mipmap and zoom level this was created at
         return new_im
 
+    def get_best_chunk(self, col, row, mm, zoom):
+        for i in range(mm+1, 5):
 
-    def get_best_chunk(self, x, y, mm):
+            # Difference between requested mm and found image mm level
+            diff = i - mm
+            
+            # Equivalent col, row, zl
+            col_p = col >> diff
+            row_p = row >> diff
+            zoom_p = zoom - i
+
+            scalefactor = 1 << diff
+
+            # Check if we have a cached chunk
+            c = Chunk(col_p, row_p, self.maptype, zoom_p, cache_dir=self.cache_dir)
+            log.debug(f"Check cache for {c}")
+            cached = c.get_cache()
+            if not cached:
+                c.close()
+                continue
+            #     # Last mm.  Get a chunk
+            #     if not c.get():
+            #         return False
+            # elif not cached:
+            #     c.close()
+            #     continue
+        
+            log.debug(f"Found best chunk for {col}x{row}x{zoom} at {col_p}x{row_p}x{zoom_p}")
+            # Offset into chunk
+            col_offset = col % scalefactor
+            row_offset = row % scalefactor
+
+            # Pixel width
+            w_p = 256 >> diff
+            h_p = 256 >> diff
+
+            # Load image to crop
+            img_p = AoImage.load_from_memory(c.data)
+            
+            # Crop
+            crop_img = AoImage.new('RGBA', (w_p, h_p), (0,255,0))
+            img_p.crop(crop_img, (col_offset, row_offset))
+            chunk_img = crop_img.scale(scalefactor)
+
+            return chunk_img
+
+        return False
+
+            
+
+
+    def _get_best_chunk(self, x, y, mm):
         for i in range(mm+1, 5):
             if i in self.imgs:
                 # We have an image already

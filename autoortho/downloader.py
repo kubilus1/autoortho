@@ -442,21 +442,27 @@ class Downloader(object):
         else:
             last_updated_date = datetime.fromtimestamp(0)
 
+        data = []
         if last_updated_date < (datetime.today() - timedelta(hours=1)):
             log.info(f"Check for updates ...")
+            
+            try:
+                resp = do_url(
+                    self.url,
+                    headers = {"Accept": "application/vnd.github+json"}
+                )
+                with open(self.info_cache, "wb") as h:
+                    h.write(resp)
+                data = json.loads(resp)
+            except Exception as err:
+                log.warning(f"Couldn't update release info {err}.")
 
-            resp = do_url(
-                self.url,
-                headers = {"Accept": "application/vnd.github+json"}
-            )
-            with open(self.info_cache, "wb") as h:
-                h.write(resp)
-        else:
+        if not data and os.path.exists(self.info_cache):
             log.info(f"Using cache ...")
             with open(self.info_cache, "rb") as h:
                 resp = h.read()
+            data = json.loads(resp)
 
-        data = json.loads(resp)
 
         log.info(f"Using scenery dir {self.extract_dir}")
         for item in data:

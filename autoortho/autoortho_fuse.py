@@ -131,7 +131,8 @@ class AutoOrtho(Operations):
         #if m and not exists:
         if m:
             log.debug(f"GETATTR: {path}: MATCH!")
-            if self.startup:
+            #if self.startup:
+            if not flighttrack.ft.running:
                 # First matched file
                 log.info(f"First matched DDS file {path} detected.  Start flight tracker.")
                 flighttrack.ft.start()

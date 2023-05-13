@@ -19,12 +19,11 @@ jobs:
     - name: Build
       run: |
         make autoortho_lin.bin
-        zip autoortho_lin.zip autoortho_lin.bin
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: autoortho_lin.zip
+        files: autoortho_lin.bin
 
 
   build-windows:
@@ -48,10 +47,12 @@ jobs:
     - name: Build
       run: |
         make autoortho_win.exe
-        7z a autoortho_win.zip autoortho_win.exe
+        make autoortho_win.zip ZIP="7z a"
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: autoortho_win.zip
+        files: |
+          autoortho_win.exe
+          autoortho_win.zip
 
