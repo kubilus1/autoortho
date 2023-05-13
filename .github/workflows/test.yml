@@ -12,14 +12,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
    
-    - name: Cache release info
-      uses: actions/cache@v3
-      with:
-        path: |
-          .release_info
-          autoortho/.release_info
-        key: test-build
-
     - name: Setup 
       run: |
           sudo apt-get update && sudo apt-get install -y python3-tk xvfb
@@ -39,14 +31,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
    
-    - name: Cache release info
-      uses: actions/cache@v3
-      with:
-        path: |
-          .release_info
-          autoortho/.release_info
-        key: test-build
-
     - uses: actions/setup-python@v3
       with:
         python-version: '3.10'
