@@ -5,6 +5,7 @@ import os
 import time
 import pytest
 import psutil
+import shutil
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -297,8 +298,22 @@ def test_get_bytes_mm4_mm0(tmpdir):
 def test_get_best_chunk(tmpdir):
     tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
     
+    # Verify we get a match
     tile.get_img(2)
     ret = tile.get_best_chunk(17408, 25857, 0, 16)
     assert(ret)
-
     ret.write_jpg(os.path.join(tmpdir, "chunk.jpg"))
+
+    # Test no matches
+    tile2 = getortho.Tile(17408, 26856, 'BI', 16, cache_dir=tmpdir)
+    ret = tile2.get_best_chunk(17408, 26857, 0, 16)
+    assert not ret
+
+    # image sources can return fake jpeg files, account for this
+    tile3 = getortho.Tile(18408, 26856, 'BI', 16, cache_dir=tmpdir)
+    shutil.copyfile(
+        os.path.join('testfiles', 'test_tile_small.png'),
+        os.path.join(tmpdir, '4602_6714_14_BI.jpg')
+    )
+    ret = tile3.get_best_chunk(18408, 26857, 0, 16)
+    assert not ret

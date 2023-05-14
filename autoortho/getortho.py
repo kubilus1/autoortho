@@ -823,7 +823,11 @@ class Tile(object):
 
             # Load image to crop
             img_p = AoImage.load_from_memory(c.data)
-            
+            if not img_p:
+                log.warning(f"Failed to load chunk {c} into memory.")
+                c.close()
+                continue
+
             # Crop
             crop_img = AoImage.new('RGBA', (w_p, h_p), (0,255,0))
             img_p.crop(crop_img, (col_offset, row_offset))
