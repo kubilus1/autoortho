@@ -104,6 +104,7 @@ AOIAPI int32_t aoimage_2_rgba(const aoimage_t *s_img, aoimage_t *d_img) {
         *dptr++ = *sptr++;
         *dptr++ = *sptr++;
         *dptr++ = 0xff;
+        //*dptr++ = 0x00;
     }
 
    d_img->ptr = dest;
@@ -197,11 +198,19 @@ AOIAPI int32_t aoimage_write_jpg(const char *filename, aoimage_t *img, int32_t q
 }
 
 AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img) {
-    assert(s_img->channels == 4);
+    if (s_img->channels != 4) {
+		sprintf(d_img->errmsg, "channel error %d != 4", s_img->channels);
+        d_img->ptr = NULL;
+        return FALSE;
+    }
 
-    assert((s_img->width >= 4)
-           && (s_img->width == s_img->height)
-           && (0 == (s_img->width & 0x03)));
+    if ( (s_img->width < 4)
+           || (s_img->width != s_img->height)
+           || (0 != (s_img->width & 0x03)) ) {
+		sprintf(d_img->errmsg, "width error: %d", s_img->width);
+        d_img->ptr = NULL;
+        return FALSE;
+    }
 
     //aoimage_dump("aoimage_reduce_2 s_img", s_img);
 
@@ -234,6 +243,7 @@ AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img) {
             *dptr++ = g;
             *dptr++ = b;
             *dptr++ = 0xff;
+            //*dptr++ = 0x00;
             assert(dptr <= dest + dlen);
         }
         srptr += 2* stride;
@@ -246,6 +256,81 @@ AOIAPI int32_t aoimage_reduce_2(const aoimage_t *s_img, aoimage_t *d_img) {
 
     assert(dptr == dest + dlen);
     assert(dlen == d_img->width * d_img->height * 4);
+    return TRUE;
+}
+
+AOIAPI int32_t aoimage_scale(const aoimage_t *s_img, aoimage_t *d_img, uint32_t factor) {
+    assert(s_img->channels == 4);
+
+    assert((s_img->width >= 4)
+           && (s_img->width == s_img->height)
+           && (0 == (s_img->width & 0x03)));
+
+    uint32_t slen = s_img->width * s_img->height;
+    uint32_t dlen = slen * 16 * factor;
+   
+    //fprintf(stderr, "malloc(%d)\n", (dlen*4)); fflush(stderr); 
+    uint32_t *dest = malloc(dlen*4);
+    if (NULL == dest) {
+		sprintf(d_img->errmsg, "can't malloc %d bytes", dlen);
+        d_img->ptr = NULL;
+        return FALSE;
+    }
+
+    //const uint8_t *srptr = s_img->ptr;      // source row start
+    //const uint8_t *send = srptr + slen;
+   
+    // Start destination image pointer at the start 
+    uint32_t *dptr = dest;
+
+    // Length of one row of the source image
+    int d_stride = s_img->width * factor;
+    //fprintf(stderr, "%d %d %d\n", slen, dlen, d_stride); fflush(stderr);
+    int s_stride = s_img->width;
+    //fprintf(stderr, "%p %d %d %d\n", srptr, slen, dlen, d_stride); fflush(stderr);
+
+    const uint32_t *sptr = s_img->ptr;
+    
+    int d_idx;
+    int s_col_count = 0;
+
+    // Iterate over source image
+    for (int i=0; i<slen; i++) {
+        
+        s_col_count++;
+
+        // Grab 32 bits
+        uint32_t s_rgba = sptr[i];
+        for (int j=0; j<factor; j++) {
+            //col
+            for (int k=0; k<factor; k++) {
+                //row
+                d_idx = ((d_stride * k) + j);
+                //fprintf(stderr, "D_IDX: %d D_STRIDE: %d k: %d  j: %d    %d  %d \n", d_idx, d_stride, k, j, (d_stride * k), (d_stride * k) + j); fflush(stderr);
+                dptr[d_idx] = s_rgba;
+            }
+        }
+        
+        dptr += factor;
+
+        if (s_col_count == s_stride) {
+            dptr += d_stride * (factor - 1);
+            s_col_count = 0;
+            //fprintf(stderr, "STARTROW %d %p %p\n", i, sptr, dptr); fflush(stderr);
+        } 
+
+    }
+
+    d_img->ptr = dest;
+    d_img->width = s_img->width * factor;
+    d_img->height = s_img->height * factor;
+    d_img->stride = 4 * d_img->width;
+    d_img->channels = 4;
+
+    //fprintf(stderr, "start: %p end: %p  expected: %p len: %d diff: %d \n", dest, dptr, (dest + dlen), dlen, (dest+dlen) - dptr); fflush(stderr);
+    //assert(dptr == (dest + dlen));
+    //fprintf(stderr, "width: %d height: %d \n", d_img->width, d_img->height); fflush(stderr);
+    //assert((s_img->width * s_img->height * 4) << factor == d_img->width * d_img->height * 4);
     return TRUE;
 }
 
@@ -332,4 +417,22 @@ AOIAPI int32_t aoimage_paste(aoimage_t *img, const aoimage_t *p_img, uint32_t x,
 
     return TRUE;
 }
+
+AOIAPI int32_t aoimage_crop(aoimage_t *img, const aoimage_t *c_img, uint32_t x, uint32_t y) {
+    assert(x + c_img->width <= img->width);
+    assert(y + c_img->height <= img->height);
+    assert((img->channels == 4) && (c_img->channels == 4));
+
+    uint8_t *ip = img->ptr + (y * img->width * 4) + x * 4;  // lower left corner of image
+    uint8_t *cp = c_img->ptr;
+
+    for (int i = 0; i < c_img->height; i++) {
+        memcpy(cp, ip, c_img->width * 4);
+        ip += img->width * 4;
+        cp += c_img->width * 4;
+    }
+
+    return TRUE;
+}
+
 

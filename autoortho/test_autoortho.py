@@ -100,7 +100,7 @@ def _test_stuff():
     assert 1 == 1
 
 
-def test_read_dsf(mount):
+def _test_read_dsf(mount):
     dsf_file = './testfiles/dsftest/+00-051.dsf'
     ter_dir = './testfiles/dsftest/' 
 

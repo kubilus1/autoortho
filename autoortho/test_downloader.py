@@ -14,6 +14,7 @@ def test_setup(tmpdir):
 
 def test_list(tmpdir):
     d = downloader.Downloader(os.path.join(tmpdir, 'Custom Scenery'))
+    d.info_cache = os.path.join('.', 'testfiles', '.release_info')
     d.region_list = ['test']
     d.find_releases()
     assert d.regions != {}
@@ -22,6 +23,7 @@ def test_fetch(tmpdir):
     scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
     dl_dir = os.path.join(tmpdir, 'downloads')
     d = downloader.Downloader(scenery_dir, dl_dir)
+    d.info_cache = os.path.join('.', 'testfiles', '.release_info')
 
     d.region_list = ['test']
     d.find_releases()
@@ -57,6 +59,7 @@ def test_bad_zip(tmpdir):
     scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
     dl_dir = os.path.join(tmpdir, 'downloads')
     d = downloader.Downloader(scenery_dir, dl_dir)
+    d.info_cache = os.path.join('.', 'testfiles', '.release_info')
 
     d.region_list = ['test']
     d.find_releases()
@@ -114,3 +117,19 @@ def test_bad_zip(tmpdir):
     assert extracts == [
             'yAutoOrtho_Overlays', 'z_autoortho', 'z_test_00'
     ]
+
+
+def test_find_releases(tmpdir):
+    scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
+    dl_dir = os.path.join(tmpdir, 'downloads')
+    d = downloader.Downloader(scenery_dir, dl_dir)
+    d.region_list = ['test']
+    d.url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releaseszz"
+    d.info_cache = os.path.join('.', 'testfiles', '.release_info')
+
+    d.find_releases()
+    r = d.regions.get('test')
+    assert r
+
+    d.info_cache = 'notafile' 
+    d.find_releases()

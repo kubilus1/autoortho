@@ -37,6 +37,11 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Set up MinGW
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        platform: x64
+
     - name: Setup 
       run: |
           #choco --yes install winfsp
@@ -48,9 +53,12 @@ jobs:
     - name: Build
       run: |
         make autoortho_win.exe
+        make autoortho_win.zip ZIP="7z a"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: winbin
-        path: autoortho_win.exe
+        path: |
+          autoortho_win.exe
+          autoortho_win.zip
