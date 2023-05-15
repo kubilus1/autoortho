@@ -310,6 +310,7 @@ class OrthoRegion(object):
 
         # Extract zips
         for z in zips:
+            log.info(f"Extracting {z}...")
             self.cur_activity['status'] = f"Extracting {z}"
             try:
                 with zipfile.ZipFile(z) as zf:
@@ -351,6 +352,7 @@ class OrthoRegion(object):
             shutil.rmtree(self.dest_ortho_dir)
 
         for d in orthodirs_extracted:
+            log.info(f"Setting up directories ... {d}")
             # Combine into one dir
             shutil.copytree(
                 d,
