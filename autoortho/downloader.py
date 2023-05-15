@@ -69,6 +69,7 @@ class OrthoRegion(object):
         self.info_dict = {}
         self.ortho_dirs = []
         self.noclean = noclean
+        self.dest_ortho_dir = os.path.join(self.extract_dir, f"z_ortho_ao_{self.region_id}")
 
         self.rel_url = f"{self.base_url}/{release_id}"
         self.get_rel_info()
@@ -152,8 +153,14 @@ class OrthoRegion(object):
 
     def check_scenery_dirs(self, ortho_dirs):
         for d in ortho_dirs:
-            if not os.path.exists(d):
+            if os.path.exists(d):
+                log.info(f"Detected partial scenery setup files.")
                 return False
+
+            if not os.path.exists(self.dest_ortho_dir):
+                log.info(f"Missing final extraction dir: {self.dest_ortho_dir}")
+                return False
+
             if os.path.dirname(d) != self.extract_dir:
                 log.info(f"Installed scenery location of '{os.path.dirname(d)}' and configured scenery dir of '{self.extract_dir}' do not match!")
                 return False
@@ -338,39 +345,53 @@ class OrthoRegion(object):
         )
         self.ortho_dirs = orthodirs_extracted
 
+
+        if os.path.exists(self.dest_ortho_dir):
+            print(f"{self.dest_ortho_dir} already exists.  Cleaning up first.")
+            shutil.rmtree(self.dest_ortho_dir)
+
         for d in orthodirs_extracted:
-            cur_textures_path = os.path.join(d, "textures")
+            # Combine into one dir
+            shutil.copytree(
+                d,
+                self.dest_ortho_dir, 
+                dirs_exist_ok=True
+            )
+            shutil.rmtree(d)
 
-            log.info(f"Copy {cur_textures_path} to {central_textures_path}")
 
-            if os.path.isdir(cur_textures_path):
-                
-                # Move all textures into a single directory
-                shutil.copytree(
-                    cur_textures_path,
-                    central_textures_path,
-                    dirs_exist_ok=True
+        # Setup texture paths 
+        cur_textures_path = os.path.join(self.dest_ortho_dir, "textures")
+        log.info(f"Copy {cur_textures_path} to {central_textures_path}")
+        if os.path.isdir(cur_textures_path):
+            
+            # Move all textures into a single directory
+            shutil.copytree(
+                cur_textures_path,
+                central_textures_path,
+                dirs_exist_ok=True
+            )
+            shutil.rmtree(cur_textures_path)
+
+            texture_link_dir = os.path.join(
+                self.extract_dir, "z_autoortho", "textures"
+            )
+            # Setup links for texture dirs
+            if platform.system() == "Windows":
+                subprocess.check_call(
+                    f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
+                    shell=True
                 )
-                shutil.rmtree(cur_textures_path)
-
-                texture_link_dir = os.path.join(
-                    self.extract_dir, "z_autoortho", "textures"
+            else:
+                if not os.path.exists(
+                    texture_link_dir
+                ):
+                    os.makedirs(texture_link_dir)
+                os.symlink(
+                    texture_link_dir,
+                    cur_textures_path
                 )
-                # Setup links for texture dirs
-                if platform.system() == "Windows":
-                    subprocess.check_call(
-                        f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
-                        shell=True
-                    )
-                else:
-                    if not os.path.exists(
-                        texture_link_dir
-                    ):
-                        os.makedirs(texture_link_dir)
-                    os.symlink(
-                        texture_link_dir,
-                        cur_textures_path
-                    )
+
 
         if overlay_paths:
             # Setup overlays
