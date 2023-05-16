@@ -69,7 +69,7 @@ class OrthoRegion(object):
         self.info_dict = {}
         self.ortho_dirs = []
         self.noclean = noclean
-        self.dest_ortho_dir = os.path.join(self.extract_dir, f"z_ortho_ao_{self.region_id}")
+        self.dest_ortho_dir = os.path.join(self.extract_dir, f"z_ao_{self.region_id}")
 
         self.rel_url = f"{self.base_url}/{release_id}"
         self.get_rel_info()

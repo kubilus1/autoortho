@@ -42,7 +42,7 @@ def test_fetch(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_autoortho', 'z_test_00'
+            'yAutoOrtho_Overlays', 'z_ao_test', 'z_autoortho'
     ]
 
     orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
@@ -53,7 +53,7 @@ def test_fetch(tmpdir):
         assert orthodetails == ['_textures', 'test_info.json']
     else:
         assert orthodetails == ['_textures', 'test_info.json', 'textures']
-        assert os.path.islink(os.path.join(scenery_dir, "z_test_00", "textures"))
+        assert os.path.islink(os.path.join(scenery_dir, "z_ao_test", "textures"))
 
 def test_bad_zip(tmpdir):
     scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
@@ -115,7 +115,7 @@ def test_bad_zip(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_autoortho', 'z_test_00'
+            'yAutoOrtho_Overlays', 'z_ao_test', 'z_autoortho'
     ]
 
 
