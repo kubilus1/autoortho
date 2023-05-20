@@ -62,6 +62,7 @@ class ConfigUI(object):
         self.cfg = cfg
         self.dl = downloader.Downloader(
             self.cfg.paths.scenery_path,
+            self.cfg.paths.download_dir,
             noclean = self.cfg.scenery.noclean
         )
 
@@ -129,6 +130,14 @@ class ConfigUI(object):
                     metadata={'section':self.cfg.paths}),
                 sg.FolderBrowse(key="cache_b", target='cache_dir',
                     initial_folder=self.cfg.paths.cache_dir)
+            ],
+            [
+                sg.Text('Temp download dir:', size=(18,1)),
+                sg.InputText(self.cfg.paths.download_dir, size=(45,1),
+                    key='download_dir',
+                    metadata={'section':self.cfg.paths}),
+                sg.FolderBrowse(key="download_b", target='download_dir',
+                    initial_folder=self.cfg.paths.download_dir)
             ],
             [sg.HorizontalSeparator(pad=5)],
             [sg.Checkbox('Always show config menu', key='showconfig',
@@ -209,6 +218,7 @@ class ConfigUI(object):
                 print("Updating config.")
                 self.save()
                 self.cfg.load()
+                print(self.cfg.paths)
             elif event.startswith("scenery-"):
                 self.save()
                 self.cfg.load()
@@ -251,12 +261,13 @@ class ConfigUI(object):
             button = self.window[f"scenery-{regionid}"]
             try:
                 button.update("Working")
-                
+                self.dl.download_dir = self.cfg.paths.download_dir
+                print(f"Setting download dir to {self.cfg.paths.download_dir}")
                 self.dl.download_region(regionid)
                 r = self.dl.regions.get(regionid)
                 # Make sure the region is using whatever the current scenery
                 # dir is set to at this moment
-                r.extract_dir = self.cfg.paths.scenery_path
+                self.dl.extract_dir = self.cfg.paths.scenery_path
                 print(f"Setting extract dir to {self.cfg.paths.scenery_path}")
                 if not r.extract():
                     print("Errors detected!")
@@ -384,7 +395,7 @@ debug = False
 scenery_path =
 # Directory where satellite images are cached
 cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
-# Changing downloader_dir is currently not supported 
+# Set directory for temporary downloading of scenery and other support files 
 download_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")}
 # Changing log_file dir is currently not supported
 log_file = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs", "autoortho.log")}

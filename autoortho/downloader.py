@@ -69,6 +69,7 @@ class OrthoRegion(object):
         self.info_dict = {}
         self.ortho_dirs = []
         self.noclean = noclean
+        self.dest_ortho_dir = os.path.join(self.extract_dir, f"z_ao_{self.region_id}")
 
         self.rel_url = f"{self.base_url}/{release_id}"
         self.get_rel_info()
@@ -152,8 +153,14 @@ class OrthoRegion(object):
 
     def check_scenery_dirs(self, ortho_dirs):
         for d in ortho_dirs:
-            if not os.path.exists(d):
+            if os.path.exists(d):
+                log.info(f"Detected partial scenery setup files.")
                 return False
+
+            if not os.path.exists(self.dest_ortho_dir):
+                log.info(f"Missing final extraction dir: {self.dest_ortho_dir}")
+                return False
+
             if os.path.dirname(d) != self.extract_dir:
                 log.info(f"Installed scenery location of '{os.path.dirname(d)}' and configured scenery dir of '{self.extract_dir}' do not match!")
                 return False
@@ -283,6 +290,10 @@ class OrthoRegion(object):
                 zips.append(o)
 
         for zipfile_out, part_list in split_zips.items():
+            #if os.path.exists(zipfile_out):
+            #    log.info(f"{zipfile_out} already assembled.  Continue.")
+            #    continue
+
             # alphanumeric sort could have limits for large number of splits
             part_list.sort()
             with open(zipfile_out, 'wb') as out_h:
@@ -299,6 +310,7 @@ class OrthoRegion(object):
 
         # Extract zips
         for z in zips:
+            log.info(f"Extracting {z}...")
             self.cur_activity['status'] = f"Extracting {z}"
             try:
                 with zipfile.ZipFile(z) as zf:
@@ -316,11 +328,14 @@ class OrthoRegion(object):
                 log.info(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
                 self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
                 #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
+                os.remove(z)
                 return False
-            finally:
-                if not self.noclean:
-                    log.info(f"Cleaning up parts for {z}")
-                    os.remove(z)
+
+        # Cleanup
+        for z in zips:
+            if os.path.exists(z) and not self.noclean:
+                log.info(f"Cleaning up parts for {z}")
+                os.remove(z)
 
 
         ###########################################333
@@ -331,39 +346,54 @@ class OrthoRegion(object):
         )
         self.ortho_dirs = orthodirs_extracted
 
+
+        if os.path.exists(self.dest_ortho_dir):
+            print(f"{self.dest_ortho_dir} already exists.  Cleaning up first.")
+            shutil.rmtree(self.dest_ortho_dir)
+
         for d in orthodirs_extracted:
-            cur_textures_path = os.path.join(d, "textures")
+            log.info(f"Setting up directories ... {d}")
+            # Combine into one dir
+            shutil.copytree(
+                d,
+                self.dest_ortho_dir, 
+                dirs_exist_ok=True
+            )
+            shutil.rmtree(d)
 
-            log.info(f"Copy {cur_textures_path} to {central_textures_path}")
 
-            if os.path.isdir(cur_textures_path):
-                
-                # Move all textures into a single directory
-                shutil.copytree(
-                    cur_textures_path,
-                    central_textures_path,
-                    dirs_exist_ok=True
+        # Setup texture paths 
+        cur_textures_path = os.path.join(self.dest_ortho_dir, "textures")
+        log.info(f"Copy {cur_textures_path} to {central_textures_path}")
+        if os.path.isdir(cur_textures_path):
+            
+            # Move all textures into a single directory
+            shutil.copytree(
+                cur_textures_path,
+                central_textures_path,
+                dirs_exist_ok=True
+            )
+            shutil.rmtree(cur_textures_path)
+
+            texture_link_dir = os.path.join(
+                self.extract_dir, "z_autoortho", "textures"
+            )
+            # Setup links for texture dirs
+            if platform.system() == "Windows":
+                subprocess.check_call(
+                    f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
+                    shell=True
                 )
-                shutil.rmtree(cur_textures_path)
-
-                texture_link_dir = os.path.join(
-                    self.extract_dir, "z_autoortho", "textures"
+            else:
+                if not os.path.exists(
+                    texture_link_dir
+                ):
+                    os.makedirs(texture_link_dir)
+                os.symlink(
+                    texture_link_dir,
+                    cur_textures_path
                 )
-                # Setup links for texture dirs
-                if platform.system() == "Windows":
-                    subprocess.check_call(
-                        f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
-                        shell=True
-                    )
-                else:
-                    if not os.path.exists(
-                        texture_link_dir
-                    ):
-                        os.makedirs(texture_link_dir)
-                    os.symlink(
-                        texture_link_dir,
-                        cur_textures_path
-                    )
+
 
         if overlay_paths:
             # Setup overlays
@@ -488,12 +518,16 @@ class Downloader(object):
     def download_region(self, region_id):
         log.info(f"Download {region_id}")
         r = self.regions.get(region_id)
+        r.download_dir = self.download_dir
+        r.extract_dir = self.extract_dir
         r.download()
 
 
     def extract(self, region_id):
         log.info(f"Extracting {region_id}")
         r = self.regions.get(region_id)
+        r.download_dir = self.download_dir
+        r.extract_dir = self.extract_dir
         r.extract()
 
 

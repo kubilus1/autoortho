@@ -225,7 +225,7 @@ class Chunk(object):
                 data = h.read()
                 if data[:3] != b'\xFF\xD8\xFF':
                     # FFD8FF identifies image as a JPEG
-                    log.debug(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
+                    log.info(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
                     self.data = b''
                 else:
                     self.data = data
@@ -294,7 +294,7 @@ class Chunk(object):
                 self.data = data
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
-            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
+            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err} URL: {self.url}")
             return False
         finally:
             if resp:
@@ -812,7 +812,7 @@ class Tile(object):
             #     c.close()
             #     continue
         
-            log.debug(f"Found best chunk for {col}x{row}x{zoom} at {col_p}x{row_p}x{zoom_p}")
+            log.info(f"Found best chunk for {col}x{row}x{zoom} at {col_p}x{row_p}x{zoom_p}")
             # Offset into chunk
             col_offset = col % scalefactor
             row_offset = row % scalefactor
