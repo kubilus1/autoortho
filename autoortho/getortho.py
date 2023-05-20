@@ -294,7 +294,7 @@ class Chunk(object):
                 self.data = data
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
-            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
+            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err} URL: {self.url}")
             return False
         finally:
             if resp:
