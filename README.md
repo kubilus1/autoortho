@@ -11,7 +11,7 @@ wherever you choose to in the world!
 [![Video](https://img.youtube.com/vi/seuguds8GX0/hqdefault.jpg)](https://www.youtube.com/watch?v=seuguds8GX0)
 
 ## Current Version Software Characteristics
-* Does not remove cached high-res downloaded image automatically, these files can get very large(>100GB) overtime and require manual intervention to delete. (Stored in orthocache folder in the same directory as the .exe executable)
+* Does not remove cached high-res downloaded image automatically, these files can get very large(>100GB) overtime and require manual intervention to delete.  They are stored in the configured `paths.cache_dir` (see `.autoortho` configuration file) directory.
   * Hence, if you fly through the same place without deleting you cache, the previously cached file will be accessed again without any downloads
 * Unfinished downloads are store in (C:\Users\username\.autoortho-data/downloads) folder by default
 * The console output log is stored in (C:\Users\username\.autoortho-data/)
