@@ -60,7 +60,9 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: winbin
-        path: autoortho_win.exe
+        path: |
+          autoortho_win.exe
+          autoortho_win.zip
 
     - name: Release
       uses: softprops/action-gh-release@v1
