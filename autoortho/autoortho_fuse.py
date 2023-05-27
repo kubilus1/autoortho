@@ -9,8 +9,10 @@ import time
 import math
 import types
 import errno
+import signal
 import random
 import psutil
+import ctypes
 import platform
 import threading
 import itertools
@@ -24,7 +26,7 @@ import logging
 log = logging.getLogger(__name__)
 
 #from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context, fuse_exit, _libfuse, fuse_session_exit
 
 import getortho
 
@@ -49,7 +51,6 @@ def tilemeters(lat_deg, zoom):
     return (x, y)
 
 MEMTRACE=False
-
 
 def locked(fn):
     @wraps(fn)
@@ -91,7 +92,6 @@ class AutoOrtho(Operations):
         #self.read_lock = threading.Lock()
         self._lock = threading.RLock()
 
-    
 
     # Helpers
     # =======
@@ -127,11 +127,13 @@ class AutoOrtho(Operations):
     def getattr(self, path, fh=None):
         log.debug(f"GETATTR {path}")
 
+
         m = self.dds_re.match(path)
         #if m and not exists:
         if m:
             log.debug(f"GETATTR: {path}: MATCH!")
             #if self.startup:
+            #if not flighttrack.ft.running.value:
             if not flighttrack.ft.running:
                 # First matched file
                 log.info(f"First matched DDS file {path} detected.  Start flight tracker.")
@@ -165,6 +167,23 @@ class AutoOrtho(Operations):
                 #'st_ino': 844424931910150,
                 #'st_dev': 1421433975
             }
+        elif path.endswith(".poison"):
+            log.info("Poison pill.  Exiting!")
+            fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
+            threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
+            
+            attrs = {
+                'st_atime': 1649857250.382081, 
+                'st_ctime': 1649857251.726115, 
+                'st_gid': self.default_gid,
+                'st_uid': self.default_uid,
+                'st_mode': 33206,
+                'st_mtime': 1649857251.726115, 
+                'st_nlink': 1, 
+                'st_size': 0, 
+                'st_blksize': 32768
+            }
+            return attrs
         else:
             full_path = self._full_path(path)
             exists = os.path.exists(full_path)
@@ -190,9 +209,10 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def readdir(self, path, fh):
-        return ['.','..']
         log.info(f"READDIR: {path} {fh}")
-        return ['.', '..']
+        if path in ["/textures", "/terrain"]:
+            return ['.','..']
+    
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -420,6 +440,15 @@ class AutoOrtho(Operations):
         return 0
 
 
+def do_fuse_exit(fuse_ptr=None):
+    print("fuse_exit called")
+    time.sleep(1)
+    if not fuse_ptr:
+        fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
+    print(fuse_ptr)
+    _libfuse.fuse_exit(fuse_ptr)
+
+
 def run(ao, mountpoint, nothreads=False):
     log.info(f"MOUNT: {mountpoint}")
 
@@ -429,6 +458,7 @@ def run(ao, mountpoint, nothreads=False):
         nothreads=nothreads, 
         foreground=True, 
         allow_other=True,
+        #nonempty=True,
         #auto_cache=True,
         #max_read=32768,
         #max_read=16384,
@@ -456,3 +486,4 @@ def run(ao, mountpoint, nothreads=False):
         #default_permissions=True,
         #direct_io=True
     )
+    log.info(f"FUSE: Exiting mount {mountpoint}")

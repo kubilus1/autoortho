@@ -69,7 +69,17 @@ class OrthoRegion(object):
         self.info_dict = {}
         self.ortho_dirs = []
         self.noclean = noclean
-        self.dest_ortho_dir = os.path.join(self.extract_dir, f"z_ao_{self.region_id}")
+        self.dest_ortho_dir = os.path.join(
+            self.extract_dir,
+            "z_autoortho",
+            "scenery",
+            f"z_ao_{self.region_id}"
+        )
+        self.scenery_extract_path = os.path.join(
+                self.extract_dir, 
+                "z_autoortho",
+                "scenery"
+        )
 
         self.rel_url = f"{self.base_url}/{release_id}"
         self.get_rel_info()
@@ -266,13 +276,9 @@ class OrthoRegion(object):
         overlay_paths = [ os.path.join(self.download_dir, os.path.basename(x))
                 for x in self.overlay_urls ]
 
-        central_textures_path = os.path.join(
-                self.extract_dir, 
-                "z_autoortho",
-                "_textures"
-        )
-        if not os.path.exists(central_textures_path):
-            os.makedirs(central_textures_path)
+        
+        if not os.path.exists(self.scenery_extract_path):
+            os.makedirs(self.scenery_extract_path)
 
 
         zips = []
@@ -360,39 +366,6 @@ class OrthoRegion(object):
                 dirs_exist_ok=True
             )
             shutil.rmtree(d)
-
-
-        # Setup texture paths 
-        cur_textures_path = os.path.join(self.dest_ortho_dir, "textures")
-        log.info(f"Copy {cur_textures_path} to {central_textures_path}")
-        if os.path.isdir(cur_textures_path):
-            
-            # Move all textures into a single directory
-            shutil.copytree(
-                cur_textures_path,
-                central_textures_path,
-                dirs_exist_ok=True
-            )
-            shutil.rmtree(cur_textures_path)
-
-            texture_link_dir = os.path.join(
-                self.extract_dir, "z_autoortho", "textures"
-            )
-            # Setup links for texture dirs
-            if platform.system() == "Windows":
-                subprocess.check_call(
-                    f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
-                    shell=True
-                )
-            else:
-                if not os.path.exists(
-                    texture_link_dir
-                ):
-                    os.makedirs(texture_link_dir)
-                os.symlink(
-                    texture_link_dir,
-                    cur_textures_path
-                )
 
 
         if overlay_paths:
