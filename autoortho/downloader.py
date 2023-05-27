@@ -11,7 +11,7 @@ import zipfile
 import argparse
 import platform
 import subprocess
-from urllib.request import urlopen, Request
+from urllib.request import urlopen, Request, urlretrieve
 from datetime import datetime, timezone, timedelta
 
 import logging
@@ -211,35 +211,30 @@ class OrthoRegion(object):
 
     def _get_file(self, url, outdir):
         filename = os.path.basename(url)
-        t_filename = f"{filename}.temp"
-        outpath = os.path.join(outdir, t_filename)
         destpath = os.path.join(outdir, filename)
-
-        self.cur_activity['status'] = f"Downloading {url}"
         
-        content_len = 0
-        total_fetched = 0
-        chunk_size = 1024*64
-
-        start_time = time.time()
-        with urlopen(url) as d:
-            content_len = int(d.headers.get('Content-Length'))
-            with open(outpath, 'wb') as h:
-                chunk = d.read(chunk_size)
-                while chunk:
-                    h.write(chunk)
-                    total_fetched += len(chunk)
-                    pcnt_done = (total_fetched/content_len)*100
-                    MBps = (total_fetched/1048576) / (time.time() - start_time)
-                    self.cur_activity['pcnt_done'] = pcnt_done
-                    self.cur_activity['MBps'] = MBps
-                    print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
-                    self.cur_activity['status'] = f"Downloading {url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
-                    chunk = d.read(chunk_size)
-
-        os.rename(outpath, destpath)
+        self.cur_activity['status'] = f"Downloading {url}"
+        self.dl_start_time = time.time()
+        self.dl_url = url
+        local_file, headers = urlretrieve(
+            url,
+            destpath,
+            self.show_progress
+        )
         self.cur_activity['status'] = f"DONE downloading {url}"
         log.info("  DONE!")
+        self.dl_start_time = None 
+        self.dl_url = None
+
+    def show_progress(self, block_num, block_size, total_size):
+        total_fetched = block_num * block_size
+        pcnt_done = round(total_fetched / total_size *100,2)
+        MBps = (total_fetched/1048576) / (time.time() - self.dl_start_time)
+        self.cur_activity['pcnt_done'] = pcnt_done
+        self.cur_activity['MBps'] = MBps
+        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
+        self.cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
+
 
     def checkzip(self, zipfile):
         ret = zipfile.testzip()
