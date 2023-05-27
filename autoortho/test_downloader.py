@@ -42,18 +42,16 @@ def test_fetch(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_ao_test', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'z_autoortho'
     ]
+
+    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery.sort()
+    assert scenery == ['z_ao_test']
 
     orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
     orthodetails.sort()
-
-
-    if platform.system() == "Windows":
-        assert orthodetails == ['_textures', 'test_info.json']
-    else:
-        assert orthodetails == ['_textures', 'test_info.json', 'textures']
-        assert os.path.islink(os.path.join(scenery_dir, "z_ao_test", "textures"))
+    assert orthodetails == ['scenery', 'test_info.json']
 
 def test_bad_zip(tmpdir):
     scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
@@ -115,8 +113,12 @@ def test_bad_zip(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_ao_test', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'z_autoortho'
     ]
+
+    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery.sort()
+    assert scenery == ['z_ao_test']
 
 
 def test_find_releases(tmpdir):
