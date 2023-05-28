@@ -24,7 +24,7 @@ from PIL import Image
 from aoimage import AoImage
 
 from aoconfig import CFG
-from aostats import STATS, StatTracker
+from aostats import STATS, StatTracker, set_stat, inc_stat
 
 MEMTRACE = False
 
@@ -243,7 +243,7 @@ class Chunk(object):
             h.write(self.data)
 
     def get(self, idx=0):
-        #log.debug(f"Getting {self}") 
+        log.debug(f"Getting {self}") 
 
         if self.get_cache():
             self.ready.set()
@@ -277,6 +277,7 @@ class Chunk(object):
         time.sleep((self.attempt/10))
         self.attempt += 1
 
+        log.debug(f"Requesting {self.url} ..")
         req = Request(self.url, headers=header)
         resp = 0
         try:
@@ -1029,9 +1030,13 @@ class TileCacher(object):
     def show_stats(self):
         process = psutil.Process(os.getpid())
         cur_mem = process.memory_info().rss
+        set_stat('cur_mem_mb', cur_mem//1048576)
+        #set_stat('tile_mem_open', len(self.tiles))
         if self.enable_cache:
-            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-        log.info(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+            #set_stat('tile_mem_miss', self.misses)
+            #set_stat('tile_mem_hits', self.hits)
+            log.debug(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.debug(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
 
     def clean(self):
         log.info(f"Started tile clean thread.  Mem limit {self.cache_mem_lim}")
@@ -1050,6 +1055,8 @@ class TileCacher(object):
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
                         t = self.tiles.get(i)
+                        if not t:
+                            continue
                         if t.refs <= 0:
                             t = self.tiles.pop(i)
                             t.close()
@@ -1087,6 +1094,7 @@ class TileCacher(object):
             tile = self.tiles.get(idx)
             if not tile:
                 self.misses += 1
+                inc_stat('tile_mem_miss')
                 tile = Tile(col, row, map_type, zoom, 
                     cache_dir = self.cache_dir,
                     min_zoom = self.min_zoom)
@@ -1097,7 +1105,8 @@ class TileCacher(object):
             elif tile.refs <= 0:
                 # Only in this case would this cache have made a difference
                 self.hits += 1
-                
+                inc_stat('tile_mem_hits')
+
             tile.refs += 1
         return tile
 

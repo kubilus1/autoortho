@@ -9,6 +9,14 @@ log = logging.getLogger(__name__)
 
 STATS={}
 
+
+def set_stat(stat, value):
+    STATS[stat] = value
+
+def inc_stat(stat, amount=1):
+    STATS[stat] = STATS.get(stat, 0) + amount
+
+
 class AOStats(object):
     def __init__(self):
         log.info("Creating stats object")
@@ -29,7 +37,7 @@ class AOStats(object):
 
     def show(self):
         while self.running:
-            time.sleep(5)
+            time.sleep(10)
             #s = {k:v for k,v in self.__dict__.items() if not k.startswith('_')}
             log.info(f"STATS: ID: {STATS}")
 
