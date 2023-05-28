@@ -7,6 +7,7 @@ import glob
 import time
 import json
 import shutil
+import hashlib
 import zipfile
 import argparse
 import platform
@@ -236,13 +237,38 @@ class OrthoRegion(object):
         self.cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
 
 
-    def checkzip(self, zipfile):
+    def checkzip(self, zipfile, hashfile=None):
+        if os.path.isfile(hashfile):
+            log.info(f"Found hashfile {hashfile} verifying ...")
+            with open(zipfile.filename, "rb") as h:
+                #python3.11 ziphash = hashlib.file_digest(h, "sha256")
+                sha256 = hashlib.sha256()
+                while True:
+                    data = h.read(131072)
+                    if not data:
+                        break
+                    else:
+                        sha256.update(data)
+                ziphash = sha256.hexdigest()
+
+            with open(hashfile, "r") as h:
+                data = h.read()
+            m = re.match(r'(^[0-9A-Fa-f]+)\s+(\S.*)$', data)
+            if m:
+                if m.group(1) == ziphash and m.group(2) == os.path.basename(zipfile.filename):
+                    return True
+
+            log.error(f"Hash check failed for {zipfile.filename} : {m.group(1)} != {ziphash}")
+            return False
+
+
         ret = zipfile.testzip()
         if ret:
-            log.info(f"Errors detected with zipfile {zipfile}\nFirst bad file: {ret}")
+            log.error(f"Errors detected with zipfile {zipfile}\nFirst bad file: {ret}")
             return False
 
         return True
+
 
     def extract(self):
         self.check_local()
@@ -281,7 +307,7 @@ class OrthoRegion(object):
         # Assemble split zips
         split_zips = {}
         for o in overlay_paths + ortho_paths:
-            m = re.match('(.*[.]zip)[.][0-9]*', o)
+            m = re.match('(.*[.]zip)[.][0-9]+', o)
             if m:
                 log.info(f"Split zip detected for {m.groups()}")
                 zipname = m.groups()[0]
@@ -312,6 +338,7 @@ class OrthoRegion(object):
         # Extract zips
         for z in zips:
             log.info(f"Extracting {z}...")
+            hashfile = f"{z}.sha256"
             self.cur_activity['status'] = f"Extracting {z}"
             try:
                 with zipfile.ZipFile(z) as zf:
@@ -320,7 +347,7 @@ class OrthoRegion(object):
                         log.info(f"Dir already exists.  Clean first")
                         shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
 
-                    if self.checkzip(zf):
+                    if self.checkzip(zf, hashfile):
                         zf.extractall(self.extract_dir)
                     else:
                         # Bad zip.  Clean and exit
@@ -330,14 +357,20 @@ class OrthoRegion(object):
                 self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
                 #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
                 os.remove(z)
+                if os.path.exists(hashfile):
+                    os.remove(hashfile)
                 return False
+
 
         # Cleanup
         for z in zips:
             if os.path.exists(z) and not self.noclean:
                 log.info(f"Cleaning up parts for {z}")
                 os.remove(z)
-
+            hashfile = f"{z}.sha256"
+            if os.path.exists(hashfile) and not self.noclean:
+                log.info(f"Cleaning up hashfile for {hashfile}")
+                os.remove(hashfile)
 
         ###########################################333
         # Arrange paths
@@ -354,6 +387,7 @@ class OrthoRegion(object):
 
         for d in orthodirs_extracted:
             log.info(f"Setting up directories ... {d}")
+            self.cur_activity['status'] = f"Setting up directories ... {d}"
             # Combine into one dir
             shutil.copytree(
                 d,
