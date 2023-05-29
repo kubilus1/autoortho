@@ -132,11 +132,11 @@ ft = FlightTracker()
 
 @socketio.on('connect')
 def connect():
-    print('client connected',request.sid)
+    log.info(f'client connected {request.sid}')
 
 @socketio.on('disconnect')
 def disconnect():
-    print('client disconnected',request.sid)
+    log.info(f'client disconnected {request.sid}')
 
 @socketio.on('handle_latlon')
 def handle_latlon():
@@ -191,8 +191,9 @@ def metrics():
 
 def run():
     #app.run(host='0.0.0.0', port=CFG.flightdata.webui_port, debug=CFG.general.debug, threaded=True, use_reloader=False)
+    log.info("Start flighttracker...")
     socketio.run(app, host='0.0.0.0', port=int(CFG.flightdata.webui_port))
-    
+    log.info("Exiting flighttracker ...") 
 
 def main():
     ft.start()
