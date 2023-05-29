@@ -26,7 +26,7 @@ import logging
 log = logging.getLogger(__name__)
 
 #from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context, fuse_exit, _libfuse, fuse_session_exit
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context, fuse_exit, _libfuse
 
 import getortho
 
