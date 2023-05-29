@@ -220,7 +220,7 @@ class Chunk(object):
     def get_cache(self):
         global STATS
         if os.path.isfile(self.cache_path):
-            STATS['chunk_hit'] = STATS.get('chunk_hit', 0) + 1
+            inc_stat('chunk_hit')
             with open(self.cache_path, 'rb') as h:
                 data = h.read()
                 if data[:3] != b'\xFF\xD8\xFF':
@@ -235,10 +235,13 @@ class Chunk(object):
             #self.data = data
             return True
         else:
-            STATS['chunk_miss'] = STATS.get('chunk_miss', 0) + 1
+            inc_stat('chunk_miss')
             return False
 
     def save_cache(self):
+        if not self.data:
+            return
+
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
@@ -756,12 +759,21 @@ class Tile(object):
             if chunk_ready and chunk.data:
                 # We returned and have data!
                 chunk_img = AoImage.load_from_memory(chunk.data)
-            elif mipmap < 4:
-                log.info(f"GET_IMG: Tile {self} Try to find backup chunk.")
+            elif mipmap < 4 and not chunk_ready:
+                # Ran out of time, requesting mm 0-3.  Search for backup...
+                log.debug(f"GET_IMG: Tile {self} Try to find backup chunk.")
                 chunk_img = self.get_best_chunk(chunk.col, chunk.row, mipmap, zoom)
                 if chunk_img:
-                    STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
-            
+                    inc_stat('backup_chunk_count')
+            elif not chunk_ready:
+                # Ran out of time, lower mipmap.  Retry...
+                inc_stat('retry_chunk_count')
+                chunk_ready = chunk.ready.wait(maxwait)
+                if chunk_ready and chunk.data:
+                    # We returned and have data!
+                    chunk_img = AoImage.load_from_memory(chunk.data)
+
+
             if chunk_img:
                 new_im.paste(
                     chunk_img,
