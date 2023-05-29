@@ -30,30 +30,28 @@ def test_fetch(tmpdir):
     assert d.regions != {}
 
     r = d.regions.get('test')
-    assert len(r.ortho_urls) == 1
+    assert len(r.ortho_urls) == 2
     assert len(r.overlay_urls) == 1
     
     r.download()
     downloads = os.listdir(dl_dir)
     downloads.sort()
-    assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip']
+    assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
 
     r.extract()
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_ao_test', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'z_autoortho'
     ]
+
+    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery.sort()
+    assert scenery == ['z_ao_test']
 
     orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
     orthodetails.sort()
-
-
-    if platform.system() == "Windows":
-        assert orthodetails == ['_textures', 'test_info.json']
-    else:
-        assert orthodetails == ['_textures', 'test_info.json', 'textures']
-        assert os.path.islink(os.path.join(scenery_dir, "z_ao_test", "textures"))
+    assert orthodetails == ['scenery', 'test_info.json']
 
 def test_bad_zip(tmpdir):
     scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
@@ -71,7 +69,7 @@ def test_bad_zip(tmpdir):
     downloads.sort()
 
     # Verify we have what we want
-    assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip']
+    assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
     
     # Corrupt the zip at the beginning
     with open(os.path.join(dl_dir, 'z_test_00.zip'), 'wb') as h:
@@ -88,7 +86,7 @@ def test_bad_zip(tmpdir):
     r.download()
     downloads = os.listdir(dl_dir)
     downloads.sort()
-    assert downloads == ['y_test_overlays.zip', 'y_test_overlays.zip.00', 'z_test_00.zip']
+    assert downloads == ['y_test_overlays.zip', 'y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
    
     # Corrup a zip at the end
     with open(os.path.join(dl_dir, 'z_test_00.zip'), 'rb+') as h:
@@ -115,8 +113,12 @@ def test_bad_zip(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_ao_test', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'z_autoortho'
     ]
+
+    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery.sort()
+    assert scenery == ['z_ao_test']
 
 
 def test_find_releases(tmpdir):

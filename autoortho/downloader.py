@@ -7,11 +7,12 @@ import glob
 import time
 import json
 import shutil
+import hashlib
 import zipfile
 import argparse
 import platform
 import subprocess
-from urllib.request import urlopen, Request
+from urllib.request import urlopen, Request, urlretrieve
 from datetime import datetime, timezone, timedelta
 
 import logging
@@ -69,7 +70,17 @@ class OrthoRegion(object):
         self.info_dict = {}
         self.ortho_dirs = []
         self.noclean = noclean
-        self.dest_ortho_dir = os.path.join(self.extract_dir, f"z_ao_{self.region_id}")
+        self.dest_ortho_dir = os.path.join(
+            self.extract_dir,
+            "z_autoortho",
+            "scenery",
+            f"z_ao_{self.region_id}"
+        )
+        self.scenery_extract_path = os.path.join(
+                self.extract_dir, 
+                "z_autoortho",
+                "scenery"
+        )
 
         self.rel_url = f"{self.base_url}/{release_id}"
         self.get_rel_info()
@@ -201,43 +212,63 @@ class OrthoRegion(object):
 
     def _get_file(self, url, outdir):
         filename = os.path.basename(url)
-        t_filename = f"{filename}.temp"
-        outpath = os.path.join(outdir, t_filename)
         destpath = os.path.join(outdir, filename)
-
-        self.cur_activity['status'] = f"Downloading {url}"
         
-        content_len = 0
-        total_fetched = 0
-        chunk_size = 1024*64
-
-        start_time = time.time()
-        with urlopen(url) as d:
-            content_len = int(d.headers.get('Content-Length'))
-            with open(outpath, 'wb') as h:
-                chunk = d.read(chunk_size)
-                while chunk:
-                    h.write(chunk)
-                    total_fetched += len(chunk)
-                    pcnt_done = (total_fetched/content_len)*100
-                    MBps = (total_fetched/1048576) / (time.time() - start_time)
-                    self.cur_activity['pcnt_done'] = pcnt_done
-                    self.cur_activity['MBps'] = MBps
-                    print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
-                    self.cur_activity['status'] = f"Downloading {url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
-                    chunk = d.read(chunk_size)
-
-        os.rename(outpath, destpath)
+        self.cur_activity['status'] = f"Downloading {url}"
+        self.dl_start_time = time.time()
+        self.dl_url = url
+        local_file, headers = urlretrieve(
+            url,
+            destpath,
+            self.show_progress
+        )
         self.cur_activity['status'] = f"DONE downloading {url}"
         log.info("  DONE!")
+        self.dl_start_time = None 
+        self.dl_url = None
 
-    def checkzip(self, zipfile):
+    def show_progress(self, block_num, block_size, total_size):
+        total_fetched = block_num * block_size
+        pcnt_done = round(total_fetched / total_size *100,2)
+        MBps = (total_fetched/1048576) / (time.time() - self.dl_start_time)
+        self.cur_activity['pcnt_done'] = pcnt_done
+        self.cur_activity['MBps'] = MBps
+        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
+        self.cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
+
+
+    def checkzip(self, zipfile, hashfile=None):
+        if os.path.isfile(hashfile):
+            log.info(f"Found hashfile {hashfile} verifying ...")
+            with open(zipfile.filename, "rb") as h:
+                #python3.11 ziphash = hashlib.file_digest(h, "sha256")
+                sha256 = hashlib.sha256()
+                while True:
+                    data = h.read(131072)
+                    if not data:
+                        break
+                    else:
+                        sha256.update(data)
+                ziphash = sha256.hexdigest()
+
+            with open(hashfile, "r") as h:
+                data = h.read()
+            m = re.match(r'(^[0-9A-Fa-f]+)\s+(\S.*)$', data)
+            if m:
+                if m.group(1) == ziphash and m.group(2) == os.path.basename(zipfile.filename):
+                    return True
+
+            log.error(f"Hash check failed for {zipfile.filename} : {m.group(1)} != {ziphash}")
+            return False
+
+
         ret = zipfile.testzip()
         if ret:
-            log.info(f"Errors detected with zipfile {zipfile}\nFirst bad file: {ret}")
+            log.error(f"Errors detected with zipfile {zipfile}\nFirst bad file: {ret}")
             return False
 
         return True
+
 
     def extract(self):
         self.check_local()
@@ -266,13 +297,9 @@ class OrthoRegion(object):
         overlay_paths = [ os.path.join(self.download_dir, os.path.basename(x))
                 for x in self.overlay_urls ]
 
-        central_textures_path = os.path.join(
-                self.extract_dir, 
-                "z_autoortho",
-                "_textures"
-        )
-        if not os.path.exists(central_textures_path):
-            os.makedirs(central_textures_path)
+        
+        if not os.path.exists(self.scenery_extract_path):
+            os.makedirs(self.scenery_extract_path)
 
 
         zips = []
@@ -280,7 +307,7 @@ class OrthoRegion(object):
         # Assemble split zips
         split_zips = {}
         for o in overlay_paths + ortho_paths:
-            m = re.match('(.*[.]zip)[.][0-9]*', o)
+            m = re.match('(.*[.]zip)[.][0-9]+', o)
             if m:
                 log.info(f"Split zip detected for {m.groups()}")
                 zipname = m.groups()[0]
@@ -311,6 +338,7 @@ class OrthoRegion(object):
         # Extract zips
         for z in zips:
             log.info(f"Extracting {z}...")
+            hashfile = f"{z}.sha256"
             self.cur_activity['status'] = f"Extracting {z}"
             try:
                 with zipfile.ZipFile(z) as zf:
@@ -319,7 +347,7 @@ class OrthoRegion(object):
                         log.info(f"Dir already exists.  Clean first")
                         shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
 
-                    if self.checkzip(zf):
+                    if self.checkzip(zf, hashfile):
                         zf.extractall(self.extract_dir)
                     else:
                         # Bad zip.  Clean and exit
@@ -329,14 +357,20 @@ class OrthoRegion(object):
                 self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
                 #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
                 os.remove(z)
+                if os.path.exists(hashfile):
+                    os.remove(hashfile)
                 return False
+
 
         # Cleanup
         for z in zips:
             if os.path.exists(z) and not self.noclean:
                 log.info(f"Cleaning up parts for {z}")
                 os.remove(z)
-
+            hashfile = f"{z}.sha256"
+            if os.path.exists(hashfile) and not self.noclean:
+                log.info(f"Cleaning up hashfile for {hashfile}")
+                os.remove(hashfile)
 
         ###########################################333
         # Arrange paths
@@ -353,6 +387,7 @@ class OrthoRegion(object):
 
         for d in orthodirs_extracted:
             log.info(f"Setting up directories ... {d}")
+            self.cur_activity['status'] = f"Setting up directories ... {d}"
             # Combine into one dir
             shutil.copytree(
                 d,
@@ -360,39 +395,6 @@ class OrthoRegion(object):
                 dirs_exist_ok=True
             )
             shutil.rmtree(d)
-
-
-        # Setup texture paths 
-        cur_textures_path = os.path.join(self.dest_ortho_dir, "textures")
-        log.info(f"Copy {cur_textures_path} to {central_textures_path}")
-        if os.path.isdir(cur_textures_path):
-            
-            # Move all textures into a single directory
-            shutil.copytree(
-                cur_textures_path,
-                central_textures_path,
-                dirs_exist_ok=True
-            )
-            shutil.rmtree(cur_textures_path)
-
-            texture_link_dir = os.path.join(
-                self.extract_dir, "z_autoortho", "textures"
-            )
-            # Setup links for texture dirs
-            if platform.system() == "Windows":
-                subprocess.check_call(
-                    f'mklink /J "{cur_textures_path}" "{texture_link_dir}"', 
-                    shell=True
-                )
-            else:
-                if not os.path.exists(
-                    texture_link_dir
-                ):
-                    os.makedirs(texture_link_dir)
-                os.symlink(
-                    texture_link_dir,
-                    cur_textures_path
-                )
 
 
         if overlay_paths:

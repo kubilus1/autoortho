@@ -471,9 +471,33 @@ xplane_udp_port = 49000
         #pprint.pprint(config_dict)
         self.__dict__.update(**config_dict)
 
+        self.ao_scenery_path = os.path.join(
+                self.paths.scenery_path,
+                "z_autoortho",
+                "scenery"
+        )
+       
+        sceneries = []
+        if os.path.exists(self.ao_scenery_path):
+            sceneries = os.listdir(self.ao_scenery_path)
+            print(f"Found sceneries: {sceneries}")
+
+        self.scenery_mounts = [{
+            "root":os.path.join(self.ao_scenery_path, s),
+            "mount":os.path.join(self.paths.scenery_path, s)
+        } for s in sceneries]
+        print(self.scenery_mounts)
+
+        
+        if not os.path.exists(self.ao_scenery_path):
+            log.info(f"Creating dir {self.ao_scenery_path}")
+            os.makedirs(self.ao_scenery_path)
+        return
+
         self.z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
         self.root = os.path.join(self.z_autoortho_path, '_textures')
         self.mountpoint = os.path.join(self.z_autoortho_path, 'textures')
+        
         if not os.path.exists(self.z_autoortho_path):
             log.info(f"Creating dir {self.z_autoortho_path}")
             os.makedirs(self.z_autoortho_path)
