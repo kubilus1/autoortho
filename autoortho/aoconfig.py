@@ -45,6 +45,43 @@ class SectionParser:
         return NotImplemented
 
 
+def clean_cache(cache_dir, size_gb):
+
+    log.info(f"Cleaning up cache_dir {cache_dir}")
+
+    target_gb = max(size_gb, 10)
+    target_bytes = pow(2,30) * target_gb
+
+    cfiles = sorted(pathlib.Path(cache_dir).glob('**/*'), key=os.path.getmtime)
+    if not cfiles:
+        print(f"Cache is empty.")
+        return
+
+    cache_bytes = sum(file.stat().st_size for file in cfiles)
+    cachecount = len(cfiles)
+    avgcachesize = cache_bytes/cachecount
+    print(f"Cache has {cachecount} files.  Total size approx {cache_bytes//1048576} MB.")
+
+    empty_files = [ x for x in cfiles if x.stat().st_size == 0 ]
+    print(f"Found {len(empty_files)} empty files to cleanup.")
+    for file in empty_files:
+        if os.path.exists(file):
+            os.remove(file)
+
+    if target_bytes > cache_bytes:
+        print(f"Cache within size limits.")
+        return
+
+    to_delete = int(( cache_bytes - target_bytes ) // avgcachesize)
+
+    print(f"Over cache size limit, will remove {to_delete} files.")
+    print(cfiles[to_delete])
+    for file in cfiles[:to_delete]:
+        os.remove(file)
+
+    print(f"Cache cleanup done.")
+
+
 class ConfigUI(object):
    
     status = None
@@ -114,8 +151,16 @@ class ConfigUI(object):
         sg.theme('DarkAmber')
 
         setup = [
-            [sg.Text('AutoOrtho setup\n')],
-            [sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=2)],
+            [
+                #sg.Column(
+                #    [
+                #        [sg.Image(os.path.join(CUR_PATH, 'imgs', 'ao-icon.png'))],
+                #        [sg.Text('AutoOrtho setup\n')]
+                #    ]
+                #),
+                sg.Image(os.path.join(CUR_PATH, 'imgs', 'banner1.png'), subsample=2),
+            ],
+            #[sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=3)],
             [sg.HorizontalSeparator(pad=5)],
             [
                 sg.Text('X-Plane scenery dir:', size=(18,1)), 
@@ -147,6 +192,32 @@ class ConfigUI(object):
                 default_value=maptype, key='maptype_override',
                 metadata={'section':self.cfg.autoortho})],
             [sg.HorizontalSeparator(pad=5)],
+            [
+                sg.Text('Cache size in GB'),
+                sg.Slider(
+                    range=(10,100,5),
+                    default_value=self.cfg.cache.file_cache_size, 
+                    key='file_cache_size',
+                    size=(20,15),
+                    orientation='horizontal',
+                    metadata={'section':self.cfg.cache}
+                ),
+                sg.Button('Clean Cache')
+                #sg.InputText(
+                #    self.cfg.cache.file_cache_size, 
+                #    key='file_cache_size',
+                #    size=(5,1),
+                #    metadata={'section':self.cfg.cache}
+                #),
+            ],
+            [
+                sg.Checkbox('Cleanup cache on start', key='clean_on_start',
+                    default=self.cfg.cache.clean_on_start,
+                    metadata={'section':self.cfg.cache}
+                ),
+            ],
+            [sg.HorizontalSeparator(pad=5)],
+
         ]
 
         scenery = [
@@ -219,6 +290,18 @@ class ConfigUI(object):
                 self.save()
                 self.cfg.load()
                 print(self.cfg.paths)
+            elif event == 'Clean Cache':
+                button = self.window[f"Clean Cache"]
+                button.update("Working")
+                button.update(disabled=True)
+                self.window.refresh()
+                clean_cache(
+                    self.cfg.paths.cache_dir,
+                    int(float(self.cfg.cache.file_cache_size))
+                )
+                sg.popup("Done cleaning cache!")
+                button.update("Clean Cache")
+                button.update(disabled=False)
             elif event.startswith("scenery-"):
                 self.save()
                 self.cfg.load()
@@ -226,7 +309,6 @@ class ConfigUI(object):
                 button.update(disabled=True)
                 regionid = event.split("-")[1]
                 self.scenery_q.put(regionid)
-
             elif self.show_errs:
                 font = ("Helventica", 14)
                 sg.popup("\n".join(self.show_errs), title="ERROR!", font=font)
@@ -434,6 +516,10 @@ webui_port = 5000
 # UDP port XPlane listens on
 xplane_udp_port = 49000
 
+[cache]
+# Max size of the image disk cache in GB. Minimum of 10GB
+file_cache_size = 20
+clean_on_start = False
 
 """
 
