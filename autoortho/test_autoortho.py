@@ -16,10 +16,7 @@ import tempfile
 
 from fuse import fuse_exit
 
-if platform.system() == 'Windows':
-    import autoortho_winfsp
-else:
-    import autoortho_fuse
+import autoortho_fuse
 import aostats
 from aoconfig import CFG
 
@@ -36,13 +33,9 @@ def runmount(mountdir, cachedir):
     #ao = autoortho.AutoOrtho('./testfiles', cachedir)
     #autoortho.run(ao, mountdir, True)
 
-    if platform.system() == 'Windows':
-        ao = autoortho_winfsp.main('./testfiles', mountdir)
-        print("Exiting WinFSP mount")
-    else:
-        ao = autoortho_fuse.AutoOrtho('./testfiles', cachedir)
-        autoortho_fuse.run(ao, mountdir)
-        print("Exiting FUSE mount")
+    ao = autoortho_fuse.AutoOrtho('./testfiles', cachedir)
+    autoortho_fuse.run(ao, mountdir)
+    print("Exiting FUSE mount")
     
     #if os.path.isdir(ao.cache_dir):
     #    print("Removing cache dir")
