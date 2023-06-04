@@ -5,25 +5,30 @@ import os
 import time
 import pytest
 import psutil
+import shutil
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 import getortho
 
 #getortho.ISPC = False
 
 @pytest.fixture
-def chunk():
-    return getortho.Chunk(2176, 3232, 'EOX', 13)
+def chunk(tmpdir):
+    return getortho.Chunk(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
 
 def test_chunk_get(chunk):
     ret = chunk.get()
     assert ret == True
 
-def test_null_chunk():
-    c = getortho.Chunk(2176, 3232, 'Null', 13)
+def test_null_chunk(tmpdir):
+    c = getortho.Chunk(2176, 3232, 'Null', 13, cache_dir=tmpdir)
     ret = c.get()
     assert ret
 
-def test_chunk_getter():
-    c = getortho.Chunk(2176, 3232, 'EOX', 13)
+def test_chunk_getter(tmpdir):
+    c = getortho.Chunk(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
     getortho.chunk_getter.submit(c)
     ready = c.ready.wait(5)
     assert ready == True
@@ -35,26 +40,32 @@ def tile(tmpdir):
 
 def test_get_bytes(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    ret = tile.get_bytes(0, 131073)
+    # Requesting just more than a 4x4 even row of blocks worth
+    ret = tile.get_bytes(0, 131208)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
         h.seek(128)
         data = h.read(8)
-
+        # Verify that we still get data for the read on this odd row
+        h.seek(131200)
+        mmdata = h.read(8)
     assert data != b'\x00'*8
-   
+    assert mmdata != b'\x00'*8
+    #assert True == False
+
 
 def test_get_bytes_mip1(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(16777344, 1024)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mmstart = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mmstart, 1024)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
-        h.seek(16777344)
+        h.seek(mmstart)
         data = h.read(8)
 
     assert data != b'\x00'*8
@@ -62,14 +73,15 @@ def test_get_bytes_mip1(tmpdir):
 
 def test_get_bytes_mip_end(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(20970000, 1024)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mmend = tile.dds.mipmap_list[0].endpos
+    ret = tile.get_bytes(mmend-1024, 1024)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
         #h.seek(20709504)
-        h.seek(20971640)
+        h.seek(mmend-1024)
         data = h.read(8)
 
     assert data != b'\x00'*8
@@ -77,17 +89,19 @@ def test_get_bytes_mip_end(tmpdir):
 
 def test_get_bytes_mip_span(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(20955264, 32768)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mm0end = tile.dds.mipmap_list[0].endpos
+    mm1start = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mm0end-16384, 32768)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
         #h.seek(20709504)
 
-        h.seek(20955264)
+        h.seek(mm0end-16384)
         data0 = h.read(8)
-        h.seek(20971648)
+        h.seek(mm1start)
         data1 = h.read(8)
 
     assert data0 != b'\x00'*8
@@ -96,13 +110,14 @@ def test_get_bytes_mip_span(tmpdir):
 
 def test_get_bytes_row_span(tmpdir):
     tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
-    #ret = tile.get_bytes(16777344, 4194304)
-    ret = tile.get_bytes(17825792, 4096)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mm1start = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mm1start + 261144, 4096)
     assert ret
     
     testfile = tile.write()
     with open(testfile, 'rb') as h:
-        h.seek(17825792)
+        h.seek(mm1start + 262144)
         data = h.read(8)
 
     assert data != b'\x00'*8
@@ -111,13 +126,16 @@ def test_get_bytes_row_span(tmpdir):
 def test_find_mipmap_pos():
     tile = getortho.Tile(2176, 3232, 'Null', 13)
 
-    m = tile.find_mipmap_pos(129)
+    mm0start = tile.dds.mipmap_list[0].startpos
+    m = tile.find_mipmap_pos(mm0start + 1)
     assert m == 0
 
-    m = tile.find_mipmap_pos(16777344)
+    mm1start = tile.dds.mipmap_list[1].startpos
+    m = tile.find_mipmap_pos(mm1start + 262144)
     assert m == 1
 
-    m = tile.find_mipmap_pos(20971650)
+    mm2start = tile.dds.mipmap_list[2].startpos
+    m = tile.find_mipmap_pos(mm2start + 32)
     assert m == 2
 
 
@@ -259,3 +277,43 @@ def _test_tile_close(tmpdir):
 # 
 #     files = os.listdir(tmpdir)
 #     assert len(m.tiles) == len(files)
+
+def test_get_bytes_mm4_mm0(tmpdir):
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
+    #tile = getortho.Tile(21760, 32320, 'Null', 16, cache_dir=tmpdir)
+    #tile = getortho.Tile(2176, 3232, 'Null', 13, cache_dir=tmpdir)
+    #ret = tile.get_bytes(8388672, 4194304)
+    mmstart = tile.dds.mipmap_list[4].startpos
+    ret = tile.read_dds_bytes(mmstart, 1024)
+    assert ret
+   
+    tile.maxchunk_wait = 0.05
+    mmstart = tile.dds.mipmap_list[0].startpos
+    ret = tile.read_dds_bytes(mmstart, 8388608)
+    assert ret
+
+    tile.write()
+    #assert True == False
+
+def test_get_best_chunk(tmpdir):
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
+    
+    # Verify we get a match
+    tile.get_img(2)
+    ret = tile.get_best_chunk(17408, 25857, 0, 16)
+    assert(ret)
+    ret.write_jpg(os.path.join(tmpdir, "chunk.jpg"))
+
+    # Test no matches
+    tile2 = getortho.Tile(17408, 26856, 'BI', 16, cache_dir=tmpdir)
+    ret = tile2.get_best_chunk(17408, 26857, 0, 16)
+    assert not ret
+
+    # image sources can return fake jpeg files, account for this
+    tile3 = getortho.Tile(18408, 26856, 'BI', 16, cache_dir=tmpdir)
+    shutil.copyfile(
+        os.path.join('testfiles', 'test_tile_small.png'),
+        os.path.join(tmpdir, '4602_6714_14_BI.jpg')
+    )
+    ret = tile3.get_best_chunk(18408, 26857, 0, 16)
+    assert not ret

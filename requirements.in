@@ -1,5 +1,7 @@
-fusepy
-pillow >= 8.3.0
+refuse
+pillow-simd
 psutil
 pysimplegui
 Flask
+flask-socketio
+eventlet

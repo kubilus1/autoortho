@@ -1,0 +1,35 @@
+.SUFFIXES: .obj
+
+TARGET=main
+JPGT=.
+
+HEADERS=$(wildcard *.h)
+OBJECTS=aoimage.o
+
+
+CC=gcc
+LD=gcc
+
+CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden \
+	 $(DEFINES)
+
+LDFLAGS=-shared -rdynamic -nodefaultlibs -undefined_warning -lpthread
+#LIBS=-lturbojpeg
+#LIBS=./libturbojpeg.a
+LIBS=-L$(JPGT)/lib -lturbojpeg
+
+all: $(TARGET)
+
+.c.o: $(HEADERS)
+	$(CC) $(CFLAGS) -c $<
+
+main: main.c aoimage.so $(HEADERS)
+	$(CC) $(CFLAGS) -o main \
+		main.c aoimage.c  $(LIBS)
+
+aoimage.so: $(OBJECTS)
+	$(LD) -o aoimage.so $(LDFLAGS) $(OBJECTS) $(LIBS)
+
+clean:
+	rm -f $(OBJECTS) $(TARGET)
+

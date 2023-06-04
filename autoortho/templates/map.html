@@ -5,8 +5,13 @@
 <script>
 
 	var map = L.map('map').setView([51.505, -0.09], 13);
+    var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
 
-	var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+
+    /*
+    var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={{ mapkey }}', {
 		maxZoom: 18,
 		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
 			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -14,7 +19,9 @@
 		tileSize: 512,
 		zoomOffset: -1
 	}).addTo(map);
+    */
 
+    /*
 	var marker = L.marker([51.5, -0.09]).addTo(map)
 		.bindPopup('<b>Hello world!</b><br />I am a popup.').openPopup();
 
@@ -43,8 +50,9 @@
 			.setContent('You clicked the map at ' + e.latlng.toString())
 			.openOn(map);
 	}
+    */
 
-
+	var marker = L.marker([51.5, -0.09]).addTo(map);
     var line = L.polyline([]).addTo(map);
     function track_latlon(lat, lon) {
         map.setView([lat, lon]);
@@ -53,27 +61,26 @@
     }
 
     function get_latlon() {
-        $.ajax({
-            type: "GET",
-            url: "{{ url_for('get_latlon') }}",
-            async: true,
-            success: function(data) {
-                lat = data.lat;
-                lon = data.lon;
-                console.log("Lat: " + lat + " Lon: " + lon);
-                track_latlon(lat, lon);
-                setTimeout(get_latlon, 1000);
-            },
-            error: function(data) {
-                setTimeout(get_latlon, 5000);
-            }
+        console.log("Setup socket.");
+            const socket = io("{{ url_for('index') }}");
 
+        socket.on('connect', function(msg) {
+                console.log("Connect!", msg);
+                socket.emit('handle_latlon');
+        });
+
+        socket.on('latlon', function(data) {
+            console.log(data);
+            lat = data.lat;
+            lon = data.lon;
+            console.log("Lat: " + lat + " Lon: " + lon);
+            track_latlon(lat, lon);
         });
     }
 
     get_latlon();
 
-	map.on('click', onMapClick);
+	//map.on('click', onMapClick);
 
 </script>
 
