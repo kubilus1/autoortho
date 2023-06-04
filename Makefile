@@ -35,7 +35,6 @@ autoortho_osx.bin:
 		--onefile \
 		./autoortho/__main__.py -o autoortho_osx.bin
 
-		#--macos-create-app-bundle \
 autoortho_win.exe:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
