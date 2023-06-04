@@ -1,5 +1,5 @@
 refuse
-pillow-simd
+pillow
 psutil
 pysimplegui
 Flask

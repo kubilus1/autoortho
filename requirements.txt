@@ -28,7 +28,7 @@ markupsafe==2.1.1
     # via
     #   jinja2
     #   werkzeug
-pillow-simd==9.0.0.post1
+pillow==9.5.0
     # via -r requirements.in
 psutil==5.9.2
     # via -r requirements.in
