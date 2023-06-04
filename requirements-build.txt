@@ -2,3 +2,4 @@ nuitka
 #orderedset
 zstandard
 ordered-set
+imageio

@@ -75,9 +75,6 @@ jobs:
 
     - name: Setup 
       run: |
-          #choco --yes install winfsp
-          python3.10 -m pip install -U pytest 
-          # Windows OS package install ecosystem is sketchy and broken.  Just test min stuff ...
           python3.10 -m pip install -U -r requirements.txt
           python3.10 -m pip install -U -r requirements-build.txt
 

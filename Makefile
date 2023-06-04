@@ -26,6 +26,7 @@ bin:
 
 autoortho_osx.bin:
 	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
+		--macos-app-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=eventlet \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/darwin_arm/*.dylib=lib/darwin_arm/ \
