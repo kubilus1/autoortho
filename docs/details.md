@@ -91,24 +91,16 @@ Due to how XPlane identifies terrain information, these directories have been
 split up into reasonable sized pieces, which is why each provided scenery pack
 has numerous numbered directories. 
 
-However, autoorotho only mounts a single directory, under `Custom
-Scenery/z_autoortho/textures`.  
+This project creates a special pass through filesystem that mounts directories into a location that XPlane can find and intercepts requests to '.dds' files.  This is handled through the magic of FUSE (Filesystem in UserSpacE).  FUSE is a common and standard feature of Linux, but requires extra stuff for other Operatings Systems.s
 
-How does that work then?  Simple each scenery directory provided by autoortho
-just symlinks (on linux) or sets up a filesystem junction (on windows) to this
-mount point!
-
-However, sceneries that do not have satellite imagery, likely still have
-coastline PNG files that must be preserved.  These are simply moved to `Custom
-Scenery/z_autoortho/_textures`
+Sceneries stripped of satellite imagery, likely still have
+coastline PNG files that must be preserved.  These are simply passed through when requested.
 
 You can take advantage of this setup for your own scenery that you have
 packaged:
-* Place your scenery in `Custom Scenery` as per normal
-* Copy any existing texture files to `Custom Scenery/z_autoortho/_textures`
-* Symlink, or directoy junction your scenery to `Custom
-  Scenery/z_autoortho/textures`
+* Place your scenery directory in `Custom Scenery/z_autoortho/scenery`
 
+When execute Autoortho will detect directories in that scenery dir and mount these in your configured `Custom Scenery` directory.
 
 ## Ortho4XP Usage Tips
 
