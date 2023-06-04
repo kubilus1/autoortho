@@ -24,6 +24,17 @@ bin:
 		--onefile \
 		./autoortho/__main__.py -o autoortho_lin.bin
 
+autoortho_osx.bin:
+	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
+		--enable-plugin=eventlet \
+		--include-data-file=./autoortho/templates/*.html=templates/ \
+		--include-data-file=./autoortho/lib/darwin_arm/*.dylib=lib/darwin_arm/ \
+		--include-data-file=./autoortho/aoimage/*.dylib=aoimage/ \
+		--include-data-dir=./autoortho/imgs=imgs \
+		--onefile \
+		./autoortho/__main__.py -o autoortho_osx.bin
+
+		#--macos-create-app-bundle \
 autoortho_win.exe:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
