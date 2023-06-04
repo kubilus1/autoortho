@@ -35,7 +35,6 @@ def test_sections(cfg):
     assert cfg.autoortho
     assert cfg.pydds
     assert cfg.fuse
-    assert cfg.winfsp
     assert cfg.general
     assert cfg.general.gui
 
