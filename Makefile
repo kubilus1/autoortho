@@ -29,7 +29,7 @@ autoortho_osx.bin:
 		--macos-app-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=eventlet \
 		--enable-plugin=tk-inter \
-		--tcl-library-dir=/Library/Frameworks/Python.framework/Versions/3.10/lib/tcl8.5 \
+		--tcl-library-dir=/usr/local/lib/tcl8.6 \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/darwin_arm/*.dylib=lib/darwin_arm/ \
 		--include-data-file=./autoortho/aoimage/*.dylib=aoimage/ \

@@ -81,10 +81,6 @@ jobs:
 
     - name: Build
       run: |
-        find /usr -name "tcl8*"
-        #ls /Library/Frameworks/Python.framework/Versions/3.10/lib/
-        #ls /Library/Frameworks/Python.framework/Versions/3.10/lib/tcl8.6
-        #ls /Library/Frameworks/Python.framework/Versions/3.10/lib/tcl8.5
         make autoortho_osx.bin
 
     - name: Save artifact
