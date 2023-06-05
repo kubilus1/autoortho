@@ -75,6 +75,7 @@ jobs:
 
     - name: Setup 
       run: |
+          brew install python-tk@3.10
           python3.10 -m pip install -U -r requirements.txt
           python3.10 -m pip install -U -r requirements-build.txt
 
