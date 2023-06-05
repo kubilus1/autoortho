@@ -30,6 +30,7 @@ autoortho_osx.bin:
 		--enable-plugin=eventlet \
 		--enable-plugin=tk-inter \
 		--tcl-library-dir=/usr/local/lib/tcl8.6 \
+		--tk-library-dir=/usr/local/lib/tk8.6 \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/darwin_arm/*.dylib=lib/darwin_arm/ \
 		--include-data-file=./autoortho/aoimage/*.dylib=aoimage/ \
