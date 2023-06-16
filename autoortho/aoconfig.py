@@ -52,7 +52,7 @@ def clean_cache(cache_dir, size_gb):
     target_gb = max(size_gb, 10)
     target_bytes = pow(2,30) * target_gb
 
-    cfiles = sorted(pathlib.Path(cache_dir).glob('**/*'), key=os.path.getmtime)
+    cfiles = sorted(pathlib.Path(cache_dir).glob('**/*'), key=os.path.getatime)
     if not cfiles:
         print(f"Cache is empty.")
         return
