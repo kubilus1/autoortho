@@ -52,7 +52,7 @@ def clean_cache(cache_dir, size_gb):
     target_gb = max(size_gb, 10)
     target_bytes = pow(2,30) * target_gb
 
-    cfiles = sorted(pathlib.Path(cache_dir).glob('**/*'), key=os.path.getatime)
+    cfiles = sorted(pathlib.Path(cache_dir).glob('**/*'), key=os.path.getmtime)
     if not cfiles:
         print(f"Cache is empty.")
         return
@@ -195,7 +195,7 @@ class ConfigUI(object):
             [
                 sg.Text('Cache size in GB'),
                 sg.Slider(
-                    range=(10,100,5),
+                    range=(10,500,5),
                     default_value=self.cfg.cache.file_cache_size, 
                     key='file_cache_size',
                     size=(20,15),
@@ -518,7 +518,7 @@ xplane_udp_port = 49000
 
 [cache]
 # Max size of the image disk cache in GB. Minimum of 10GB
-file_cache_size = 20
+file_cache_size = 30
 clean_on_start = False
 
 """
