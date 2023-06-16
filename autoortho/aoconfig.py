@@ -506,10 +506,6 @@ noclean = False
 # Enable or disable multi-threading when using FUSE
 threading = True
 
-[winfsp]
-# Enable Windows to use WinFSP mode instead of FUSE mode.  This is not typically recommended
-winfsp_raw = False
-
 [flightdata]
 # Local port for map and stats
 webui_port = 5000 

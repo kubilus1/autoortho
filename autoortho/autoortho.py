@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import signal
 import sys
 import time
 import platform
@@ -16,7 +17,6 @@ import flighttrack
 
 import logging
 log = logging.getLogger(__name__)
-
 
 def run(root, mountpoint, threading=True):
     #aostats.STATS = statsdict
@@ -160,11 +160,15 @@ def main():
             mount_threads.append(t)
         
         try:
+            def handle_sigterm(sig, frame):
+                raise(SystemExit)
+
+            signal.signal(signal.SIGTERM, handle_sigterm)
+
             while True:
                 time.sleep(1)
-        except KeyboardInterrupt:
-            print("ctrl-c")
-            time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            pass
         finally:
             for scenery in CFG.scenery_mounts:
                 mounted = True
