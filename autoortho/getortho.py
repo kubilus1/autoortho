@@ -15,6 +15,7 @@ from io import BytesIO
 from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
 from functools import wraps, lru_cache
+from pathlib import Path
 
 import pydds
 
@@ -221,18 +222,19 @@ class Chunk(object):
         global STATS
         if os.path.isfile(self.cache_path):
             inc_stat('chunk_hit')
-            with open(self.cache_path, 'rb') as h:
-                data = h.read()
-                if data[:3] != b'\xFF\xD8\xFF':
-                    # FFD8FF identifies image as a JPEG
-                    log.info(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
-                    self.data = b''
-                else:
-                    self.data = data
-                #if data[:3] != b'\xFF\xD8\xFF':
-                #    log.warning(f"{self} not a JPEG! {data[:3]}  Cache file: {self.cache_path}")
-                #    return False
-            #self.data = data
+            cache_file = Path(self.cache_path)
+            # Get data
+            data = cache_file.read_bytes()
+            # Update modified data
+            cache_file.touch()
+
+            if data[:3] != b'\xFF\xD8\xFF':
+                # FFD8FF identifies image as a JPEG
+                log.info(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
+                self.data = b''
+            #    return False
+            else:
+                self.data = data
             return True
         else:
             inc_stat('chunk_miss')
