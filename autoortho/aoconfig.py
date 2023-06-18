@@ -45,6 +45,7 @@ class SectionParser:
         return NotImplemented
 
 
+
 class ConfigUI(object):
    
     status = None
@@ -114,8 +115,16 @@ class ConfigUI(object):
         sg.theme('DarkAmber')
 
         setup = [
-            [sg.Text('AutoOrtho setup\n')],
-            [sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=2)],
+            [
+                #sg.Column(
+                #    [
+                #        [sg.Image(os.path.join(CUR_PATH, 'imgs', 'ao-icon.png'))],
+                #        [sg.Text('AutoOrtho setup\n')]
+                #    ]
+                #),
+                sg.Image(os.path.join(CUR_PATH, 'imgs', 'banner1.png'), subsample=2),
+            ],
+            #[sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=3)],
             [sg.HorizontalSeparator(pad=5)],
             [
                 sg.Text('X-Plane scenery dir:', size=(18,1)), 
@@ -147,6 +156,32 @@ class ConfigUI(object):
                 default_value=maptype, key='maptype_override',
                 metadata={'section':self.cfg.autoortho})],
             [sg.HorizontalSeparator(pad=5)],
+            [
+                sg.Text('Cache size in GB'),
+                sg.Slider(
+                    range=(10,500,5),
+                    default_value=self.cfg.cache.file_cache_size, 
+                    key='file_cache_size',
+                    size=(20,15),
+                    orientation='horizontal',
+                    metadata={'section':self.cfg.cache}
+                ),
+                sg.Button('Clean Cache')
+                #sg.InputText(
+                #    self.cfg.cache.file_cache_size, 
+                #    key='file_cache_size',
+                #    size=(5,1),
+                #    metadata={'section':self.cfg.cache}
+                #),
+            ],
+            #[
+            #    sg.Checkbox('Cleanup cache on start', key='clean_on_start',
+            #        default=self.cfg.cache.clean_on_start,
+            #        metadata={'section':self.cfg.cache}
+            #    ),
+            #],
+            [sg.HorizontalSeparator(pad=5)],
+
         ]
 
         scenery = [
@@ -164,8 +199,8 @@ class ConfigUI(object):
         #scenery.append([sg.Multiline(size=(80,10), key="output")])
 
         # Hack to push the status bar to the bottom of the window
-        scenery.append([sg.Text(key='-EXPAND-', font='ANY 1', pad=(0,0))])
-        scenery.append([sg.StatusBar("...", size=(74,3), key="status", auto_size_text=True, expand_x=True)])
+        #scenery.append([sg.Text(key='-EXPAND-', font='ANY 1', pad=(0,0))])
+        #scenery.append([sg.StatusBar("...", size=(74,3), key="status", auto_size_text=True, expand_x=True)])
 
         logs = [
         ]
@@ -174,8 +209,10 @@ class ConfigUI(object):
             [sg.TabGroup(
                 [[sg.Tab('Setup', setup), sg.Tab('Scenery', scenery)]])
             ],
-            #[sg.StatusBar("...", size=(80,3), key="status", auto_size_text=True, expand_x=True)],
+            [sg.Text(key='-EXPAND-', font='ANY 1', pad=(0,0))],
+            [sg.StatusBar("...", size=(74,3), key="status", auto_size_text=True, expand_x=True)],
             [sg.Button('Run'), sg.Button('Save'), sg.Button('Quit')]
+            #[sg.StatusBar("...", size=(80,3), key="status", auto_size_text=True, expand_x=True)],
 
         ]
 
@@ -219,6 +256,21 @@ class ConfigUI(object):
                 self.save()
                 self.cfg.load()
                 print(self.cfg.paths)
+            elif event == 'Clean Cache':
+                cbutton = self.window["Clean Cache"]
+                rbutton = self.window["Run"]
+                cbutton.update("Working")
+                cbutton.update(disabled=True)
+                rbutton.update(disabled=True)
+                self.window.refresh()
+                self.clean_cache(
+                    self.cfg.paths.cache_dir,
+                    int(float(self.cfg.cache.file_cache_size))
+                )
+                sg.popup("Done cleaning cache!")
+                cbutton.update("Clean Cache")
+                cbutton.update(disabled=False)
+                rbutton.update(disabled=False)
             elif event.startswith("scenery-"):
                 self.save()
                 self.cfg.load()
@@ -226,7 +278,6 @@ class ConfigUI(object):
                 button.update(disabled=True)
                 regionid = event.split("-")[1]
                 self.scenery_q.put(regionid)
-
             elif self.show_errs:
                 font = ("Helventica", 14)
                 sg.popup("\n".join(self.show_errs), title="ERROR!", font=font)
@@ -355,6 +406,48 @@ class ConfigUI(object):
             log.error("ERRORS DETECTED.  Exiting.")
             sys.exit(1)
 
+
+    def show_status(self, msg):
+        log.info(msg)
+        self.status.update(msg)
+        self.window.refresh()
+
+    def clean_cache(self, cache_dir, size_gb):
+
+        self.show_status(f"Cleaning up cache_dir {cache_dir}.  Please wait ...")
+
+        target_gb = max(size_gb, 10)
+        target_bytes = pow(2,30) * target_gb
+
+        cfiles = sorted(pathlib.Path(cache_dir).glob('**/*'), key=os.path.getmtime)
+        if not cfiles:
+            self.show_status(f"Cache is empty.")
+            return
+
+        cache_bytes = sum(file.stat().st_size for file in cfiles)
+        cachecount = len(cfiles)
+        avgcachesize = cache_bytes/cachecount
+        self.show_status(f"Cache has {cachecount} files.  Total size approx {cache_bytes//1048576} MB.")
+
+        empty_files = [ x for x in cfiles if x.stat().st_size == 0 ]
+        self.show_status(f"Found {len(empty_files)} empty files to cleanup.")
+        for file in empty_files:
+            if os.path.exists(file):
+                os.remove(file)
+
+        if target_bytes > cache_bytes:
+            self.show_status(f"Cache within size limits.")
+            return
+
+        to_delete = int(( cache_bytes - target_bytes ) // avgcachesize)
+
+        self.show_status(f"Over cache size limit, will remove {to_delete} files.")
+        self.status.update(cfiles[to_delete])
+        for file in cfiles[:to_delete]:
+            os.remove(file)
+
+        self.status.update(f"Cache cleanup done.")
+
     def _check_ortho_dir(self, path):
         ret = True
 
@@ -429,6 +522,10 @@ threading = True
 webui_port = 5000 
 # UDP port XPlane listens on
 xplane_udp_port = 49000
+
+[cache]
+# Max size of the image disk cache in GB. Minimum of 10GB
+file_cache_size = 30
 
 """
 
