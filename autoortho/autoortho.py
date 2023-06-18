@@ -131,8 +131,8 @@ def main():
         log.warning(f"No installed sceneries detected.  Exiting.")
         sys.exit(0)
 
-    if CFG.cache.clean_on_start:
-        aoconfig.clean_cache(CFG.paths.cache_dir, int(float(CFG.cache.file_cache_size)))
+    #if CFG.cache.clean_on_start:
+    #    aoconfig.clean_cache(CFG.paths.cache_dir, int(float(CFG.cache.file_cache_size)))
 
     import flighttrack
     ftrack = threading.Thread(

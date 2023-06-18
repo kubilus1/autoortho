@@ -787,7 +787,7 @@ class Tile(object):
                 )
             else:
                 if not chunk.data:
-                    log.warning(f"GET_IMG: Empty chunk data.  Skip.")
+                    log.debug(f"GET_IMG: Empty chunk data.  Skip.")
                     STATS['chunk_missing_count'] = STATS.get('chunk_missing_count', 0) + 1
                 else:
                     log.warning(f"GET_IMG: FAILED! {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:8]}")

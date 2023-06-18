@@ -12,7 +12,7 @@ import zipfile
 import argparse
 import platform
 import subprocess
-from urllib.request import urlopen, Request, urlretrieve
+from urllib.request import urlopen, Request, urlretrieve, urlcleanup
 from datetime import datetime, timezone, timedelta
 
 import logging
@@ -217,6 +217,7 @@ class OrthoRegion(object):
         self.cur_activity['status'] = f"Downloading {url}"
         self.dl_start_time = time.time()
         self.dl_url = url
+        urlcleanup()
         local_file, headers = urlretrieve(
             url,
             destpath,
@@ -226,6 +227,7 @@ class OrthoRegion(object):
         log.info("  DONE!")
         self.dl_start_time = None 
         self.dl_url = None
+        urlcleanup()
 
     def show_progress(self, block_num, block_size, total_size):
         total_fetched = block_num * block_size
@@ -334,32 +336,50 @@ class OrthoRegion(object):
                 for p in part_list:
                     os.remove(p)
 
-
-        # Extract zips
+        badzips = []
+        # Check zips
         for z in zips:
-            log.info(f"Extracting {z}...")
+            log.info(f"Checking {z}...")
             hashfile = f"{z}.sha256"
-            self.cur_activity['status'] = f"Extracting {z}"
+            self.cur_activity['status'] = f"Checking {z}"
             try:
                 with zipfile.ZipFile(z) as zf:
                     zf_dir = os.path.dirname(zf.namelist()[0])
-                    if os.path.exists(os.path.join(self.extract_dir, zf_dir)):
-                        log.info(f"Dir already exists.  Clean first")
-                        shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
 
                     if self.checkzip(zf, hashfile):
-                        zf.extractall(self.extract_dir)
+                        log.info(f"{z} is good.") 
                     else:
                         # Bad zip.  Clean and exit
                         raise zipfile.BadZipFile("Errors detected.")
             except zipfile.BadZipFile as err:
-                log.info(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
+                log.error(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
                 self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
                 #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
                 os.remove(z)
                 if os.path.exists(hashfile):
                     os.remove(hashfile)
-                return False
+
+                badzips.append(z)
+                #return False
+
+        if badzips:
+            MSG = f"ERROR: Bad zips detected {badzips}.  Recommend retrying"
+            log.error(MSG)
+            self.cur_activity['status'] = MSG 
+            return False
+
+
+        # Extract zips
+        for z in zips:
+            log.info(f"Extracting {z}...")
+            self.cur_activity['status'] = f"Extracting {z}"
+                
+            with zipfile.ZipFile(z) as zf:
+                zf_dir = os.path.dirname(zf.namelist()[0])
+                if os.path.exists(os.path.join(self.extract_dir, zf_dir)):
+                    log.info(f"Dir already exists.  Clean first")
+                    shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
+                zf.extractall(self.extract_dir)
 
 
         # Cleanup
@@ -459,8 +479,9 @@ class Downloader(object):
         
 
         if TESTMODE:
+            self.region_list.extend([f"test_{r}" for r in self.region_list])
             self.region_list.append('test')
-        
+
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
 
@@ -503,15 +524,19 @@ class Downloader(object):
             found_regions = [ 
                 re.match('(.*)_info.json', x.get('name')).groups()[0] for x in item.get('assets') if x.get('name','').endswith('_info.json') 
             ]
-           
+          
             for r in [f for f in found_regions if f not in self.regions and f in self.region_list]:
                 log.info(f"Found region {r} version {v}")
 
-                if r not in self.regions:
+                #if r not in self.regions:
                     #log.info(f"Create region object for {r}")
-                    region = OrthoRegion(r, rel_id, self.extract_dir,
-                            self.download_dir, item, noclean=self.noclean)
-                    self.regions[r] = region
+
+                if TESTMODE:
+                    r = r.removeprefix('test_')
+
+                region = OrthoRegion(r, rel_id, self.extract_dir,
+                        self.download_dir, item, noclean=self.noclean)
+                self.regions[r] = region
 
             if len(self.regions) == len(self.region_list):
                 break
