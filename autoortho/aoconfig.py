@@ -11,6 +11,7 @@ import traceback
 import subprocess
 import configparser
 import platform
+from packaging import version
 
 import logging
 log = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class ConfigUI(object):
         self.ready.clear()
 
         self.cfg = cfg
-        self.dl = downloader.Downloader(
+        self.dl = downloader.OrthoManager(
             self.cfg.paths.scenery_path,
             self.cfg.paths.download_dir,
             noclean = self.cfg.scenery.noclean
@@ -188,9 +189,11 @@ class ConfigUI(object):
         ]
         self.dl.find_releases()
         for r in self.dl.regions.values():
-            scenery.append([sg.Text(f"{r.info_dict.get('name', r)} current version {r.local_version}")])
-            if r.pending_update:
-                scenery.append([sg.Text(f"    Available update ver: {r.latest_version}, size: {r.size/1048576:.2f} MB, downloads: {r.download_count}", key=f"updates-{r.region_id}"), sg.Button('Install', key=f"scenery-{r.region_id}")])
+            latest = r.releases[0]
+            latest.parse()
+            scenery.append([sg.Text(f"{latest.name} current version {r.local_version}")])
+            if version.parse(latest.ver) > version.parse(r.local_version):
+                scenery.append([sg.Text(f"    Available update ver: {latest.ver}, size: {latest.totalsize/1048576:.2f} MB, downloads: {latest.downloaded}", key=f"updates-{r.region_id}"), sg.Button('Install', key=f"scenery-{r.region_id}")])
             else:
                 scenery.append([sg.Text(f"    {r.region_id} is up to date!")])
             scenery.append([sg.HorizontalSeparator()])
@@ -205,9 +208,10 @@ class ConfigUI(object):
         logs = [
         ]
 
+        scenery_column = sg.Column(scenery, expand_x=True, expand_y=True, scrollable=True, vertical_scroll_only=True)
         layout = [
             [sg.TabGroup(
-                [[sg.Tab('Setup', setup), sg.Tab('Scenery', scenery)]])
+                [[sg.Tab('Setup', setup), sg.Tab('Scenery', [[scenery_column]])]])
             ],
             [sg.Text(key='-EXPAND-', font='ANY 1', pad=(0,0))],
             [sg.StatusBar("...", size=(74,3), key="status", auto_size_text=True, expand_x=True)],
@@ -314,15 +318,16 @@ class ConfigUI(object):
                 button.update("Working")
                 self.dl.download_dir = self.cfg.paths.download_dir
                 print(f"Setting download dir to {self.cfg.paths.download_dir}")
-                self.dl.download_region(regionid)
-                r = self.dl.regions.get(regionid)
+                self.dl.download_region_latest(regionid)
+                region = self.dl.regions.get(regionid)
                 # Make sure the region is using whatever the current scenery
                 # dir is set to at this moment
                 self.dl.extract_dir = self.cfg.paths.scenery_path
                 print(f"Setting extract dir to {self.cfg.paths.scenery_path}")
-                if not r.extract():
+                release = region.releases[0]
+                if not release.install():
                     print("Errors detected!")
-                    status = r.cur_activity.get('status')
+                    status = downloader.cur_activity.get('status')
                     self.status.update(status)
                     self.show_errs.append(status)
                     button.update("Retry?")
@@ -350,9 +355,9 @@ class ConfigUI(object):
     def region_progress(self, regionid):
         r = self.dl.regions.get(regionid)
         while self.scenery_dl:
-            status = r.cur_activity.get('status')
-            pcnt_done = r.cur_activity.get('pcnt_done', 0)
-            MBps = r.cur_activity.get('MBps', 0)
+            status = downloader.cur_activity.get('status')
+            pcnt_done = downloader.cur_activity.get('pcnt_done', 0)
+            MBps = downloader.cur_activity.get('MBps', 0)
             self.status.update(f"{status}")
             time.sleep(1)
 
