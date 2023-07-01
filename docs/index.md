@@ -27,6 +27,7 @@ Assumptions:
 * You have setup and configured [Dokan](https://github.com/dokan-dev/dokany/releases/latest)
 * * NOTE: As a backup you can try [WinFSP](https://github.com/winfsp/winfsp)
     but Dokan is now recommended.
+* You install all components, including scenery, on a local NTFS drive.
 
 Steps:
 
