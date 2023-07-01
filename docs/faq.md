@@ -15,6 +15,9 @@ servers or have slow internet connections.
 The log will log various things, typically info and warnings can be ignored
 unless other issues are seen.
 
+## I get an error when running with scenery installed on a non-local drive or non-NTFS formatted drive when using Windows
+This is not supported. Use a local NTFS formatted drive.
+
 ## On Windows the executable/zip is detected as a malware/virus by Windows Defender
 That is a false positive.  Unfortunately, Windows is very dev and opensource unfriendly.  You can choose to ignore this false positive or not, it's your computer.  Alternatively, you can run this directly via source.
 
