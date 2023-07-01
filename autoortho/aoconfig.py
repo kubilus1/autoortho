@@ -354,6 +354,7 @@ class ConfigUI(object):
             pcnt_done = r.cur_activity.get('pcnt_done', 0)
             MBps = r.cur_activity.get('MBps', 0)
             self.status.update(f"{status}")
+            #self.window.refresh()
             time.sleep(1)
 
 
@@ -460,9 +461,21 @@ class ConfigUI(object):
     def _check_xplane_dir(self, path):
         ret = True
 
-        if os.path.basename(path) != "Custom Scenery":
-            self.warnings.append(f"XPlane Custom Scenery directory {path} seems wrong.  This may cause issues.")
-            ret = False
+        print(f"PATH: {path}")
+        if platform.system() == 'Windows':
+            import psutil
+            pathdrive = os.path.splitdrive(path)[0]
+            print(f"PATHDRIVE: {pathdrive}")
+            for part in psutil.disk_partitions(all=True):
+                print(f"PARTITION: {part}")
+                if os.path.splitdrive(part.mountpoint)[0] == pathdrive:
+                    self.warnings.append(f"Scenery partition type: {part.fstype}")
+                    print(f"Scenery partition type: {part.fstype}")
+                    ret = False
+
+        #if os.path.basename(path) != "Custom Scenery":
+        #    self.warnings.append(f"XPlane Custom Scenery directory {path} seems wrong.  This may cause issues.")
+        #    ret = False
 
         return ret
 
