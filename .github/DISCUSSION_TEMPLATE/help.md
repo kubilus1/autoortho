@@ -1,5 +1,5 @@
-title: "[Q&A] "
-labels: ["help"]
+title: "[General] "
+labels: ["General Introduction"]
 body:
   - type: markdown
     attributes:
@@ -9,8 +9,7 @@ body:
     id: improvements
     attributes:
       label: Top 3 improvements
-      description: "What are the top 3 improvements we could make to this
-project?"
+      description: "What are the top 3 improvements we could make to this project?"
       value: |
         1.
         2.
@@ -54,5 +53,3 @@ project?"
       value: |
         ### The thrilling conclusion
         _to our template_
-
-
