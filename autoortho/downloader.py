@@ -273,7 +273,7 @@ class OrthoRegion(object):
         # Assemble split zips
         split_zips = {}
         for o in overlay_paths + ortho_paths:
-            m = re.match('(.*[.]zip)[.][0-9]*', o)
+            m = re.match('(.*[.]zip)[.][0-9]+', o)
             if m:
                 log.info(f"Split zip detected for {m.groups()}")
                 zipname = m.groups()[0]
