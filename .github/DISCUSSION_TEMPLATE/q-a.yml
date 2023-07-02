@@ -4,9 +4,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please check for existing answers to your questions and read the documentation (Including the FAQ!)
+        Please check for existing answers to your questions and read the documentation (Including the [FAQ](https://kubilus1.github.io/autoortho/faq/)!)
         
-        If this is a bug, consider making this an "Issue".
+        If this is a bug, consider making this an [Issue](https://github.com/kubilus1/autoortho/issues).
         Remember that specific information is important!
         
   - type: checkboxes
