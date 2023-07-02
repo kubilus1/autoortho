@@ -15,32 +15,17 @@ body:
       options:
         - label: I have checked for existing answers
           required: true
+        - label: This is not a bug or other "Issue"
+          required: true
         - label: I have read the FAQ and documentation
           required: true
 
   - type: textarea 
     attributes:
       id: details
-      label: "Details"
-      description: "Details"
+      label: "System Details"
+      description: "Important details about your setup."
       value: |
-        **Describe your question**
-        A clear and concise description of what the issue is.
-
-        **To Reproduce**
-        Steps to reproduce the behavior:
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
-
-        **Expected behavior**
-        A clear and concise description of what you expected to happen.
-
-        **Screenshots**
-        If applicable, add screenshots to help explain your problem.
-
-        **(please complete the following information):**
         - OS: [e.g. Windows 11]
         - XPlane Version: [e.g. XP12 beta 4]
         - AutoOrtho Version [e.g. 0.4.3]
@@ -48,3 +33,23 @@ body:
 
         **Additional context**
         Add any other context about the problem here. (scenery version if applicable, etc, logfile snippet, etc)
+  
+  - type: textarea 
+    attributes:
+      id: question
+      label: "question"
+      description: "question"
+      value: |
+        **Describe your question**
+        A clear and concise description of what the issue is.
+
+        **To Reproduce**
+        Steps to reproduce the behavior, if applicable:
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+
+        **Screenshots**
+        If applicable, add screenshots to help explain your problem.
+
