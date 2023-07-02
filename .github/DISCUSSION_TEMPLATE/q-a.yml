@@ -18,7 +18,7 @@ body:
         - label: I have read the FAQ and documentation
           required: true
 
-  - type: markdown
+  - type: textarea 
     attributes:
       value: |
         **Describe your question**
