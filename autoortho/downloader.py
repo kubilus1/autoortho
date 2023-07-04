@@ -42,6 +42,8 @@ cur_activity = {}
 
 
 class Zip(object):
+    # A zip object that may be made up of one or more files
+
     zf = None
     hashfile = None
 
@@ -105,6 +107,7 @@ class Zip(object):
             for f in self.files:
                 with open(f, 'rb') as in_h:
                     out_h.write(in_h.read())
+                log.info(f"Removing {f}")
                 os.remove(f)
 
     def extract(self, dest):
@@ -118,14 +121,18 @@ class Zip(object):
 
     def clean(self):
         if os.path.exists(self.path):
+            log.info(f"Removing {self.path}")
             os.remove(self.path)
 
         for f in self.files:
             if os.path.exists(f):
+                log.info(f"Removing {f}")
                 os.remove(f)
 
 
 class Package(object):
+    # A package asset
+
     name = None
     download_dir = ""
     install_dir = ""
@@ -241,11 +248,13 @@ class Package(object):
 
 
 class Release():
-    
+
+    # A release of orthos
+
     download_dir = ""
     install_dir = ""
     totalsize = 0
-    ver = 0
+    ver = "0.0.0"
     url = ""
     
     install_name = ""
@@ -257,6 +266,8 @@ class Release():
     parsed = False
 
     download_count = 0
+    info_ver = "v2"
+
 
     def __init__(
         self,
@@ -273,6 +284,7 @@ class Release():
         self.release_dict = release_dict if release_dict else {}
         self.packages = {}
         self.info_path = os.path.join(self.install_dir, "z_autoortho", f"{self.name}_info.json")
+        self.ortho_dirs = []
         
         if os.path.exists(self.info_path):
             self.load(self.info_path)
@@ -283,6 +295,7 @@ class Release():
 
 
     def load(self, info_path):
+        log.info(f"Loading info from {info_path}")
         with open(info_path) as h:
             info = json.loads(h.read())
 
@@ -296,6 +309,7 @@ class Release():
         self.cleaned = True
 
     def save(self):
+        log.info(f"Saving info to {self.info_path}")
         info_dict = {k:v for k,v in self.__dict__.items() if k not in [
             'release_dict',
             'packages'
@@ -306,6 +320,7 @@ class Release():
             h.write(json.dumps(info_dict, indent=4))
 
     def parse(self):
+        log.info(f"Begin parsing info_dict for {self.name}")
 
         if self.parsed:
             return
@@ -316,10 +331,13 @@ class Release():
 
         self.version = self.release_dict.get('tag_name')
         self.prerelease = self.release_dict.get('prerelease')
-
+        
+        #self.info_ver = self.release_dict.get('info_ver', 'v1')
+        #if self.info_ver == 'v1':
+        #    log.info(f"Legacy release detected for {self.name}")
 
         # Find info json
-        for a in self.release_dict.get('assets'):
+        for a in self.release_dict.get('assets', []):
             asset_name = a.get('name')
             if asset_name.endswith("_info.json"):
                 resp = do_url(a.get('browser_download_url'))
@@ -329,9 +347,14 @@ class Release():
         # Set attrs from info json
         for k,v in info.items():
             setattr(self, k, v)
-        
+       
+        if not self.ortho_dirs:
+            log.info(f"Legacy release detected for {self.name}")
+            self.info_ver = "v1"
+            self.ver = "0.0.0"
+
         # Find assets
-        for a in self.release_dict.get('assets'):
+        for a in self.release_dict.get('assets', []):
             asset_name = a.get('name')
             self.totalsize += int(a.get('size'))
 
@@ -340,7 +363,7 @@ class Release():
                 asset_name
             )
             if not m:
-                log.info(f"Unknown file {asset_name}")
+                log.debug(f"Unknown file {asset_name}")
                 continue
 
             asset_info = m.groupdict()
@@ -365,7 +388,8 @@ class Release():
 
             download_count.append(a.get('download_count'))
 
-        self.download_count = max(download_count)
+        if download_count:
+            self.download_count = max(download_count)
         self.parsed = True
 
     
@@ -391,6 +415,13 @@ class Release():
         if self.installed:
             print(f"Already installed {self.name}")
             return
+        
+
+        if self.info_ver == 'v1':
+            log.info(f"Legacy release detected.  Must cleanup first")
+            for path in self.ortho_dirs:
+                log.info(f"Removing {path}")
+                os.remove(path)
 
         print(f"Check for existing installs..")
         for k,v in self.packages.items():
@@ -415,6 +446,8 @@ class Release():
 
 
 class Region(object):
+
+    # A Particular region of orthos and/or overlays
 
     local_version = '0.0.0'
 
@@ -922,6 +955,7 @@ class OrthoManager(object):
         
         for rel in [ os.path.basename(rel) for rel in local_rel_info ]:
             rel_name = re.match('(.*)_info.json', rel).groups()[0]
+            log.info(f"Found local info file for {rel_name}")
 
             release = Release(
                 name = rel_name,
