@@ -1,5 +1,13 @@
 # FAQ and Troubleshooting
 
+## When using the binary release on Linux I get an 'SSL: CERTIFICATE_VERIFY_FAILED' error 
+You may need to specify the SSL_CERT_DIR your particular operating system
+uses.  For example:
+
+```
+SSL_CERT_DIR=/etc/ssl/certs ./autoortho_lin.bin
+```
+
 ## I see occasional blurry and/or green tiles
 There is a timeout for how long the system waits for individual satellite
 images.  You can adjust how long the system waits for high resolution
