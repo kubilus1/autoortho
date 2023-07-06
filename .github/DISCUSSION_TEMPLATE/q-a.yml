@@ -11,7 +11,6 @@ body:
         
   - type: checkboxes
     attributes:
-      label: Check that box!
       options:
         - label: I have checked for existing answers
           required: true
