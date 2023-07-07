@@ -17,15 +17,13 @@ from queue import Queue, PriorityQueue, Empty
 from functools import wraps, lru_cache
 from pathlib import Path
 
-import pydds
-
-
 import psutil
 from PIL import Image
-from aoimage import AoImage
 
-from aoconfig import CFG
-from aostats import STATS, StatTracker, set_stat, inc_stat
+from . import pydds
+from .aoimage import AoImage
+from .aoconfig import CFG
+from .aostats import STATS, StatTracker, set_stat, inc_stat
 
 MEMTRACE = False
 
@@ -128,11 +126,13 @@ class Getter(object):
 
             try:
                 if not self.get(obj, *args, **kwargs):
+                    inc_stat('chunk_get_fail')
                     log.warning(f"Failed getting: {obj} {args} {kwargs}, re-submit.")
-                    self.submit(obj, *args, **kwargs)
+                    #self.submit(obj, *args, **kwargs)
             except Exception as err:
+                inc_stat('chunk_get_error')
                 log.error(f"ERROR {err} getting: {obj} {args} {kwargs}, re-submit.")
-                self.submit(obj, *args, **kwargs)
+                #self.submit(obj, *args, **kwargs)
 
     def get(obj, *args, **kwargs):
         raise NotImplementedError
@@ -191,6 +191,7 @@ class Chunk(object):
     url = None
 
     serverlist=['a','b','c','d']
+    serverlist2=['t0','t1','t2','t3']
 
     def __init__(self, col, row, maptype, zoom, priority=0, cache_dir='.cache'):
         self.col = col
@@ -258,7 +259,9 @@ class Chunk(object):
             self.startime = time.time()
 
         server_num = idx%(len(self.serverlist))
+        server_num2 = idx%(len(self.serverlist2))
         server = self.serverlist[server_num]
+        server2 = self.serverlist[server_num2]
         quadkey = _gtile_to_quadkey(self.col, self.row, self.zoom)
 
         # Hack override maptype
@@ -266,7 +269,8 @@ class Chunk(object):
 
         MAPTYPES = {
             "EOX": f"https://{server}.s2maps-tiles.eu/wmts/?layer={MAPID}&style=default&tilematrixset={MATRIXSET}&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={self.zoom}&TileCol={self.col}&TileRow={self.row}",
-            "BI": f"http://r{server_num}.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=136",
+            "BI2": f"http://r{server_num}.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=136",
+            "BI":f"http://ecn.t{server_num}.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13716",
             #"GO2": f"http://khms{server_num}.google.com/kh/v=934?x={self.col}&y={self.row}&z={self.zoom}",
             "ARC": f"http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "NAIP": f"http://naip.maptiles.arcgis.com/arcgis/rest/services/NAIP/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
@@ -629,6 +633,7 @@ class Tile(object):
 
         return True
 
+    @locked
     def read_dds_bytes(self, offset, length):
         log.debug(f"READ DDS BYTES: {offset} {length}")
        
@@ -800,6 +805,7 @@ class Tile(object):
         # Return image along with mipmap and zoom level this was created at
         return new_im
 
+    @locked
     def get_best_chunk(self, col, row, mm, zoom):
         for i in range(mm+1, 5):
 

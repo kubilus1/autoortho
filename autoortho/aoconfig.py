@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 import PySimpleGUI as sg
 
-import downloader
+from . import downloader
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 

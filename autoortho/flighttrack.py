@@ -5,16 +5,16 @@ import time
 import json
 import socket
 import threading
-from aoconfig import CFG
+from .aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
 from flask import Flask, render_template, url_for, request, jsonify
 from flask_socketio import SocketIO, send, emit
 
-from xp_udp import DecodePacket, RequestDataRefs
+from .xp_udp import DecodePacket, RequestDataRefs
 
-from aostats import STATS
+from .aostats import STATS
 #STATS = {'count': 71036, 'chunk_hit': 66094, 'mm_counts': {0: 19, 1: 39, 2: 97, 3: 294, 4: 2982}, 'mm_averages': {0: 0.56, 1: 0.14, 2: 0.04, 3: 0.01, 4: 0.0}, 'chunk_miss': 4942, 'bytes_dl': 65977757}
 
 RUNNING=True
