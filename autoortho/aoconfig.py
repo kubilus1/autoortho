@@ -12,6 +12,9 @@ import subprocess
 import configparser
 import platform
 
+import importlib.resources
+import inspect
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -19,8 +22,12 @@ import PySimpleGUI as sg
 
 from . import downloader
 
-CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+#from . import . as autoortho
+#CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+#CUR_PATH = os.path.dirname(os.path.realpath('.'))
+#CUR_PATH = str(importlib.resources.files(autoortho).joinpath(''))
 
+CUR_PATH = os.path.dirname(inspect.getfile(downloader))
 
 class SectionParser:
     true = ['true','1', 'yes', 'on']

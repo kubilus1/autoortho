@@ -7,9 +7,11 @@ from io import BytesIO
 from binascii import hexlify
 from ctypes import *
 #from PIL import Image
+import inspect
 
 from .aoimage import AoImage as Image
 from .aoconfig import CFG
+from . import downloader
 
 import platform
 import threading
@@ -21,15 +23,17 @@ import threading
 import logging
 log = logging.getLogger(__name__)
 
+CUR_PATH = os.path.dirname(inspect.getfile(downloader))
+
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
     print("Linux detected")
-    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','lib_stb_dxt.so')
-    _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','linux','libispc_texcomp.so')
+    _stb_path = os.path.join(CUR_PATH,'lib','linux','lib_stb_dxt.so')
+    _ispc_path = os.path.join(CUR_PATH,'lib','linux','libispc_texcomp.so')
 elif platform.system().lower() == 'windows':
     print("Windows detected")
-    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
-    _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','ispc_texcomp.dll')
+    _stb_path = os.path.join(CUR_PATH,'lib','windows','stb_dxt.dll')
+    _ispc_path = os.path.join(CUR_PATH,'lib','windows','ispc_texcomp.dll')
 else:
     print("System is not supported")
     exit()
