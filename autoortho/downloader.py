@@ -598,7 +598,6 @@ class Region(object):
 
 class OrthoManager(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
-    region_list = REGION_LIST 
     info_cache = os.path.join(os.path.expanduser("~"), ".autoortho-data", ".release_info")
 
     def __init__(self, extract_dir=None, download_dir=None, noclean=False):
@@ -613,10 +612,18 @@ class OrthoManager(object):
         self.noclean = noclean
         self.regions = {}
         
+        overlay_list = []
+        for r in REGION_LIST:
+            log.info(r)
+            overlay_list.append(f"{r}_overlay")
+
+        self.region_list = REGION_LIST + overlay_list
 
         if TESTMODE:
             self.region_list.extend([f"test_{r}" for r in self.region_list])
             self.region_list.append('test')
+
+        log.info(f"Will look for {self.region_list}")
 
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
