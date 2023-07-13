@@ -313,21 +313,9 @@ class ConfigUI(object):
             try:
                 button.update("Working")
                 self.dl.download_dir = self.cfg.paths.download_dir
-                #self.dl.download_region_latest(regionid)
-                #region = self.dl.regions.get(regionid)
-                # Make sure the region is using whatever the current scenery
-                # dir is set to at this moment
-                #self.dl.extract_dir = self.cfg.paths.scenery_path
-                #release = region.releases[0]
                
                 region = self.dl.regions.get(regionid)
-                #print(f"Setting extract dir to {self.cfg.paths.scenery_path}")
-                #downloader.dl_paths.install_dir = self.cfg.paths.scenery_path
-                #print(f"Setting download dir to {self.cfg.paths.download_dir}")
-                #downloader.dl_paths.download_dir = self.cfg.paths.download_dir
-
                 if not region.install_release():
-                #if not release.install():
                     print("Errors detected!")
                     status = downloader.cur_activity.get('status')
                     self.status.update(status)

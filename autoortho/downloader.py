@@ -114,10 +114,6 @@ class Zip(object):
 
     def extract(self, dest):
         with zipfile.ZipFile(self.path) as zf:
-            #zf_dir = os.path.dirname(zf.namelist()[0])
-            #if os.path.exists(os.path.join(self.extract_dir, zf_dir)):
-            #    log.info(f"Dir already exists.  Clean first")
-            #    shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
             zf.extractall(dest)
             
 
@@ -139,16 +135,12 @@ class Package(object):
     download_dir = ""
     install_dir = ""
     size = 0
-    #package_url = ""
 
     installed = False
     downloaded = False
-    #extracted = False
     cleaned = False
 
     download_count = 0
-
-    #local_files = []
 
     zf = None
     
@@ -221,10 +213,6 @@ class Package(object):
         print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
         cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
 
-    #def extract(self):
-        #self.zf.extract(self.install_dir)
-        #self.extracted = True
-
     def check(self):
         log.info(f"Checking {self.name}")
         if not self.zf.check():
@@ -270,7 +258,6 @@ class Release(object):
 
     installed = False
     downloaded = False
-    #extracted = False
     cleaned = False
     parsed = False
     legacy = False
@@ -448,15 +435,6 @@ class Release(object):
             log.info(f"Already installed {self.name}")
             return True
         
-
-        #if self.info_ver == 'v1':
-        #    log.info(f"Legacy release detected.  Must cleanup first")
-        #    self.uninstall()
-        #    #for path in self.ortho_dirs:
-        #    #    log.info(f"Removing {path}")
-        #    #    self.downloaded = False
-        #    #    os.remove(path)
-
         print(f"Check for and cleanup existing installs..")
         for k,v in self.packages.items():
             if v.pkgtype == "z":
@@ -694,14 +672,6 @@ class OrthoManager(object):
             else:
                 region = self.regions.get(region_name)
 
-            # region = self.regions.setdefault(
-            #     region_name,
-            #     Region(
-            #         region_name,
-            #         install_dir = self.extract_dir,
-            #         download_dir = self.download_dir
-            #     )
-            # )
             if rel_ver not in region.releases:
                 log.debug(f"Adding new release {rel_ver} to region {region_name}")
                 release = Release(
