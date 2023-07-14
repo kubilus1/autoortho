@@ -124,7 +124,6 @@ def test_upgrade(tmpdir):
     log.info("Update install")
     region.install_release()
 
-    assert True == False
 
 def test_setup(tmpdir):
     pass

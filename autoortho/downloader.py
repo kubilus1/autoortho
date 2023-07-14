@@ -592,7 +592,7 @@ class OrthoManager(object):
         
         overlay_list = []
         for r in REGION_LIST:
-            log.info(r)
+            log.debug(r)
             overlay_list.append(f"{r}_overlay")
 
         self.region_list = REGION_LIST + overlay_list
