@@ -179,7 +179,7 @@ def main():
                         scenery.get('mount'),
                         ".poison"
                     ))
-                    time.sleep(0.5)
+                    #time.sleep(0.5)
 
             for t in mount_threads:
                 t.join(5)
