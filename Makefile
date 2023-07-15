@@ -1,4 +1,5 @@
 ZIP?=zip
+VERSION?=0.0.0
 
 autoortho.pyz:
 	mkdir -p build/autoortho
@@ -24,7 +25,7 @@ bin:
 		--onefile \
 		./autoortho/__main__.py -o autoortho_lin.bin
 
-autoortho_win.exe:
+_autoortho_win.exe:
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
 		--disable-ccache \
@@ -53,6 +54,13 @@ __main__.dist:
 		--include-data-dir=./autoortho/imgs=imgs \
 		--standalone \
 		./autoortho/__main__.py -o autoortho_win.exe
+
+exe: AutoOrtho_$(VERSION).exe
+AutoOrtho_$(VERSION).exe: __main__.dist
+	cp autoortho/imgs/ao-icon.ico .
+	makensis -DPRODUCT_VERSION=$(VERSION) installer.nsi
+	mv AutoOrtho.exe $@
+
 autoortho_win.zip: __main__.dist
 	mv __main__.dist autoortho_release
 	$(ZIP) $@ autoortho_release

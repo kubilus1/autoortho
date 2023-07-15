@@ -6,7 +6,7 @@ import zipfile
 import pytest
 import platform
 
-import downloader
+from . import downloader
 downloader.TESTMODE = True
 
 def test_setup(tmpdir):

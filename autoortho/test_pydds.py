@@ -4,7 +4,7 @@ import os
 import ctypes
 import platform
 
-import pydds
+from . import pydds
 
 import pytest
 #from PIL import Image
