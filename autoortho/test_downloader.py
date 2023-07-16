@@ -295,7 +295,8 @@ def test_package_assemble(tmpdir):
         fpath = os.path.join(tmpdir, f"atest.zip.0{i}")
         with open(fpath, 'w') as h:
             h.write(f"{i}")
-        p.remote_urls.append(f"file://{fpath}")
+        url = Path(fpath).as_uri()
+        p.remote_urls.append(url)
 
     p.download()
     p.check()
