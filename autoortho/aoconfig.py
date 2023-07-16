@@ -22,12 +22,8 @@ import PySimpleGUI as sg
 
 from . import downloader
 
-#from . import . as autoortho
 #CUR_PATH = os.path.dirname(os.path.realpath(__file__))
-#CUR_PATH = os.path.dirname(os.path.realpath('.'))
-#CUR_PATH = str(importlib.resources.files(autoortho).joinpath(''))
-
-CUR_PATH = os.path.dirname(inspect.getfile(downloader))
+CUR_PATH = str(importlib.resources.files(__package__))
 
 class SectionParser:
     true = ['true','1', 'yes', 'on']
@@ -78,7 +74,9 @@ class ConfigUI(object):
             sg.theme('DarkAmber')
 
         self.scenery_q = queue.Queue()
-
+        
+        CUR_PATH = str(importlib.resources.files(__package__))
+        #log.info(CUR_PATH)
         if platform.system() == 'Windows':
             self.icon_path =os.path.join(CUR_PATH, 'imgs', 'ao-icon.ico')
         else:

@@ -11,7 +11,6 @@ import inspect
 
 from .aoimage import AoImage as Image
 from .aoconfig import CFG
-from . import downloader
 
 import platform
 import threading
@@ -23,7 +22,9 @@ import threading
 import logging
 log = logging.getLogger(__name__)
 
-CUR_PATH = os.path.dirname(inspect.getfile(downloader))
+import importlib.resources
+#CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+CUR_PATH = str(importlib.resources.files(__package__))
 
 #_stb = CDLL("/usr/lib/x86_64-linux-gnu/libstb.so")
 if platform.system().lower() == 'linux':
