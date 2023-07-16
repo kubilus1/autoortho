@@ -277,3 +277,63 @@ def test_find_regions(tmpdir):
 
     d.info_cache = 'notafile' 
     d.find_regions()
+
+
+def test_package_assemble(tmpdir):
+    p = downloader.Package(
+        'atest',
+        'y',
+        os.path.join(tmpdir, 'downloads')
+    )
+
+    assert p
+    
+    p.zf.check = lambda : True
+
+    log.info("Test normal download and assembly")
+    for i in range(0,3):
+        fpath = os.path.join(tmpdir, f"atest.zip.0{i}")
+        with open(fpath, 'w') as h:
+            h.write(f"{i}")
+        p.remote_urls.append(f"file://{fpath}")
+
+    p.download()
+    p.check()
+    assert os.path.isfile(os.path.join(tmpdir, 'downloads', 'atest.zip'))
+    assert p.downloaded
+    assert p.zf.assembled
+
+    log.info("Test cleanup")
+    p.cleanup()
+    assert not p.downloaded
+    assert not p.zf.assembled
+    assert p.zf.files == []
+
+    log.info("Test download with pre-existing")
+    for i in range(0,2):
+        fpath = os.path.join(tmpdir, 'downloads', f"atest.zip.0{i}")
+        with open(fpath, 'w') as h:
+            h.write(f"{i}")
+    #     p.remote_urls.append(f"file://{fpath}")
+    # 
+
+    # p.remote_urls.append(f"file://{(os.path.join(tmpdir, 'atest.zip.03'))}")
+    p.download()
+    assert os.path.isfile(os.path.join(tmpdir, 'downloads', 'atest.zip'))
+    assert p.downloaded
+    assert p.zf.assembled
+
+
+    p.cleanup()
+    p.zf.check = lambda : False
+    log.info("Test failed download and assembly")
+    for i in range(0,3):
+        fpath = os.path.join(tmpdir, f"atest.zip.0{i}")
+        with open(fpath, 'w') as h:
+            h.write(f"{i}")
+
+    p.download()
+    p.check()
+    assert not os.path.isfile(os.path.join(tmpdir, 'downloads', 'atest.zip'))
+    assert not p.downloaded
+    assert not p.zf.assembled

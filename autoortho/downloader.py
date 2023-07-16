@@ -100,12 +100,12 @@ class Zip(object):
 
     def assemble(self):
         if any(x.endswith('.zip') for x in self.files) or self.assembled:
-            print(f"No assembly required for {self.path}")
+            log.info(f"No assembly required for {self.path}")
             return
 
 
         self.files.sort()
-        print(f"Will assemble {self.path} from parts: {self.files}")
+        log.info(f"Will assemble {self.path} from parts: {self.files}")
         with open(self.path, 'wb') as out_h:
             for f in self.files:
                 with open(f, 'rb') as in_h:
@@ -189,14 +189,14 @@ class Package(object):
 
             #if os.path.isfile(self.zf.path):
             if os.path.isfile(destpath):
-                print(f"{destpath} already exists.  Skip.")
+                log.info(f"{destpath} already exists.  Skip.")
                 #print(f"{self.zf.path} already exists.  Skip.")
                 #self.zf.assembled = True
                 #self.downloaded = True
                 #return
                 #continue
             else:
-                print(f"Download {url}")
+                log.info(f"Download {url}")
                 self.dl_start_time = time.time()
                 self.dl_url = url
                 urlcleanup()
@@ -207,7 +207,7 @@ class Package(object):
                 )
                 
                 cur_activity['status'] = f"DONE downloading {url}"
-                log.info("  DONE!")
+                log.debug("  DONE!")
                 self.dl_start_time = None 
                 self.dl_url = None
                 urlcleanup()
@@ -281,6 +281,7 @@ class Package(object):
     def cleanup(self):
         self.zf.clean()
         self.cleaned = True
+        self.downloaded = False
 
 
 class Release(object):
