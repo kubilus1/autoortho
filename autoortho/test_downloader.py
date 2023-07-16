@@ -155,8 +155,9 @@ def test_fetch(tmpdir):
     rel.download()
     downloads = os.listdir(dl_dir)
     downloads.sort()
+    assert downloads == ['y_test_overlays.zip', 'z_test_00.zip', 'z_test_00.zip.sha256']
     #assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
-    assert downloads == ['y_test_overlays.zip', 'z_test_00.zip']
+    #assert downloads == ['y_test_overlays.zip', 'z_test_00.zip']
 
     rel.install()
     extracts = os.listdir(scenery_dir)
@@ -171,6 +172,10 @@ def test_fetch(tmpdir):
     scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
     scenery.sort()
     assert scenery == ['z_ao_test']
+
+    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery", "z_ao_test"))
+    scenery.sort()
+    assert scenery == ['Earth nav data', 'ORTHO_SETUP.md', 'terrain', 'textures']
 
     orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
     orthodetails.sort()
@@ -194,8 +199,9 @@ def test_bad_zip(tmpdir):
     downloads.sort()
 
     # Verify we have what we want
+    assert downloads == ['y_test_overlays.zip', 'z_test_00.zip', 'z_test_00.zip.sha256']
     #assert downloads == ['y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
-    assert downloads == ['y_test_overlays.zip', 'z_test_00.zip']
+    #assert downloads == ['y_test_overlays.zip', 'z_test_00.zip']
     
     log.info("Corrupt at the beginning of file.")
     # Corrupt the zip at the beginning
@@ -217,7 +223,7 @@ def test_bad_zip(tmpdir):
     #assert downloads == ['y_test_overlays.zip', 'y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
     #assert downloads == ['y_test_overlays.zip', 'y_test_overlays.zip.00', 'z_test_00.zip', 'z_test_00.zip.sha256']
     #assert downloads == ['y_test_overlays.zip']
-    assert downloads == ['y_test_overlays.zip', 'z_test_00.zip']
+    assert downloads == ['y_test_overlays.zip', 'z_test_00.zip', 'z_test_00.zip.sha256']
 
     log.info("Corrupt at the end of file.")
     # Corrupt a zip at the end

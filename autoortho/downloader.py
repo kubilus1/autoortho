@@ -47,7 +47,8 @@ class Zip(object):
     # A zip object that may be made up of one or more files
 
     zf = None
-    hashfile = None
+    hashfile = '' 
+    assembled = False
 
     def __init__(self, path):
         self.path = path
@@ -98,7 +99,7 @@ class Zip(object):
         return(f"Zip({self.path})")
 
     def assemble(self):
-        if any(x.endswith('.zip') for x in self.files):
+        if any(x.endswith('.zip') for x in self.files) or self.assembled:
             print(f"No assembly required for {self.path}")
             return
 
@@ -111,6 +112,8 @@ class Zip(object):
                     out_h.write(in_h.read())
                 log.info(f"Removing {f}")
                 os.remove(f)
+
+        self.assembled = True
 
     def extract(self, dest):
         with zipfile.ZipFile(self.path) as zf:
@@ -126,6 +129,13 @@ class Zip(object):
             if os.path.exists(f):
                 log.info(f"Removing {f}")
                 os.remove(f)
+
+        if os.path.exists(self.hashfile):
+            log.info(f"Removing {self.hashfile}")
+            os.remove(self.hashfile)
+
+        self.files = []
+        self.assembled = False
 
 
 class Package(object):
@@ -177,28 +187,35 @@ class Package(object):
             filename = os.path.basename(url)
             destpath = os.path.join(self.download_dir, filename)
 
-            if os.path.isfile(self.zf.path):
-                print(f"{self.zf.path} already exists.  Skip.")
-                continue
+            #if os.path.isfile(self.zf.path):
+            if os.path.isfile(destpath):
+                print(f"{destpath} already exists.  Skip.")
+                #print(f"{self.zf.path} already exists.  Skip.")
+                #self.zf.assembled = True
+                #self.downloaded = True
+                #return
+                #continue
+            else:
+                print(f"Download {url}")
+                self.dl_start_time = time.time()
+                self.dl_url = url
+                urlcleanup()
+                local_file, headers = urlretrieve(
+                    url,
+                    destpath,
+                    self._show_progress
+                )
+                
+                cur_activity['status'] = f"DONE downloading {url}"
+                log.info("  DONE!")
+                self.dl_start_time = None 
+                self.dl_url = None
+                urlcleanup()
 
-            print(f"Download {url}")
-            self.dl_start_time = time.time()
-            self.dl_url = url
-            urlcleanup()
-            local_file, headers = urlretrieve(
-                url,
-                destpath,
-                self._show_progress
-            )
-            
-            cur_activity['status'] = f"DONE downloading {url}"
-            log.info("  DONE!")
-            self.dl_start_time = None 
-            self.dl_url = None
-            urlcleanup()
             if destpath.endswith('sha256'):
                 self.zf.hashfile = destpath
             else:
+            #elif not self.zf.assembled:
                 self.zf.files.append(destpath)
 
         self.downloaded = True
@@ -219,6 +236,7 @@ class Package(object):
             log.warning(f"{self.name} is bad.  Cleaning up.")
             self.cleanup()
             self.downloaded = False
+            #self.zf.assembled = False
             return False
         log.info(f"{self.name} is good.")
         return True
@@ -230,6 +248,27 @@ class Package(object):
         #self.uninstall()
 
         self.zf.extract(self.install_dir)
+
+        if self.pkgtype == 'z':
+            dirs = [os.path.join(self.install_dir, self.name)]
+            #dirs = glob.glob(
+            #    os.path.join(self.install_dir, "z_*")
+            #)
+
+        elif self.pkgtype == 'y':
+            dirs = glob.glob(
+                os.path.join(self.install_dir, "y_*", "yOrtho4XP_Overlays")
+            )
+
+        for d in dirs:
+            # Setup files
+            shutil.copytree(
+                d,
+                os.path.join(self.install_dir),
+                dirs_exist_ok=True
+            )
+            shutil.rmtree(d)
+
         self.installed = True
 
     def uninstall(self):
