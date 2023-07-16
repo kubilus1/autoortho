@@ -6,6 +6,7 @@ import sys
 import glob
 import time
 import json
+import pprint
 import shutil
 import hashlib
 import zipfile
@@ -14,12 +15,22 @@ import platform
 import subprocess
 from urllib.request import urlopen, Request, urlretrieve, urlcleanup
 from datetime import datetime, timezone, timedelta
+from packaging import version
+
+
+from aoconfig import CFG
 
 import logging
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 log = logging.getLogger(__name__)
+
+if not log:
+    print("NO LOG")
+print(log)
 
 TESTMODE=os.environ.get('AO_TESTMODE', False)
 REGION_LIST = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi']
+
 
 def do_url(url, headers={}, ):
     req = Request(url, headers=headers)
@@ -29,220 +40,29 @@ def do_url(url, headers={}, ):
     return resp.read()
 
 
-class OrthoRegion(object):
-   
-    release_id = 0
-    region_id = None
-    latest_version = 0
-    ortho_size = 0
-    overlay_size = 0
-
-    local_version = -1
-    download_dir = ""
-    extract_dir = ""
-    downloaded = False
-    extracted = False
-    pending_update = False
-
-    size = 0
-    download_count = 0
-    
-    base_url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
-    cur_activity = {}
+cur_activity = {}
 
 
-    def __init__(
-            self, 
-            region_id, 
-            release_id, 
-            extract_dir="Custom Scenery", 
-            download_dir="downloads", 
-            release_data={},
-            noclean=False
-        ):
+class Zip(object):
+    # A zip object that may be made up of one or more files
 
-        self.region_id = region_id
-        self.release_data = release_data
-        self.extract_dir = extract_dir
-        self.download_dir = download_dir
-        self.ortho_urls = []
-        self.overlay_urls = []
-        self.info_dict = {}
-        self.ortho_dirs = []
-        self.noclean = noclean
-        self.dest_ortho_dir = os.path.join(
-            self.extract_dir,
-            "z_autoortho",
-            "scenery",
-            f"z_ao_{self.region_id}"
-        )
-        self.scenery_extract_path = os.path.join(
-                self.extract_dir, 
-                "z_autoortho",
-                "scenery"
-        )
+    zf = None
+    hashfile = '' 
+    assembled = False
 
-        self.rel_url = f"{self.base_url}/{release_id}"
-        self.get_rel_info()
-        self.check_local()
+    def __init__(self, path):
+        self.path = path
+        self.files = []
 
-        self.cur_activity['status'] = "Idle"
+    def check(self):
 
-    def __repr__(self):
-        return f"OrthoRegion({self.region_id})"
+        if not os.path.exists(self.path):
+            log.info(f"File does not exist. {self.path}")
+            return False
 
-
-    def get_rel_info(self):
-        if not self.release_data:
-            resp = do_url(
-                self.rel_url,
-                headers = {"Accept": "application/vnd.github+json"}
-            )
-            data = json.loads(resp)
-        else:
-            data = self.release_data
-
-        self.latest_version = data.get('name')
-
-        for a in data.get('assets'):
-            asset_name = a.get('name')
-            #log.info(f"Add asset {asset_name}")
-            #log.info(a.get('name'))
-            if asset_name.endswith("_info.json"):
-                resp = do_url(a.get('browser_download_url'))
-                info = json.loads(resp)
-                self.info_dict = info
-                #log.info(info)
-            elif asset_name.startswith("z_"):
-                # Found orthos
-                self.ortho_size += int(a.get('size'))
-                self.ortho_urls.append(a.get('browser_download_url'))
-                if a.get('download_count') >= self.download_count:
-                    self.download_count = a.get('download_count')
-            elif asset_name.startswith("y_"):
-                # Found overlays
-                self.overlay_size += int(a.get('size'))
-                self.overlay_urls.append(a.get('browser_download_url')) 
-            else:
-                log.info(f"Unknown file {asset_name}")
-            
-            self.size += a.get('size')
-
-
-
-    def check_local(self):
-        info_dict_path = os.path.join(
-            self.extract_dir,
-            "z_autoortho",
-            f"{self.region_id}_info.json"
-        )
-        if os.path.exists(info_dict_path):
-            with open(info_dict_path) as h:
-                info = json.loads(h.read())
-
-            self.local_version = info.get('ver',-1)
-            if self.local_version == self.latest_version:
-                if not self.check_scenery_dirs(info.get('ortho_dirs')):
-                    log.info(f" ... Issues detected with scenery.  Recommend retrying")
-                    self.extracted = False
-                    self.pending_update = True
-                else:
-                    log.info(f" ... {self.region_id} up to date and validated.")
-                    self.extracted = True
-                    self.pending_update = False
-            else:
-                log.info(f" ... {self.region_id} update is available")
-                self.pending_update = True
-            
-            # Current detected ortho_dirs
-            self.ortho_dirs = info.get('ortho_dirs', [])
-
-        else:
-            log.info(f" ... {self.region_id} not setup yet")
-            self.pending_update = True
-
-
-    def check_scenery_dirs(self, ortho_dirs):
-        for d in ortho_dirs:
-            if os.path.exists(d):
-                log.info(f"Detected partial scenery setup files.")
-                return False
-
-            if not os.path.exists(self.dest_ortho_dir):
-                log.info(f"Missing final extraction dir: {self.dest_ortho_dir}")
-                return False
-
-            if os.path.dirname(d) != self.extract_dir:
-                log.info(f"Installed scenery location of '{os.path.dirname(d)}' and configured scenery dir of '{self.extract_dir}' do not match!")
-                return False
-        return True
-        
-
-    def download(self):
-        downloaded_s = set(os.listdir(self.download_dir))
-        orthos_s = set(os.path.basename(x) for x in self.ortho_urls)
-        overlays_s = set(os.path.basename(x) for x in self.overlay_urls)
-
-        missing_orthos = orthos_s - downloaded_s
-        missing_overlays = overlays_s - downloaded_s
-
-        if not missing_orthos and not missing_overlays:
-            self.downloaded = True
-            log.info("All files already downloaded!")
-            return
-
-        for url in self.ortho_urls:
-            if os.path.basename(url) in missing_orthos:
-                log.info(f"Will download {url}")
-                self._get_file(url, self.download_dir)
-            else:
-                log.info(f"We already have {url}")
-        log.info("ORTHOS DOWNLOADED")
-
-        for url in self.overlay_urls:
-            if os.path.basename(url) in missing_overlays:
-                log.info(f"Will download {url}")
-                self._get_file(url, self.download_dir)
-            else:
-                log.info(f"We already have {url}")
-        log.info("OVERLAYS DOWNLOADED")
-    
-        self.downloaded = True
-
-
-    def _get_file(self, url, outdir):
-        filename = os.path.basename(url)
-        destpath = os.path.join(outdir, filename)
-        
-        self.cur_activity['status'] = f"Downloading {url}"
-        self.dl_start_time = time.time()
-        self.dl_url = url
-        urlcleanup()
-        local_file, headers = urlretrieve(
-            url,
-            destpath,
-            self.show_progress
-        )
-        self.cur_activity['status'] = f"DONE downloading {url}"
-        log.info("  DONE!")
-        self.dl_start_time = None 
-        self.dl_url = None
-        urlcleanup()
-
-    def show_progress(self, block_num, block_size, total_size):
-        total_fetched = block_num * block_size
-        pcnt_done = round(total_fetched / total_size *100,2)
-        MBps = (total_fetched/1048576) / (time.time() - self.dl_start_time)
-        self.cur_activity['pcnt_done'] = pcnt_done
-        self.cur_activity['MBps'] = MBps
-        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
-        self.cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
-
-
-    def checkzip(self, zipfile, hashfile=None):
-        if os.path.isfile(hashfile):
-            log.info(f"Found hashfile {hashfile} verifying ...")
-            with open(zipfile.filename, "rb") as h:
+        if self.hashfile:
+            log.info(f"Found hashfile {self.hashfile} verifying ...")
+            with open(self.path, "rb") as h:
                 #python3.11 ziphash = hashlib.file_digest(h, "sha256")
                 sha256 = hashlib.sha256()
                 while True:
@@ -253,241 +73,584 @@ class OrthoRegion(object):
                         sha256.update(data)
                 ziphash = sha256.hexdigest()
 
-            with open(hashfile, "r") as h:
+            with open(self.hashfile, "r") as h:
                 data = h.read()
             m = re.match(r'(^[0-9A-Fa-f]+)\s+(\S.*)$', data)
             if m:
-                if m.group(1) == ziphash and m.group(2) == os.path.basename(zipfile.filename):
+                if m.group(1) == ziphash:
                     return True
 
-            log.error(f"Hash check failed for {zipfile.filename} : {m.group(1)} != {ziphash}")
+            log.error(f"Hash check failed for {self.path} : {m.group(1)} != {ziphash}")
             return False
 
-
-        ret = zipfile.testzip()
-        if ret:
-            log.error(f"Errors detected with zipfile {zipfile}\nFirst bad file: {ret}")
+        try:
+            with zipfile.ZipFile(self.path) as zf:
+                ret = zf.testzip()
+                if ret:
+                    log.error(f"Errors detected with zipfile {zf}\nFirst bad file: {ret}")
+                    return False
+        except Exception as err:
+            log.error(f"Error with zip {err}")
             return False
 
         return True
 
+    def __repr__(self):
+        return(f"Zip({self.path})")
 
-    def extract(self):
-        self.check_local()
-
-        if self.extracted:
-            log.info("Already extracted.  Skip")
-            return
-    
-        if not self.downloaded:
-            log.info(f"Region {self.region_id} version {self.latest_version} not downloaded!")
+    def assemble(self):
+        if any(x.endswith('.zip') for x in self.files) or self.assembled:
+            log.info(f"No assembly required for {self.path}")
             return
 
-        if self.ortho_dirs:
-            log.info(f"Detected existing scenery dirs for {self.region_id}.  Cleanup first")
-            self.cur_activity['status'] = f"Detected existing scenery dirs for {self.region_id}.  Cleanup first."
-            for o in self.ortho_dirs:
-                if os.path.exists(o):
-                    shutil.rmtree(o)
 
-        log.info(f"Ready to extract archives for {self.region_id} v{self.latest_version}!")
-        self.cur_activity['status'] = f"Extracting archives for {self.region_id} v{self.latest_version}"
-        
-        ortho_paths = [ os.path.join(self.download_dir, os.path.basename(x))
-                for x in self.ortho_urls ]
+        self.files.sort()
+        log.info(f"Will assemble {self.path} from parts: {self.files}")
+        with open(self.path, 'wb') as out_h:
+            for f in self.files:
+                with open(f, 'rb') as in_h:
+                    out_h.write(in_h.read())
+                log.info(f"Removing {f}")
+                os.remove(f)
 
-        overlay_paths = [ os.path.join(self.download_dir, os.path.basename(x))
-                for x in self.overlay_urls ]
+        self.assembled = True
 
-        
-        if not os.path.exists(self.scenery_extract_path):
-            os.makedirs(self.scenery_extract_path)
-
-
-        zips = []
-
-        # Assemble split zips
-        split_zips = {}
-        for o in overlay_paths + ortho_paths:
-            m = re.match('(.*[.]zip)[.][0-9]+', o)
-            if m:
-                log.info(f"Split zip detected for {m.groups()}")
-                zipname = m.groups()[0]
-                log.info(f"ZIPNAME {zipname}")
-                split_zips.setdefault(zipname, []).append(o)
-            elif os.path.exists(o) and o.endswith('.zip'):
-                zips.append(o)
-
-        for zipfile_out, part_list in split_zips.items():
-            #if os.path.exists(zipfile_out):
-            #    log.info(f"{zipfile_out} already assembled.  Continue.")
-            #    continue
-
-            # alphanumeric sort could have limits for large number of splits
-            part_list.sort()
-            with open(zipfile_out, 'wb') as out_h:
-                for p in part_list:
-                    with open(p, 'rb') as in_h:
-                        out_h.write(in_h.read())
+    def extract(self, dest):
+        with zipfile.ZipFile(self.path) as zf:
+            zf.extractall(dest)
             
-            zips.append(zipfile_out)
-            if not self.noclean:
-                log.info(f"Cleaning up parts for {zipfile_out}")
-                for p in part_list:
-                    os.remove(p)
 
-        badzips = []
-        # Check zips
-        for z in zips:
-            log.info(f"Checking {z}...")
-            hashfile = f"{z}.sha256"
-            self.cur_activity['status'] = f"Checking {z}"
-            try:
-                with zipfile.ZipFile(z) as zf:
-                    zf_dir = os.path.dirname(zf.namelist()[0])
+    def clean(self):
+        if os.path.exists(self.path):
+            log.info(f"Removing {self.path}")
+            os.remove(self.path)
 
-                    if self.checkzip(zf, hashfile):
-                        log.info(f"{z} is good.") 
-                    else:
-                        # Bad zip.  Clean and exit
-                        raise zipfile.BadZipFile("Errors detected.")
-            except zipfile.BadZipFile as err:
-                log.error(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
-                self.cur_activity['status'] = f"ERROR {err} with Zipfile {z}.  Recommend retrying."
-                #raise Exception(f"ERROR: {err} with Zipfile {z}.  Recommend retrying")
-                os.remove(z)
-                if os.path.exists(hashfile):
-                    os.remove(hashfile)
+        for f in self.files:
+            if os.path.exists(f):
+                log.info(f"Removing {f}")
+                os.remove(f)
 
-                badzips.append(z)
-                #return False
+        if os.path.exists(self.hashfile):
+            log.info(f"Removing {self.hashfile}")
+            os.remove(self.hashfile)
 
-        if badzips:
-            MSG = f"ERROR: Bad zips detected {badzips}.  Recommend retrying"
-            log.error(MSG)
-            self.cur_activity['status'] = MSG 
-            return False
+        self.files = []
+        self.assembled = False
 
 
-        # Extract zips
-        for z in zips:
-            log.info(f"Extracting {z}...")
-            self.cur_activity['status'] = f"Extracting {z}"
+class Package(object):
+    # A package asset
+
+    name = None
+    download_dir = ""
+    install_dir = ""
+    size = 0
+
+    installed = False
+    downloaded = False
+    cleaned = False
+
+    download_count = 0
+
+    zf = None
+    
+    def __init__(
+        self,
+        name,
+        pkgtype,
+        download_dir = "."
+    ):
+        self.name = name
+        self.pkgtype = pkgtype
+        self.download_dir = download_dir
+        self.zf = Zip(os.path.join(
+            self.download_dir, f"{self.name}.zip"
+        ))
+        self.remote_urls = []
+
+    def __repr__(self):
+        return(f"Package: {str(self.__dict__)}")
+        #return(str(self.__dict__))
+
+
+    def download(self):
+        if self.downloaded:
+            log.info(f"Already downloaded.")
+            return
+
+        if not os.path.exists(self.download_dir):
+            os.makedirs(self.download_dir)
+
+        for url in self.remote_urls:
+            cur_activity['status'] = f"Downloading {url}"
+
+            filename = os.path.basename(url)
+            destpath = os.path.join(self.download_dir, filename)
+
+            #if os.path.isfile(self.zf.path):
+            if os.path.isfile(destpath):
+                log.info(f"{destpath} already exists.  Skip.")
+                #print(f"{self.zf.path} already exists.  Skip.")
+                #self.zf.assembled = True
+                #self.downloaded = True
+                #return
+                #continue
+            else:
+                log.info(f"Download {url}")
+                self.dl_start_time = time.time()
+                self.dl_url = url
+                urlcleanup()
+                local_file, headers = urlretrieve(
+                    url,
+                    destpath,
+                    self._show_progress
+                )
                 
-            with zipfile.ZipFile(z) as zf:
-                zf_dir = os.path.dirname(zf.namelist()[0])
-                if os.path.exists(os.path.join(self.extract_dir, zf_dir)):
-                    log.info(f"Dir already exists.  Clean first")
-                    shutil.rmtree(os.path.join(self.extract_dir, zf_dir))
-                zf.extractall(self.extract_dir)
+                cur_activity['status'] = f"DONE downloading {url}"
+                log.debug("  DONE!")
+                self.dl_start_time = None 
+                self.dl_url = None
+                urlcleanup()
 
+            if destpath.endswith('sha256'):
+                self.zf.hashfile = destpath
+            else:
+            #elif not self.zf.assembled:
+                self.zf.files.append(destpath)
 
-        # Cleanup
-        for z in zips:
-            if os.path.exists(z) and not self.noclean:
-                log.info(f"Cleaning up parts for {z}")
-                os.remove(z)
-            hashfile = f"{z}.sha256"
-            if os.path.exists(hashfile) and not self.noclean:
-                log.info(f"Cleaning up hashfile for {hashfile}")
-                os.remove(hashfile)
+        self.downloaded = True
+        self.zf.assemble()
 
-        ###########################################333
-        # Arrange paths
-        #
-        orthodirs_extracted = glob.glob(
-            os.path.join(self.extract_dir, f"z_{self.region_id}_*")
-        )
-        self.ortho_dirs = orthodirs_extracted
+    def _show_progress(self, block_num, block_size, total_size):
+        total_fetched = block_num * block_size
+        pcnt_done = round(total_fetched / total_size *100,2)
+        elapsed = time.time() - self.dl_start_time
+        if not elapsed:
+            return
+        MBps = (total_fetched/1048576) / elapsed
+        cur_activity['pcnt_done'] = pcnt_done
+        cur_activity['MBps'] = MBps
+        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
+        cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
 
+    def check(self):
+        log.info(f"Checking {self.name}")
+        if not self.zf.check():
+            log.warning(f"{self.name} is bad.  Cleaning up.")
+            self.cleanup()
+            self.downloaded = False
+            #self.zf.assembled = False
+            return False
+        log.info(f"{self.name} is good.")
+        return True
 
-        if os.path.exists(self.dest_ortho_dir):
-            print(f"{self.dest_ortho_dir} already exists.  Cleaning up first.")
-            shutil.rmtree(self.dest_ortho_dir)
+    def install(self):
+        if self.installed:
+            return
 
-        for d in orthodirs_extracted:
-            log.info(f"Setting up directories ... {d}")
-            self.cur_activity['status'] = f"Setting up directories ... {d}"
-            # Combine into one dir
+        #self.uninstall()
+
+        self.zf.extract(self.install_dir)
+
+        if self.pkgtype == 'z':
+            dirs = [os.path.join(self.install_dir, self.name)]
+            #dirs = glob.glob(
+            #    os.path.join(self.install_dir, "z_*")
+            #)
+
+        elif self.pkgtype == 'y':
+            dirs = glob.glob(
+                os.path.join(self.install_dir, "y_*", "yOrtho4XP_Overlays")
+            )
+
+        for d in dirs:
+            # Setup files
             shutil.copytree(
                 d,
-                self.dest_ortho_dir, 
+                os.path.join(self.install_dir),
                 dirs_exist_ok=True
             )
             shutil.rmtree(d)
 
+        self.installed = True
 
-        if overlay_paths:
-            # Setup overlays
-            shutil.copytree(
-                os.path.join(self.extract_dir, f"y_{self.region_id}", "yOrtho4XP_Overlays"),
-                os.path.join(self.extract_dir, "yAutoOrtho_Overlays"),
-                dirs_exist_ok=True
+    def uninstall(self):
+        #print(f"Install dir {self.install_dir}")
+        if os.path.exists(self.install_dir):
+            log.info(f"Dir exists.  Uninstalling {self.install_dir}")
+            shutil.rmtree(self.install_dir)
+        self.installed = False
+
+    def cleanup(self):
+        self.zf.clean()
+        self.cleaned = True
+        self.downloaded = False
+
+
+class Release(object):
+
+    # A release of orthos
+
+    download_dir = ""
+    install_dir = ""
+    totalsize = 0
+    ver = "0.0.0"
+    url = ""
+    
+    install_name = ""
+
+    installed = False
+    downloaded = False
+    cleaned = False
+    parsed = False
+    legacy = False
+
+    download_count = 0
+    info_ver = "v2"
+
+
+    def __init__(
+        self,
+        name,
+        install_dir = "Custom Scenery",
+        release_dict = None,
+        url = "",
+        download_dir = "downloads",
+    ):
+        self.name = name
+        self.install_dir = install_dir
+        self.download_dir = download_dir
+        self.url = url
+        self.release_dict = release_dict if release_dict else {}
+        self.packages = {}
+        self.info_path = os.path.join(self.install_dir, "z_autoortho", f"{self.name}_info.json")
+        self.ortho_dirs = []
+        self.info_ver = "v2"
+
+        #if os.path.exists(self.info_path):
+        #    self.load(self.info_path)
+
+
+    def __repr__(self):
+        return(f"Release({self.ver}, {self.info_ver}, {self.url})")
+        #return(f"Release({self.ver}, {self.install_dir}, {self.download_dir}, {self.url})")
+
+
+    def load(self, info_path):
+        log.info(f"Loading local info from {info_path}")
+        with open(info_path) as h:
+            info = json.loads(h.read())
+
+        # Set attrs from info json
+        for k,v in info.items():
+            setattr(self, k, v)
+
+        self.installed = True
+        self.downloaded = True
+        self.cleaned = True
+
+        detected_info_ver = info.get('info_ver')
+        if self.ortho_dirs and detected_info_ver is None:
+            # We have ortho_dirs but no detected info_ver.  This is v1
+            log.info(f"Legacy release detected for {self.name}")
+            self.info_ver = "v1"
+            self.ver = "0.0.0"
+            #self.downloaded = False
+            #self.installed = False
+            #self.cleaned = False
+            self.legacy = True
+        elif detected_info_ver:
+            self.info_ver = detected_info_ver
+
+    def save(self):
+        log.info(f"Saving info to {self.info_path}")
+        log.debug(self.__dict__.keys())
+        info_dict = {k:v for k,v in self.__dict__.items() if k not in [
+            'release_dict',
+            'packages'
+        ]}
+
+        pprint.pprint(info_dict)
+        with open(self.info_path, "w") as h:
+            h.write(json.dumps(info_dict, indent=4, default=vars))
+
+    def parse(self):
+        log.info(f"Begin parsing info_dict for {self.name}")
+
+        if self.parsed:
+            return
+
+        info = {}
+        packages = []
+        download_count = []
+
+        #self.version = self.release_dict.get('tag_name')
+        self.prerelease = self.release_dict.get('prerelease')
+        
+        #if self.info_ver == 'v1':
+        #    log.info(f"Legacy release detected for {self.name}")
+
+        # Find info json
+        for a in self.release_dict.get('assets', []):
+            asset_name = a.get('name')
+            if asset_name.endswith("_info.json"):
+                resp = do_url(a.get('browser_download_url'))
+                info = json.loads(resp)
+                #log.info(info)
+
+        # Set attrs from info json
+        for k,v in info.items():
+            setattr(self, k, v)
+       
+
+        # Find assets
+        for a in self.release_dict.get('assets', []):
+            asset_name = a.get('name')
+            self.totalsize += int(a.get('size'))
+
+            m = re.match(
+                "(?P<pkgtype>[yz])_(?P<pkgname>.*)\.zip\.?(?P<pkgsub>\d*)",
+                asset_name
             )
-            shutil.rmtree(
-                os.path.join(self.extract_dir, f"y_{self.region_id}")
+            if not m:
+                log.debug(f"Unknown file {asset_name}")
+                continue
+
+            asset_info = m.groupdict()
+           
+            pkgtype = asset_info.get('pkgtype')    
+            pkgsub = asset_info.get('pkgsub')
+            pkgname = asset_info.get('pkgname')
+            
+            p = self.packages.setdefault(
+                f"{pkgtype}_{pkgname}",
+                Package(
+                    f"{pkgtype}_{pkgname}",
+                    pkgtype,
+                    download_dir=self.download_dir
+                )
             )
+            
+            if pkgtype == "y":
+                # Overlay package
+                #p.install_dir = f"{self.install_dir}/y_ao_{self.id}"
+                p.install_dir = f"{self.install_dir}/yAutoOrtho_Overlays"
+            elif pkgtype == "z":
+                # Ortho package
+                p.install_dir = f"{self.install_dir}/z_autoortho/scenery/z_ao_{self.id}"
 
 
-        log.info("Done with extract")
-        self.cur_activity['status'] = f"Done extracting {self.region_id}"
+            p.remote_urls.append(a.get('browser_download_url'))
+            download_count.append(a.get('download_count'))
 
-        self.local_version = self.latest_version
-        self.extracted = True
-        self.pending_update = False
-        self.save_metadata()
-        self.check_local()
+        if download_count:
+            self.download_count = max(download_count)
+        self.parsed = True
+
+    
+    def download(self):
+        if self.downloaded:
+            log.info(f"Already downloaded {self.name}")
+            return True
+    
+        self.cleaned = False
+        self.parse()
+
+        for k,v in self.packages.items():
+            log.info(f"Downloading {k}")
+            #if v.check():
+            #    log.info(f"Local file exists and is valid.")
+            #    continue 
+
+            v.download()
+            if not v.check():
+                log.warning(f"{k} failed checks.  Retrying ...")
+                v.download()
+                if not v.check():
+                    log.error(f"{k} failed again.  Exiting!")
+                    return False
+
+        self.downloaded = True
+        return True
+
+    def install(self):
+        if self.installed:
+            log.info(f"Already installed {self.name}")
+            return True
+        
+        print(f"Check for and cleanup existing installs..")
+        for k,v in self.packages.items():
+            if v.pkgtype == "z":
+                log.debug("Must cleanup ortho type package.")
+                v.uninstall()
+
+        self.parse()
+        for k,v in self.packages.items():
+            log.info(f"Installing {k}")
+            if not v.check():
+                log.warning(f"{k} fails checks!")
+                self.downloaded = False
+                return False
+                #continue
+            v.install()
+        self.save()
+        self.installed = True
+        self.cleanup()
+        return True
+
+    def cleanup(self):
+        if self.cleaned:
+            return
+
+        for k,v in self.packages.items():
+            print(f"Cleaning {k}")
+            v.cleanup()
+        self.cleaned = True
+
+
+    def uninstall(self):
+        #self.cleanup()
+        #log.info(f"Removing {self.install_dir}")
+        #shutil.rmtree(self.install_dir)
+        for o in self.ortho_dirs:
+            if os.path.exists(o):
+                log.info(f"Removing {o}")
+                shutil.rmtree(o)
+
+        legacy_dirs = [
+            os.path.join(self.install_dir, "z_autoortho", "textures"),
+            os.path.join(self.install_dir, "z_autoortho", "_textures")
+        ]
+        for l in legacy_dirs:
+            if os.path.exists(l):
+                shutil.rmtree(l)
+
+        # for k,v in self.packages.items():
+        #     log.debug(v)
+        #     log.info(f"Uninstall package: {k}")
+        #     v.uninstall()
+
+        self.installed = False
+        #self.downloaded = False
+
+
+class Region(object):
+
+    # A Particular region of orthos and/or overlays
+
+    #local_version = '0.0.0'
+    local_rel = None
+
+    def __init__(self, region_id, install_dir=".", download_dir="."):
+        self.region_id = region_id
+        self.releases = {}
+        self.install_dir = install_dir
+        self.download_dir = download_dir
+        self.find_existing()
+
+
+    def __repr__(self):
+        return(f"Region({self.region_id})")
+
+    def find_existing(self):
+        log.info(f"Checking installed releases for {self.region_id}")
+        local_rel_info = glob.glob(os.path.join(
+            self.install_dir, "z_autoortho", f"{self.region_id}_info.json"
+        ))
+        
+        for rel in [ os.path.basename(rel) for rel in local_rel_info ]:
+            rel_name = re.match('(.*)_info.json', rel).groups()[0]
+            log.info(f"Found local info file for {rel_name}")
+
+            release = Release(
+                name = rel_name,
+                install_dir = self.install_dir,
+                download_dir = self.download_dir,
+            )
+            # Load local info from _info.json
+            release.load(release.info_path)
+
+            if release.legacy:
+                log.info(f"{rel} is a legacy release.")
+                
+            if release.ver not in self.releases:
+                self.releases[release.ver] = release
+
+            self.local_rel = release
+            #self.local_version = release.ver
+            #self.regions[release.id] = region
+
+
+    def get_latest_release(self):
+        releases = sorted(
+            self.releases.values(), 
+            key=lambda x: version.parse(x.ver),
+            reverse=True
+        )
+        log.debug(f"SORTED: {releases}")
+        return releases[0]
+
+    def install_release(self, ver=None):
+
+        if ver is None:
+            rel = self.get_latest_release()
+        else:
+            rel = self.releases[ver]
+
+        if self.local_rel and self.local_rel.ver == rel.ver:
+            log.info(f"Requested version: {rel.ver} is already installed.")
+            return
+        elif self.local_rel:
+            log.info("Local release detected.  Uninstalling...")
+            self.local_rel.uninstall()
+            self.releases.pop(self.local_rel.ver)
+            self.local_rel = None
+
+        if not rel.download():
+            log.error(f"Failed to download release {rel}")
+            return False
+
+        if not rel.install():
+            log.error(f"Failed to install release {rel}")
+            return False
 
         return True
 
 
-    def save_metadata(self):
-        # Save metadata
-        self.info_dict['ver'] = self.latest_version
-        self.info_dict['ortho_dirs'] = self.ortho_dirs
-        with open(os.path.join(
-                self.extract_dir,
-                "z_autoortho",
-                f"{self.region_id}_info.json"
-            ), 'w') as h:
-                h.write(json.dumps(self.info_dict))
-
-
-    def cleanup(self):
-        self.cur_activity['status'] = f"Cleaning up downloaded files for {self.region_id}"
-        for f in os.listdir(self.download_dir):
-            os.remove(os.path.join(self.download_dir, f))
-        self.cur_activity['status'] = f"Done with cleanup for {self.region_id}"
-
-
-class Downloader(object):
+class OrthoManager(object):
     url = "https://api.github.com/repos/kubilus1/autoortho-scenery/releases"
-    region_list = REGION_LIST 
     info_cache = os.path.join(os.path.expanduser("~"), ".autoortho-data", ".release_info")
-    
 
-    def __init__(self, extract_dir, download_dir=None, noclean=False):
+    def __init__(self, extract_dir=None, download_dir=None, noclean=False):
         if not download_dir:
-            download_dir = os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")
-            #from aoconfig import CFG
-            #download_dir = CFG.paths.download_dir
+            download_dir = CFG.paths.download_dir
+            #download_dir = os.path.join(os.path.expanduser("~"), ".autoortho-data", "downloads")
+        if not extract_dir:
+            extract_dir = CFG.paths.scenery_path
 
         self.download_dir = download_dir
         self.extract_dir = extract_dir
         self.noclean = noclean
         self.regions = {}
         
+        overlay_list = []
+        for r in REGION_LIST:
+            log.debug(r)
+            overlay_list.append(f"{r}_overlay")
+
+        self.region_list = REGION_LIST + overlay_list
 
         if TESTMODE:
             self.region_list.extend([f"test_{r}" for r in self.region_list])
             self.region_list.append('test')
 
+        log.info(f"Will look for {self.region_list}")
+
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
 
-    def find_releases(self):
-        log.info("Looking for regions ...")
-        
+
+    def _get_release_data(self):
         if os.path.exists(self.info_cache):
             mtime = os.path.getmtime(self.info_cache)
             last_updated_date = datetime.fromtimestamp(mtime)
@@ -515,47 +678,57 @@ class Downloader(object):
             with open(self.info_cache, "rb") as h:
                 resp = h.read()
             data = json.loads(resp)
+        
+        return data
 
+    def find_regions(self):
+        log.info(f"Looking for available regions ...")
+        
+        rel_data = self._get_release_data()
 
         log.info(f"Using scenery dir {self.extract_dir}")
-        for item in data:
-            v = item.get('name')
+        for item in rel_data:
+            rel_ver = item.get('name')
             rel_id = item.get('id')
+
+            #log.debug(f"VER: {rel_ver}, ID: {rel_id}")
             found_regions = [ 
                 re.match('(.*)_info.json', x.get('name')).groups()[0] for x in item.get('assets') if x.get('name','').endswith('_info.json') 
             ]
-          
-            for r in [f for f in found_regions if f not in self.regions and f in self.region_list]:
-                log.info(f"Found region {r} version {v}")
+            if not found_regions:
+                continue
 
-                #if r not in self.regions:
-                    #log.info(f"Create region object for {r}")
+            region_name = found_regions[0]
 
-                if TESTMODE:
-                    r = r.removeprefix('test_')
+            prerelease = item.get('prerelease')
+            if prerelease and not TESTMODE:
+                log.debug(f"{region_name}:{rel_ver} is pre-release. skipping.")
+                continue
 
-                region = OrthoRegion(r, rel_id, self.extract_dir,
-                        self.download_dir, item, noclean=self.noclean)
-                self.regions[r] = region
+            if region_name not in self.regions:
+                region = Region(
+                    region_name,
+                    install_dir = self.extract_dir,
+                    download_dir = self.download_dir
+                )
+                self.regions[region_name] = region
+            else:
+                region = self.regions.get(region_name)
 
-            if len(self.regions) == len(self.region_list):
-                break
-
-
-    def download_region(self, region_id):
-        log.info(f"Download {region_id}")
-        r = self.regions.get(region_id)
-        r.download_dir = self.download_dir
-        r.extract_dir = self.extract_dir
-        r.download()
-
-
-    def extract(self, region_id):
-        log.info(f"Extracting {region_id}")
-        r = self.regions.get(region_id)
-        r.download_dir = self.download_dir
-        r.extract_dir = self.extract_dir
-        r.extract()
+            if rel_ver not in region.releases:
+                log.debug(f"Adding new release {rel_ver} to region {region_name}")
+                release = Release(
+                    name = region_name,
+                    install_dir = self.extract_dir,
+                    download_dir = self.download_dir,
+                    url = f"{self.url}/{rel_id}",
+                    release_dict = item
+                )
+                release.ver = rel_ver
+                #release.parse()
+                region.releases[rel_ver] = release
+                #print(region.releases)
+            #log.debug(region.releases)
 
 
 if __name__ == "__main__":
@@ -568,8 +741,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--scenerydir",
         "-c",
-        default = "Custom Scenery",
+        #default = "Custom Scenery",
+        default = CFG.paths.scenery_path,
         help = "Path to X-Plane 'Custom Scenery' directory or other install path"
+    )
+    parser.add_argument(
+        "--downloaddir",
+        "-d",
+        default = CFG.paths.download_dir,
+        help = "Scenery temp download dir"
     )
     parser.add_argument(
         "--noclean",
@@ -579,7 +759,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--downloadonly",
-        "-d",
+        "-o",
         action = "store_true",
         help = "Download only, don't extract files."
     )
@@ -600,21 +780,36 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    d = Downloader(os.path.expanduser(args.scenerydir), noclean=args.noclean)
+    d = OrthoManager(
+            os.path.expanduser(args.scenerydir),
+            os.path.expanduser(args.downloaddir),
+            noclean=args.noclean
+    )
 
     if args.command == 'fetch':
-        d.find_releases()
+        d.find_regions()
         region = args.region
-        d.download_region(region)
+        r = d.regions.get(region)
+        rel = r.get_latest_release()
+        rel.download()
+        #d.download_region(region)
         if not args.downloadonly:
-            d.extract(region)
+            #d.install(region)
+            r.install_release()
 
     elif args.command == 'list':
-        d.find_releases()
+        d.find_regions()
         for r in d.regions.values():
-            log.info(f"{r} current version {r.local_version}")
-            if r.pending_update:
-                log.info(f"    Available update ver: {r.latest_version}, size: {r.size/1048576:.2f} MB, downloads: {r.download_count}")
+            rel = r.get_latest_release()
+            rel.parse()
+            localinfo = ""
+            if r.local_rel:
+                localinfo = f" ... installed {r.local_rel.name} version: {r.local_rel.ver}"
+            log.info(f"{r.region_id} latest version: {rel.name} {rel.ver} {localinfo}")
+            #print(f"{r} current version {r.local_version}")
+            #log.info(f"{r} current version {r.local_version}")
+            #if r.pending_update:
+            #    log.info(f"    Available update ver: {r.latest_version}, size: {r.size/1048576:.2f} MB, downloads: {r.download_count}")
     else:
         parser.print_help()
         sys.exit(1)

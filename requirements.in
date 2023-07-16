@@ -5,3 +5,4 @@ pysimplegui
 Flask
 flask-socketio
 eventlet
+packaging
