@@ -224,7 +224,10 @@ class Package(object):
     def _show_progress(self, block_num, block_size, total_size):
         total_fetched = block_num * block_size
         pcnt_done = round(total_fetched / total_size *100,2)
-        MBps = (total_fetched/1048576) / (time.time() - self.dl_start_time)
+        elapsed = time.time() - self.dl_start_time
+        if not elapsed:
+            return
+        MBps = (total_fetched/1048576) / elapsed
         cur_activity['pcnt_done'] = pcnt_done
         cur_activity['MBps'] = MBps
         print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
