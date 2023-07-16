@@ -45,6 +45,8 @@ jobs:
 
     - name: Install makensis
       uses: joncloud/makensis-action@v4
+      with:
+        arguments: "/V3"
 
     - name: Setup 
       run: |
