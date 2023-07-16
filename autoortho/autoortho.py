@@ -8,11 +8,11 @@ import platform
 import argparse
 import threading
 
-import aoconfig
-import aostats
-import winsetup
+from . import aoconfig
+from . import aostats
+from . import winsetup
 
-import flighttrack
+from . import flighttrack
 #import multiprocessing
 
 import logging
@@ -40,7 +40,7 @@ def run(root, mountpoint, threading=True):
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_dokan_mount(mountpoint) 
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-            import autoortho_fuse
+            from . import autoortho_fuse
             autoortho_fuse.run(
                     autoortho_fuse.AutoOrtho(root), 
                     mountpoint, 
@@ -52,7 +52,7 @@ def run(root, mountpoint, threading=True):
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_winfsp_mount(mountpoint) 
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-            import autoortho_fuse
+            from . import autoortho_fuse
             autoortho_fuse.run(
                     autoortho_fuse.AutoOrtho(root), 
                     mountpoint, 
@@ -70,7 +70,7 @@ def run(root, mountpoint, threading=True):
             sys.exit(1)
 
         log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-        import autoortho_fuse
+        from . import autoortho_fuse
         autoortho_fuse.run(
                 autoortho_fuse.AutoOrtho(root),
                 mountpoint, 
@@ -134,7 +134,7 @@ def main():
     #if CFG.cache.clean_on_start:
     #    aoconfig.clean_cache(CFG.paths.cache_dir, int(float(CFG.cache.file_cache_size)))
 
-    import flighttrack
+    from . import flighttrack
     ftrack = threading.Thread(
         target=flighttrack.run,
         daemon=True

@@ -4,11 +4,11 @@ import os
 import ctypes
 import platform
 
-import pydds
+from . import pydds
 
 import pytest
 #from PIL import Image
-from aoimage import AoImage as Image
+from .aoimage import AoImage as Image
 #TESTPNG=os.path.join('testfiles', 'test_tile.png')
 TESTJPG=os.path.join('testfiles', 'test_tile2.jpg')
 

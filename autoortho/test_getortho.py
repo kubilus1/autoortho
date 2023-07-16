@@ -10,7 +10,7 @@ import shutil
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-import getortho
+from . import getortho
 
 #getortho.ISPC = False
 

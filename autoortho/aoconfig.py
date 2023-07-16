@@ -12,15 +12,18 @@ import subprocess
 import configparser
 import platform
 
+import importlib.resources
+import inspect
+
 import logging
 log = logging.getLogger(__name__)
 
 import PySimpleGUI as sg
 
-import downloader
+from . import downloader
 
-CUR_PATH = os.path.dirname(os.path.realpath(__file__))
-
+#CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+CUR_PATH = str(importlib.resources.files(__package__))
 
 class SectionParser:
     true = ['true','1', 'yes', 'on']
@@ -71,7 +74,9 @@ class ConfigUI(object):
             sg.theme('DarkAmber')
 
         self.scenery_q = queue.Queue()
-
+        
+        CUR_PATH = str(importlib.resources.files(__package__))
+        #log.info(CUR_PATH)
         if platform.system() == 'Windows':
             self.icon_path =os.path.join(CUR_PATH, 'imgs', 'ao-icon.ico')
         else:

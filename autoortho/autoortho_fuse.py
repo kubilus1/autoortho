@@ -17,20 +17,20 @@ import platform
 import threading
 import itertools
 
-import flighttrack
+from . import flighttrack
 
 from functools import wraps, lru_cache
 
-from aoconfig import CFG
+from .aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
 #from fuse import FUSE, FuseOSError, Operations, fuse_get_context
 from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context, fuse_exit, _libfuse
 
-import getortho
+from . import getortho
 
-from xp_udp import DecodePacket, RequestDataRefs
+from .xp_udp import DecodePacket, RequestDataRefs
 import socket
 
 #from memory_profiler import profile
@@ -305,9 +305,6 @@ class AutoOrtho(Operations):
         full_path = self._full_path(path)
         log.debug(f"OPEN: FULL PATH: {full_path}")
 
-        dsf_m = self.dsf_re.match(path)
-        if dsf_m:
-            log.info(f"OPEN: Detected DSF open: {path}")
         #dsf_m = self.dsf_re.match(path)
         #ter_m = self.ter_re.match(path)
         dds_m = self.dds_re.match(path)
@@ -316,8 +313,18 @@ class AutoOrtho(Operations):
             row = int(row)
             col = int(col)
             zoom = int(zoom)
-            t = self.tc._open_tile(row, col, maptype, zoom) 
-        elif platform.system() == 'Windows':
+            t = self.tc._open_tile(row, col, maptype, zoom)
+            return 0
+
+
+        dsf_m = self.dsf_re.match(path)
+        if dsf_m:
+            log.info(f"OPEN: Detected DSF open: {path}")
+
+        if not os.path.exists(full_path):
+            log.warning(f"Requested path {full_path} not found!")
+
+        if platform.system() == 'Windows':
             h = os.open(full_path, flags|os.O_BINARY)
         else:
             h = os.open(full_path, flags)

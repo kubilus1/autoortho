@@ -53,7 +53,7 @@ jobs:
 
     - name: Build
       run: |
-        make autoortho_win.exe
+        make exe
         make autoortho_win.zip ZIP="7z a"
 
     - name: Save artifact
@@ -61,5 +61,5 @@ jobs:
       with:
         name: winbin
         path: |
-          autoortho_win.exe
+          AutoOrtho_*.exe
           autoortho_win.zip

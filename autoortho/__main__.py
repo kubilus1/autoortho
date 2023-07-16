@@ -4,7 +4,7 @@ import os
 import sys
 import logging
 import logging.handlers
-from aoconfig import CFG
+from .aoconfig import CFG
 
 def setuplogs():
     log_dir = os.path.join(os.path.expanduser("~"), ".autoortho-data", "logs")
@@ -25,7 +25,7 @@ def setuplogs():
             ]
     )
 
-import autoortho
+from . import autoortho
 
 if __name__ == "__main__":
     setuplogs()
