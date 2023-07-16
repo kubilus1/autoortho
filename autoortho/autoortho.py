@@ -11,6 +11,7 @@ import threading
 import aoconfig
 import aostats
 import winsetup
+import config_ui
 
 import flighttrack
 #import multiprocessing
@@ -112,7 +113,7 @@ def main():
     args = parser.parse_args()
 
     CFG = aoconfig.CFG
-    cfgui = aoconfig.ConfigUI(CFG)
+    cfgui = config_ui.ConfigUI(CFG)
     if (not CFG.ready) or args.configure or (CFG.general.showconfig and not args.headless):
         cfgui.setup(headless = args.headless)
 
