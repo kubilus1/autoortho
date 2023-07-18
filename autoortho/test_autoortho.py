@@ -14,7 +14,7 @@ import random
 import string
 import tempfile
 
-from fuse import fuse_exit
+from refuse.high import fuse_exit
 
 import autoortho_fuse
 import aostats
