@@ -170,7 +170,8 @@ class AutoOrtho(Operations):
         elif path.endswith(".poison"):
             log.info("Poison pill.  Exiting!")
             fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
-            threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
+            #threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
+            do_fuse_exit(fuse_ptr)
             
             attrs = {
                 'st_atime': 1649857250.382081, 
@@ -442,7 +443,7 @@ class AutoOrtho(Operations):
 
 def do_fuse_exit(fuse_ptr=None):
     print("fuse_exit called")
-    time.sleep(1)
+    #time.sleep(1)
     if not fuse_ptr:
         fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
     print(fuse_ptr)
