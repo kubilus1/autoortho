@@ -15,12 +15,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Ref
-      run: |
-        echo "${{ env.VERNAME }}"
-        #echo "${{ toJSON(github) }}"
-        #echo "${{ github.ref_name }}"
-
 
     - name: Setup 
       run: |
