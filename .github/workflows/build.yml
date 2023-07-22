@@ -9,13 +9,17 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
 
+    env:
+      VERNAME: ${{ github.head_ref || github.ref_name }}
+
     steps:
     - uses: actions/checkout@v3
 
     - name: Ref
       run: |
-        echo "${{ toJSON(github) }}"
-        echo "${{ github.ref_name }}"
+        echo "${{ env.VERNAME }}"
+        #echo "${{ toJSON(github) }}"
+        #echo "${{ github.ref_name }}"
 
 
     - name: Setup 
@@ -25,8 +29,8 @@ jobs:
 
     - name: Build
       run: |
-        echo "${{ github.ref_name }}" > .version
-        make lin_bin VERSION="${{ github.ref_name }}"
+        echo "${{ env.VERNAME }}" > .version
+        make lin_bin VERSION="${{ env.VERNAME }}"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
