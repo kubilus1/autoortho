@@ -20,6 +20,7 @@ bin:
 		--linux-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=tk-inter \
 		--enable-plugin=eventlet \
+		--include-data-file=./autoortho/.version*=. \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/linux/*.so=lib/linux/ \
 		--include-data-file=./autoortho/aoimage/*.so=aoimage/ \
@@ -35,6 +36,7 @@ _autoortho_win.exe:
 		--enable-plugin=eventlet \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
+		--include-data-file=./autoortho/.version*=. \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
@@ -50,6 +52,7 @@ __main__.dist:
 		--enable-plugin=eventlet \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
+		--include-data-file=./autoortho/.version*=. \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
@@ -75,4 +78,7 @@ testperf:
 	pip-compile $<
 
 clean:
-	rm -rf build
+	-rm -rf build
+	-rm -rf __main__.dist
+	-rm -rf __main__.build
+	

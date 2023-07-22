@@ -6,8 +6,8 @@ __version__ = "unknown"
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
-ver_file = os.path.join(CUR_PATH, '..', '.version')
-head_file = os.path.join(CUR_PATH, '..', '.git', 'HEAD')
+ver_file = os.path.join(CUR_PATH, '.version')
+head_file = os.path.join(os.curdir, '.git', 'HEAD')
 
 if os.path.exists(ver_file):
     with open(ver_file) as h:
