@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 import PySimpleGUI as sg
 
 import downloader
+from version import __version__
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -110,6 +111,7 @@ class ConfigUI(object):
                 #),
                 sg.Image(os.path.join(CUR_PATH, 'imgs', 'banner1.png'), subsample=2),
             ],
+            #[sg.Text(f'ver: {__version__}')], 
             #[sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=3)],
             [sg.HorizontalSeparator(pad=5)],
             [
@@ -189,7 +191,7 @@ class ConfigUI(object):
                 pending_update = True
 
             if pending_update:
-                scenery.append([sg.Text(f"    Available update ver: {latest.ver}, size: {latest.totalsize/1048576:.2f} MB, downloads: {latest.downloaded}", key=f"updates-{r.region_id}"), sg.Button('Install', key=f"scenery-{r.region_id}")])
+                scenery.append([sg.Text(f"    Available update ver: {latest.ver}, size: {latest.totalsize/1048576:.2f} MB, downloads: {latest.download_count}", key=f"updates-{r.region_id}"), sg.Button('Install', key=f"scenery-{r.region_id}")])
             else:
                 scenery.append([sg.Text(f"    {r.region_id} is up to date!")])
             scenery.append([sg.HorizontalSeparator()])
@@ -217,7 +219,7 @@ class ConfigUI(object):
         ]
 
         font = ("Helventica", 14)
-        self.window = sg.Window('AutoOrtho Setup', layout, font=font,
+        self.window = sg.Window(f'AutoOrtho Setup ver {__version__}', layout, font=font,
                 finalize=True, icon=self.icon_path)
 
 

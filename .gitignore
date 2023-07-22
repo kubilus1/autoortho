@@ -13,3 +13,4 @@ cache/
 downloads/
 release/
 *.bin
+.version

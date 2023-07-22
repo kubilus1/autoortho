@@ -29,7 +29,6 @@ if not log:
 print(log)
 
 TESTMODE=os.environ.get('AO_TESTMODE', False)
-REGION_LIST = ['na', 'aus_pac', 'eur', 'sa', 'afr', 'asi']
 
 
 def do_url(url, headers={}, ):
@@ -634,17 +633,6 @@ class OrthoManager(object):
         self.regions = {}
         
         overlay_list = []
-        for r in REGION_LIST:
-            log.debug(r)
-            overlay_list.append(f"{r}_overlay")
-
-        self.region_list = REGION_LIST + overlay_list
-
-        if TESTMODE:
-            self.region_list.extend([f"test_{r}" for r in self.region_list])
-            self.region_list.append('test')
-
-        log.info(f"Will look for {self.region_list}")
 
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
@@ -764,17 +752,13 @@ if __name__ == "__main__":
         help = "Download only, don't extract files."
     )
 
-
     parser_list = subparser.add_parser('list')
     parser_fetch = subparser.add_parser('fetch')
-
-    if TESTMODE:
-        REGION_LIST.append('test')
 
     parser_fetch.add_argument(
         "region",
         nargs = "?",
-        choices = REGION_LIST, 
+        #choices = REGION_LIST, 
         help = "Which region to download and setup."
     )
 

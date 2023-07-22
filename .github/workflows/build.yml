@@ -19,13 +19,14 @@ jobs:
 
     - name: Build
       run: |
-       make autoortho_lin.bin 
+        echo "${{ env.GITHUB_REF_NAME }} > .version"
+        make lin_bin VERSION=${{ env.GITHUB_REF_NAME }}
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: linbin
-        path: autoortho_lin.bin
+        path: autoortho_lin_*.bin
 
 
   build-windows:
@@ -53,8 +54,9 @@ jobs:
 
     - name: Build
       run: |
-        make exe
-        make autoortho_win.zip ZIP="7z a"
+        echo "${{ env.GITHUB_REF_NAME }} > .version"
+        make win_exe VERSION=${{ env.GITHUB_REF_NAME }}
+        make win_zip ZIP="7z a" VERSION=${{ env.GITHUB_REF_NAME }}
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
@@ -62,4 +64,4 @@ jobs:
         name: winbin
         path: |
           AutoOrtho_*.exe
-          autoortho_win.zip
+          autoortho_win_*.zip

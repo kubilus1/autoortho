@@ -16,6 +16,8 @@ import config_ui
 import flighttrack
 #import multiprocessing
 
+from version import __version__
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -81,6 +83,7 @@ def run(root, mountpoint, threading=True):
 
 
 def main():
+    log.info(f"AutoOrtho version: {__version__}")
 
     parser = argparse.ArgumentParser(
         description="AutoOrtho: X-Plane scenery streamer"
@@ -180,7 +183,7 @@ def main():
                         scenery.get('mount'),
                         ".poison"
                     ))
-                    #time.sleep(0.5)
+                    time.sleep(0.5)
 
             for t in mount_threads:
                 t.join(5)
