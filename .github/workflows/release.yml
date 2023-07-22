@@ -17,9 +17,6 @@ jobs:
         sudo apt-get update && sudo apt-get install -y make ca-certificates
         sudo update-ca-certificates
 
-    - name: Set ver
-      run:
-
     - name: Build
       run: |
         echo "${{ env.GITHUB_REF_NAME }} > .version"
