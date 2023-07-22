@@ -19,8 +19,8 @@ jobs:
 
     - name: Build
       run: |
-        echo "$GITHUB_REF_NAME" > .version
-        make lin_bin VERSION="$GITHUB_REF_NAME"
+        echo "${{ github.ref_name }}" > .version
+        make lin_bin VERSION="${{ github.ref_name }}"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
