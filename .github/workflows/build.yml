@@ -19,8 +19,8 @@ jobs:
 
     - name: Build
       run: |
-        echo "${{ env.GITHUB_REF_NAME }} > .version"
-        make lin_bin VERSION=${{ env.GITHUB_REF_NAME }}
+        echo "$GITHUB_REF_NAME" > .version
+        make lin_bin VERSION="$GITHUB_REF_NAME"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
@@ -54,9 +54,9 @@ jobs:
 
     - name: Build
       run: |
-        echo "${{ env.GITHUB_REF_NAME }} > .version"
-        make win_exe VERSION=${{ env.GITHUB_REF_NAME }}
-        make win_zip ZIP="7z a" VERSION=${{ env.GITHUB_REF_NAME }}
+        echo "$GITHUB_REF_NAME" > .version
+        make win_exe VERSION="$GITHUB_REF_NAME"
+        make win_zip ZIP="7z a" VERSION="$GITHUB_REF_NAME"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
