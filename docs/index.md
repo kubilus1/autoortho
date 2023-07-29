@@ -7,9 +7,9 @@ Assumptions:
 * You have a reasonably fast CPU and broadband internet 
 * FUSE is installed and setup (Enable `user_allow_other` in /etc/fuse.conf, if not already the case.) 
 
-Steps:
+### Steps:
 
-1. Download the most recent packaged release [autoortho_lin.bin](https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_lin.bin)
+1. Download the most recent packaged release (autortho_lin_####.bin) [from here](https://github.com/kubilus1/autoortho/releases/latest)
 3. Make executable if needed `chmod +x autoortho_lin.bin` 
 4. Run the program `./autoortho_lin.bin`
 6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
@@ -26,12 +26,13 @@ Assumptions:
 * You have install X-Plane 11.50+
 * You have setup and configured [Dokan](https://github.com/dokan-dev/dokany/releases/latest)
 * * NOTE: As a backup you can try [WinFSP](https://github.com/winfsp/winfsp)
-    but Dokan is now recommended.
+    Dokan is now recommended, but some users on Windows 11 have better luck
+    with WinFSP for some reason.
 * You install all components, including scenery, on a local NTFS drive.
 
-Steps:
+### Zip File Steps:
 
-1. Download the most recent packaged release [autoortho_win.zip](https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_win.zip)
+1. Download the most recent packaged release (autoortho_win_####.zip) [from here](https://github.com/kubilus1/autoortho/releases/latest)
 2. Extract the downloaded directory.
 4. Run `autoortho_win.exe` from within the extracted dir.
 5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
@@ -39,6 +40,23 @@ Steps:
 7. Click 'Run' to run the program
 8. Configure your scenery_packs.ini file appropriately 
 9. Run X-Plane and choose a location for an ortho set you have downloaded
+
+### Experimental Installer Steps:
+
+Alternatively, there is now an installer that can be used.  This is
+experimental ATM:
+
+1. Download the most recent packaged release (AutoOrtho_####.exe) [from here](https://github.com/kubilus1/autoortho/releases/latest)
+2. Run the program.
+3. If there is a prior install you will be prompted to uninstall first.  Do
+   this.
+4. Run AutoOrtho from your system start menu.
+5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
+6. Download and setup an ortho set from the 'Scenery' tab.
+7. Click 'Run' to run the program
+8. Configure your scenery_packs.ini file appropriately 
+9. Run X-Plane and choose a location for an ortho set you have downloaded
+
 
 ---
 

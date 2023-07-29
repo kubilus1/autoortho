@@ -9,6 +9,9 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
 
+    env:
+      VERNAME: ${{ github.head_ref || github.ref_name }}
+
     steps:
     - uses: actions/checkout@v3
    
@@ -19,22 +22,26 @@ jobs:
 
     - name: Build
       run: |
-        make autoortho_lin.bin
+        echo "${{ env.GITHUB_REF_NAME }} > .version"
+        make lin_bin VERSION=${{ env.GITHUB_REF_NAME }}
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: linbin
-        path: autoortho_lin.bin
+        path: autoortho_lin_*.bin
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: autoortho_lin.bin
+        files: autoortho_lin_*.bin
 
 
   build-windows:
     runs-on: windows-latest
+
+    env:
+      VERNAME: ${{ github.head_ref || github.ref_name }}
 
     steps:
     - uses: actions/checkout@v3
@@ -53,21 +60,22 @@ jobs:
 
     - name: Build
       run: |
-        make autoortho_win.exe
-        make autoortho_win.zip ZIP="7z a"
+        echo "${{ env.GITHUB_REF_NAME }} > .version"
+        make win_exe VERSION=${{ env.GITHUB_REF_NAME }}
+        make win_zip ZIP="7z a" VERSION=${{ env.GITHUB_REF_NAME }}
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: winbin
         path: |
-          autoortho_win.exe
-          autoortho_win.zip
+          AutoOrtho_*.exe
+          autoortho_win_*.zip
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          autoortho_win.exe
-          autoortho_win.zip
+          AutoOrtho_*.exe
+          autoortho_win_*.zip
 

@@ -9,9 +9,13 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
 
+    env:
+      VERNAME: ${{ github.head_ref || github.ref_name }}
+
     steps:
     - uses: actions/checkout@v3
-   
+
+
     - name: Setup 
       run: |
         sudo apt-get update && sudo apt-get install -y make ca-certificates
@@ -19,17 +23,21 @@ jobs:
 
     - name: Build
       run: |
-       make autoortho_lin.bin 
+        echo "${{ env.VERNAME }}" > autoortho/.version
+        make lin_bin VERSION="${{ env.VERNAME }}"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: linbin
-        path: autoortho_lin.bin
+        path: autoortho_lin_*.bin
 
 
   build-windows:
     runs-on: windows-latest
+
+    env:
+      VERNAME: ${{ github.head_ref || github.ref_name }}
 
     steps:
     - uses: actions/checkout@v3
@@ -53,13 +61,14 @@ jobs:
 
     - name: Build
       run: |
-        make autoortho_win.exe
-        make autoortho_win.zip ZIP="7z a"
+        echo "${{ env.VERNAME }}" > autoortho/.version
+        make win_exe VERSION="${{ env.VERNAME }}"
+        make win_zip ZIP="7z a" VERSION="${{ env.VERNAME }}"
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
       with:
         name: winbin
         path: |
-          autoortho_win.exe
-          autoortho_win.zip
+          AutoOrtho_*.exe
+          autoortho_win_*.zip

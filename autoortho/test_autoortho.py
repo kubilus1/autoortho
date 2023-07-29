@@ -16,6 +16,7 @@ import tempfile
 
 from refuse.high import fuse_exit
 
+import autoortho
 import autoortho_fuse
 import aostats
 from aoconfig import CFG
@@ -26,68 +27,36 @@ log = logging.getLogger('log')
 #log.setLevel(logging.DEBUG)
 log.setLevel(logging.INFO)
 
-ao = None
+#@pytest.fixture(scope="module")
+#def mount(tmpdir_factory):
+@pytest.fixture
+def mount(tmpdir):
+    #tmpdir = tmpdir_factory.mktemp("mount")
 
-def runmount(mountdir, cachedir):
-    global ao
-    #ao = autoortho.AutoOrtho('./testfiles', cachedir)
-    #autoortho.run(ao, mountdir, True)
-
-    ao = autoortho_fuse.AutoOrtho('./testfiles', cachedir)
-    autoortho_fuse.run(ao, mountdir)
-    print("Exiting FUSE mount")
-    
-    #if os.path.isdir(ao.cache_dir):
-    #    print("Removing cache dir")
-    #    shutil.rmtree(ao.cache_dir)
-    #shutil.rmtree(ao.cache_dir)
-    #ao.cache_dir = os.path.join(mountdir, "cache")
-    #autoortho.FUSE(ao, mountdir, nothreads=True, foreground=True, allow_other=True, max_readahead=0)
-    
-    print("Shutting down mount fixture")
-    #if os.path.isdir(ao.cache_dir):
-    #    print("Removing cache dir")
-    #    shutil.rmtree(ao.cache_dir)
-
-@pytest.fixture(scope="module")
-def mount():
-
-    tmpname = ''.join(random.choice(string.ascii_lowercase) for x in range(8))
-
-    print(f"TMPNAME: {tmpname}")
-    
-    tmpdir = os.path.join(tempfile.gettempdir(), f"atest_{tmpname}")
-    os.makedirs(tmpdir)
-
-    #tmpdir = tempfile.mkdtemp()
     mountdir = str(os.path.join(tmpdir, 'mount'))
+    cachedir = str(os.path.join(tmpdir, 'cache'))
+    rootdir = "./testfiles"
 
-    if platform.system() != "Windows":
-        os.makedirs(mountdir)
-        print(os.listdir(mountdir))
-
-    #cachedir = os.path.join(tmpdir, 'cache')
-    cachedir = "./cache"
+    os.makedirs(mountdir)
+    os.makedirs(cachedir)
+    CFG.paths.cache_dir = cachedir
 
     try:
-        stats = aostats.AOStats()
-        stats.start()
-        t = threading.Thread(daemon=True, target=runmount, args=(mountdir, cachedir))
+        t = threading.Thread(
+            daemon = True,
+            target = autoortho.run,
+            args = (rootdir, mountdir)
+        )
+
         t.start()
         time.sleep(1)
-        #print(os.listdir(mountdir))
-        
+
         yield mountdir
 
     finally:
-        stats.stop()
-        #files = os.listdir(mountdir)
-        #print(files)
-        if platform.system() != "Windows":
-            subprocess.check_call(f"umount {mountdir}", shell=True)
-            subprocess.call(f"umount -f AutoOrtho", shell=True)
-        time.sleep(1)
-        shutil.rmtree(tmpdir)
+        autoortho.unmount(mountdir)
+        t.join(1)
+
 
 def _test_stuff():
     assert 1 == 1
@@ -140,7 +109,6 @@ def test_autoortho(mount):
     )
 
     assert rc == 0
-
 
 def test_read_header(mount):
     things = os.listdir(mount)

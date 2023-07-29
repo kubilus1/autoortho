@@ -16,6 +16,8 @@ import config_ui
 import flighttrack
 #import multiprocessing
 
+from version import __version__
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -79,9 +81,20 @@ def run(root, mountpoint, threading=True):
                 nothreads
         )
 
+def unmount(mountpoint):
+    mounted = True
+    while mounted:
+        print(f"Shutting down {mountpoint}")
+        print("Send poison pill ...")
+        mounted = os.path.isfile(os.path.join(
+            mountpoint,
+            ".poison"
+        ))
+        time.sleep(0.5)
 
 
 def main():
+    log.info(f"AutoOrtho version: {__version__}")
 
     parser = argparse.ArgumentParser(
         description="AutoOrtho: X-Plane scenery streamer"
@@ -173,16 +186,7 @@ def main():
             pass
         finally:
             for scenery in CFG.scenery_mounts:
-                mounted = True
-                while mounted:
-                    print(f"Shutting down {scenery.get('mount')}")
-                    print("Send poison pill ...")
-                    mounted = os.path.isfile(os.path.join(
-                        scenery.get('mount'),
-                        ".poison"
-                    ))
-                    #time.sleep(0.5)
-
+                unmount(scenery.get('mount'))
             for t in mount_threads:
                 t.join(5)
                 print(f"Thread {t.ident} exited.")
