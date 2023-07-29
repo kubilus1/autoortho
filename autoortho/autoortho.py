@@ -51,6 +51,7 @@ def run(root, mountpoint, threading=True):
             )
         elif systemtype == "winfsp-FUSE":
             log.info("Running in Windows FUSE mode with WinFSP.")
+            os.environ['FUSE_LIBRARY_PATH'] = libpath
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
             winsetup.setup_winfsp_mount(mountpoint) 
