@@ -131,7 +131,7 @@ def load_from_memory(mem, datalen=None):
         datalen = len(mem)
     new = AoImage()
     if not _aoi.aoimage_from_memory(new, mem, datalen):
-        log.debug(f"AoImage.load_from_memory error: {new._errmsg.decode()}")
+        log.error(f"AoImage.load_from_memory error: {new._errmsg.decode()}")
         return None
 
     return new

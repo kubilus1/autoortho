@@ -15,6 +15,7 @@ from io import BytesIO
 from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
 from functools import wraps, lru_cache
+from pathlib import Path
 
 import pydds
 
@@ -24,7 +25,7 @@ from PIL import Image
 from aoimage import AoImage
 
 from aoconfig import CFG
-from aostats import STATS, StatTracker
+from aostats import STATS, StatTracker, set_stat, inc_stat
 
 MEMTRACE = False
 
@@ -220,30 +221,34 @@ class Chunk(object):
     def get_cache(self):
         global STATS
         if os.path.isfile(self.cache_path):
-            STATS['chunk_hit'] = STATS.get('chunk_hit', 0) + 1
-            with open(self.cache_path, 'rb') as h:
-                data = h.read()
-                if data[:3] != b'\xFF\xD8\xFF':
-                    # FFD8FF identifies image as a JPEG
-                    log.debug(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
-                    self.data = b''
-                else:
-                    self.data = data
-                #if data[:3] != b'\xFF\xD8\xFF':
-                #    log.warning(f"{self} not a JPEG! {data[:3]}  Cache file: {self.cache_path}")
-                #    return False
-            #self.data = data
+            inc_stat('chunk_hit')
+            cache_file = Path(self.cache_path)
+            # Get data
+            data = cache_file.read_bytes()
+            # Update modified data
+            cache_file.touch()
+
+            if data[:3] != b'\xFF\xD8\xFF':
+                # FFD8FF identifies image as a JPEG
+                log.info(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
+                self.data = b''
+            #    return False
+            else:
+                self.data = data
             return True
         else:
-            STATS['chunk_miss'] = STATS.get('chunk_miss', 0) + 1
+            inc_stat('chunk_miss')
             return False
 
     def save_cache(self):
+        if not self.data:
+            return
+
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
     def get(self, idx=0):
-        #log.debug(f"Getting {self}") 
+        log.debug(f"Getting {self}") 
 
         if self.get_cache():
             self.ready.set()
@@ -277,6 +282,7 @@ class Chunk(object):
         time.sleep((self.attempt/10))
         self.attempt += 1
 
+        log.debug(f"Requesting {self.url} ..")
         req = Request(self.url, headers=header)
         resp = 0
         try:
@@ -294,7 +300,7 @@ class Chunk(object):
                 self.data = data
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
-            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err}")
+            log.warning(f"Failed to get chunk {self} on server {server}. Err: {err} URL: {self.url}")
             return False
         finally:
             if resp:
@@ -680,22 +686,21 @@ class Tile(object):
             if chunk_ready and chunk.data:
                 # We returned and have data!
                 chunk_img = AoImage.load_from_memory(chunk.data)
-            elif mipmap < 4:
+            elif mipmap < 4 and not chunk_ready:
+                # Ran out of time, requesting mm 0-3.  Search for backup...
                 log.debug(f"GET_IMG: Tile {self} Try to find backup chunk.")
-                chunk_img = self.get_best_chunk(start_x, start_y, mipmap)
-                if not chunk_img:
-                    log.debug(f"GET_IMG: Getting a backup image for chunk {chunk}")
-                    self.get_img(4, min_zoom=1)
-                    chunk_img = self.get_best_chunk(start_x, start_y, mipmap)
-                    if not chunk_img:
-                        log.error(f"GET_IMG: Failed again!  This should be impossible.")
-                        STATS['chunk_missing_count'] = STATS.get('chunk_missing_count', 0) + 1
-                    else:
-                        STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
-                else:
-                    log.debug(f"GET_IMG: SUCCESS! Getting backup chunk {chunk_img}")
-                    STATS['backup_chunk_count'] = STATS.get('backup_chunk_count', 0) + 1
-            
+                chunk_img = self.get_best_chunk(chunk.col, chunk.row, mipmap, zoom)
+                if chunk_img:
+                    inc_stat('backup_chunk_count')
+            elif not chunk_ready:
+                # Ran out of time, lower mipmap.  Retry...
+                inc_stat('retry_chunk_count')
+                chunk_ready = chunk.ready.wait(maxwait)
+                if chunk_ready and chunk.data:
+                    # We returned and have data!
+                    chunk_img = AoImage.load_from_memory(chunk.data)
+
+
             if chunk_img:
                 new_im.paste(
                     chunk_img,
@@ -707,7 +712,7 @@ class Tile(object):
                 )
             else:
                 if not chunk.data:
-                    log.warning(f"GET_IMG: Empty chunk data.  Skip.")
+                    log.debug(f"GET_IMG: Empty chunk data.  Skip.")
                     STATS['chunk_missing_count'] = STATS.get('chunk_missing_count', 0) + 1
                 else:
                     log.warning(f"GET_IMG: FAILED! {chunk}:  LEN: {len(chunk.data)}  HEADER: {chunk.data[:8]}")
@@ -720,8 +725,62 @@ class Tile(object):
         # Return image along with mipmap and zoom level this was created at
         return new_im
 
+    def get_best_chunk(self, col, row, mm, zoom):
+        for i in range(mm+1, 5):
 
-    def get_best_chunk(self, x, y, mm):
+            # Difference between requested mm and found image mm level
+            diff = i - mm
+            
+            # Equivalent col, row, zl
+            col_p = col >> diff
+            row_p = row >> diff
+            zoom_p = zoom - i
+
+            scalefactor = 1 << diff
+
+            # Check if we have a cached chunk
+            c = Chunk(col_p, row_p, self.maptype, zoom_p, cache_dir=self.cache_dir)
+            log.debug(f"Check cache for {c}")
+            cached = c.get_cache()
+            if not cached:
+                c.close()
+                continue
+            #     # Last mm.  Get a chunk
+            #     if not c.get():
+            #         return False
+            # elif not cached:
+            #     c.close()
+            #     continue
+        
+            log.info(f"Found best chunk for {col}x{row}x{zoom} at {col_p}x{row_p}x{zoom_p}")
+            # Offset into chunk
+            col_offset = col % scalefactor
+            row_offset = row % scalefactor
+
+            # Pixel width
+            w_p = 256 >> diff
+            h_p = 256 >> diff
+
+            # Load image to crop
+            img_p = AoImage.load_from_memory(c.data)
+            if not img_p:
+                log.warning(f"Failed to load chunk {c} into memory.")
+                c.close()
+                continue
+
+            # Crop
+            crop_img = AoImage.new('RGBA', (w_p, h_p), (0,255,0))
+            img_p.crop(crop_img, (col_offset, row_offset))
+            chunk_img = crop_img.scale(scalefactor)
+
+            return chunk_img
+
+        return False
+
+            
+
+
+    def _get_best_chunk(self, x, y, mm):
         for i in range(mm+1, 5):
             if i in self.imgs:
                 # We have an image already
@@ -882,9 +941,13 @@ class TileCacher(object):
     def show_stats(self):
         process = psutil.Process(os.getpid())
         cur_mem = process.memory_info().rss
+        set_stat('cur_mem_mb', cur_mem//1048576)
+        #set_stat('tile_mem_open', len(self.tiles))
         if self.enable_cache:
-            log.info(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
-        log.info(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
+            #set_stat('tile_mem_miss', self.misses)
+            #set_stat('tile_mem_hits', self.hits)
+            log.debug(f"TILE CACHE:  MISS: {self.misses}  HIT: {self.hits}")
+        log.debug(f"NUM OPEN TILES: {len(self.tiles)}.  TOTAL MEM: {cur_mem//1048576} MB")
 
     def clean(self):
         log.info(f"Started tile clean thread.  Mem limit {self.cache_mem_lim}")
@@ -903,6 +966,8 @@ class TileCacher(object):
                 with self.tc_lock:
                     for i in list(self.tiles.keys())[:20]:
                         t = self.tiles.get(i)
+                        if not t:
+                            continue
                         if t.refs <= 0:
                             t = self.tiles.pop(i)
                             t.close()
@@ -940,6 +1005,7 @@ class TileCacher(object):
             tile = self.tiles.get(idx)
             if not tile:
                 self.misses += 1
+                inc_stat('tile_mem_miss')
                 tile = Tile(col, row, map_type, zoom, 
                     cache_dir = self.cache_dir,
                     min_zoom = self.min_zoom)
@@ -950,7 +1016,8 @@ class TileCacher(object):
             elif tile.refs <= 0:
                 # Only in this case would this cache have made a difference
                 self.hits += 1
-                
+                inc_stat('tile_mem_hits')
+
             tile.refs += 1
         return tile
 

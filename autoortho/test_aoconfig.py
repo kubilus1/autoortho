@@ -4,6 +4,7 @@ import pytest
 import threading
 
 import aoconfig
+import config_ui
 
 @pytest.fixture
 def cfg(tmpdir):
@@ -14,7 +15,7 @@ def cfg(tmpdir):
 @pytest.fixture
 def cfgui(tmpdir):
     cfg = aoconfig.AOConfig(os.path.join(tmpdir, '.aocfg'))
-    cfgui = aoconfig.ConfigUI(cfg)
+    cfgui = config_ui.ConfigUI(cfg)
     t = threading.Thread(daemon=True, target=cfgui.ui_loop)
     t.start()
     cfgui.ready.wait()
@@ -35,7 +36,6 @@ def test_sections(cfg):
     assert cfg.autoortho
     assert cfg.pydds
     assert cfg.fuse
-    assert cfg.winfsp
     assert cfg.general
     assert cfg.general.gui
 
@@ -75,13 +75,23 @@ def test_save(cfg):
     assert find_in_file(cfg.conf_file, "gui = False\n")
 
 
-def test_ui(cfgui):
+def test_ui(cfgui, tmpdir):
+    cachedir = os.path.join(tmpdir, 'cache')
+    downloaddir = os.path.join(tmpdir, 'downloads')
+    scenerydir = os.path.join(tmpdir, 'scenery')
+
     # Update config
     cfgui.window["maptype_override"].update("USGS")
+    cfgui.window["cache_dir"].update(cachedir)
+    cfgui.window["download_dir"].update(downloaddir)
+    cfgui.window["scenery_path"].update(scenerydir)
     # Save
     cfgui.window["Save"].click()
     time.sleep(0.1)
     cfgui.ready.wait()
     # Verify
     assert find_in_file(cfgui.cfg.conf_file, "maptype_override = USGS\n")
+    assert find_in_file(cfgui.cfg.conf_file, f"cache_dir = {cachedir}\n")
+    assert find_in_file(cfgui.cfg.conf_file, f"download_dir = {downloaddir}\n")
+    assert find_in_file(cfgui.cfg.conf_file, f"scenery_path = {scenerydir}\n")
     assert cfgui.cfg.autoortho.maptype_override == "USGS"

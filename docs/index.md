@@ -7,10 +7,10 @@ Assumptions:
 * You have a reasonably fast CPU and broadband internet 
 * FUSE is installed and setup (Enable `user_allow_other` in /etc/fuse.conf, if not already the case.) 
 
-Steps:
+### Steps:
 
-1. Download the most recent packaged release [autoortho_lin.zip](https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_lin.zip)
-3. Extract the downloaded file somewhere sensible and make executable if needed `chmod +x autoortho_lin.bin` 
+1. Download the most recent packaged release (autortho_lin_####.bin) [from here](https://github.com/kubilus1/autoortho/releases/latest)
+3. Make executable if needed `chmod +x autoortho_lin.bin` 
 4. Run the program `./autoortho_lin.bin`
 6. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 7. Download and setup an ortho set from the 'Scenery' tab.
@@ -26,18 +26,37 @@ Assumptions:
 * You have install X-Plane 11.50+
 * You have setup and configured [Dokan](https://github.com/dokan-dev/dokany/releases/latest)
 * * NOTE: As a backup you can try [WinFSP](https://github.com/winfsp/winfsp)
-    but Dokan is now recommended.
+    Dokan is now recommended, but some users on Windows 11 have better luck
+    with WinFSP for some reason.
+* You install all components, including scenery, on a local NTFS drive.
 
-Steps:
+### Zip File Steps:
 
-1. Download the most recent packaged release [autoortho_win.zip](https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_win.zip)
-2. Extract the downloaded file and place `autoortho_win.exe` in a sensible location
-4. Run the program
+1. Download the most recent packaged release (autoortho_win_####.zip) [from here](https://github.com/kubilus1/autoortho/releases/latest)
+2. Extract the downloaded directory.
+4. Run `autoortho_win.exe` from within the extracted dir.
 5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
 6. Download and setup an ortho set from the 'Scenery' tab.
 7. Click 'Run' to run the program
 8. Configure your scenery_packs.ini file appropriately 
 9. Run X-Plane and choose a location for an ortho set you have downloaded
+
+### Experimental Installer Steps:
+
+Alternatively, there is now an installer that can be used.  This is
+experimental ATM:
+
+1. Download the most recent packaged release (AutoOrtho_####.exe) [from here](https://github.com/kubilus1/autoortho/releases/latest)
+2. Run the program.
+3. If there is a prior install you will be prompted to uninstall first.  Do
+   this.
+4. Run AutoOrtho from your system start menu.
+5. Configure your X-Plane Custom Scenery directory to point to the appropriate location
+6. Download and setup an ortho set from the 'Scenery' tab.
+7. Click 'Run' to run the program
+8. Configure your scenery_packs.ini file appropriately 
+9. Run X-Plane and choose a location for an ortho set you have downloaded
+
 
 ---
 
@@ -72,7 +91,7 @@ trees when flying with XPlane.  If this is the case, double check the order of
 files in scenery_packs.init
 
 This tool will download and setup numerous directories in your 'Custom
-Scenery' folder of the form:  `z_<short name of scenery pack>_<number>` and a
+Scenery' folder of the form:  `z_ao_<short name of scenery pack>` and a
 directory named `yAutoOrtho_Overlays`.  Typically these should be listed
 towards the bottom of your scenery_packs.ini file:
 
@@ -80,13 +99,10 @@ towards the bottom of your scenery_packs.ini file:
 Landmarks, airports, etc
 simHeaven, special layers, etc
 yAutoOrtho_Overlays
-z_aus_pac_00
-z_aus_pac_01
-z_aus_pac_02
-z_aus_pac_03
-z_aus_pac_04
-z_aus_pac_05
-z_aus_pac_06
+z_ao_aus_pac
+z_ao_eur
+z_ao_na
+z_autoortho
 zzz_global_scenery
 ```
 ---
@@ -100,26 +116,29 @@ Most testing is done on Ubuntu 20.04 using FUSE.  Other Linux flavors ought to w
 well.  MacOS very likely *should* work, but I have no way of testing it.
 
 I have done testing on Windows 10 with the
-[WinFSP](https://github.com/winfsp/winfsp) project.  This does appear to work
+[Dokan](https://github.com/dokan-dev/dokany/releases/latest) project.
+This does appear to work
 fine, but this is not how I use this project, so it's not my primary concern.
 
 # Known issues and limits
-* Currently I try to limit the cache to 2GB of memory, though it's possible it
+* Currently I try to limit the memory usage, though it's possible it
   will exceed this in certain scenarios.
 * Not really possible to post-process the satellite photos.  You get what you
   get.
 * Will still require properly created DSF files
 * Will add a couple minutes to initial flight time for new areas.  That's to
   be expected though.
+* Will require and use a lot of internet requests (surprise!) and writes a lot of small files locally.  
+  There are many parts along your path that may need tuning or may not like this (ISP, DNS, Wifi, drive speed, CPU speed, etc).  
+  User's should be ready to diagnose their specific setup and determine if this project fits withing their own personal computing requirements.
 
 
 # TODOS
 
 * ~See if this will work on Windows with WinFSP~ 
-* Re-introduce a file cache for tiles purged from memory
 * ~Allow for overriding the satellite source type.  Since this pulls on the fly, we aren't stuck with what was setup initially with Ortho4XP.~
 * ~Package a set of DSF files to get started with~
-* See if we can auto-arrange scenery_packs.ini files
+* Attempt to make a workable OSX version
 
 # Warnings, Warranty, etc
 

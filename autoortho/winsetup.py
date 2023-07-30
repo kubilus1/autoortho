@@ -45,13 +45,7 @@ def find_win_libs():
         log.info("WinFSP not found.")
 
 
-    if CFG.winfsp.winfsp_raw and _lib_winfsp:
-        log.info(f"WinFSP Raw mode.")
-        return "winfsp-raw", _lib_winfsp
-    elif CFG.winfsp.winfsp_raw and not _lib_winfsp:
-        log.error("WinfSP Raw mode requested, but WinFSP not found!")
-        return None, None
-    elif _lib_dokan:
+    if _lib_dokan:
         log.info("Dokan mode.")
         return "dokan-FUSE", _lib_dokan
     elif _lib_winfsp:

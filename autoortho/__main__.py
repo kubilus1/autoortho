@@ -3,6 +3,7 @@
 import os
 import sys
 import logging
+import logging.handlers
 from aoconfig import CFG
 
 def setuplogs():
@@ -14,7 +15,12 @@ def setuplogs():
             #filename=os.path.join(log_dir, "autoortho.log"),
             level=logging.DEBUG if os.environ.get('AO_DEBUG') or CFG.general.debug else logging.INFO,
             handlers=[
-                logging.FileHandler(filename=os.path.join(log_dir, "autoortho.log")),
+                #logging.FileHandler(filename=os.path.join(log_dir, "autoortho.log")),
+                logging.handlers.RotatingFileHandler(
+                    filename=os.path.join(log_dir, "autoortho.log"),
+                    maxBytes=10485760,
+                    backupCount=5
+                ),
                 logging.StreamHandler()
             ]
     )

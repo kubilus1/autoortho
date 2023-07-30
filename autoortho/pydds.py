@@ -324,9 +324,9 @@ class DDS(Structure):
                     ret_len = remaining_mipmap_len - len(data)
                     if ret_len != 0:
                         log.error(f"PYDDS: ERROR! Didn't retrieve full length of mipmap for {mipmap.idx}!")
-                        #log.error(f"PYDDS: Didn't retrieve full length.  Fill empty bytes {ret_len}")
+                        log.error(f"PYDDS: Didn't retrieve full length.  Fill empty bytes {ret_len}")
                         # Pretty sure this causes visual corruption
-                        #data += b'\x88' * ret_len
+                        data += b'\x88' * ret_len
 
                     outdata += data
 

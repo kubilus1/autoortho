@@ -3,3 +3,6 @@ pillow-simd
 psutil
 pysimplegui
 Flask
+flask-socketio
+eventlet
+packaging

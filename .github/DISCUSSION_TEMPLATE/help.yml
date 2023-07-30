@@ -1,0 +1,47 @@
+title: "[Question] "
+labels: ["help","question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check for existing answers to your questions and read the documentation (Including the FAQ!)
+        
+        If this is a bug, consider making this an "Issue".
+        Remember that specific information is important!
+        
+  - type: checkboxes
+    attributes:
+      label: Check that box!
+      options:
+        - label: I have checked for existing answers
+          required: true
+        - label: I have read the FAQ and documentation
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        **Describe your question**
+        A clear and concise description of what the issue is.
+
+        **To Reproduce**
+        Steps to reproduce the behavior:
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+
+        **Expected behavior**
+        A clear and concise description of what you expected to happen.
+
+        **Screenshots**
+        If applicable, add screenshots to help explain your problem.
+
+        **(please complete the following information):**
+        - OS: [e.g. Windows 11]
+        - XPlane Version: [e.g. XP12 beta 4]
+        - AutoOrtho Version [e.g. 0.4.3]
+        - Filesystem type (NTFS, exFAT, etc)
+
+        **Additional context**
+        Add any other context about the problem here. (scenery version if applicable, etc, logfile snippet, etc)

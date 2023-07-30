@@ -3,7 +3,6 @@ import socket
 import struct
 
 UDP_IP = "127.0.0.1"
-UDP_PORT = 49000
 
 def reload_obj(path):
   sock = socket.socket(socket.AF_INET, # Internet
@@ -31,17 +30,17 @@ datarefs = [
     ("sim/flightmodel/position/vh_ind", "m/s", "vertical velocity",1)
   ]
 
-def RequestDataRefs(sock):
+def RequestDataRefs(sock, UDP_PORT=49000, REQ_FREQ=2):
   for idx,dataref in enumerate(datarefs):
     # Send one RREF Command for every dataref in the list.
     # Give them an index number and a frequency in Hz.
     # To disable sending you send frequency 0. 
     cmd = b"RREF\x00"
-    freq=2
+    freq=int(REQ_FREQ)
     string = datarefs[idx][0].encode()
     message = struct.pack("<5sii400s", cmd, freq, idx, string)
     assert(len(message)==413)
-    sock.sendto(message, (UDP_IP, UDP_PORT))
+    sock.sendto(message, (UDP_IP, int(UDP_PORT)))
 
 def DecodePacket(data):
   retvalues = {}
