@@ -184,30 +184,6 @@ def _test_get_null_tile(tmpdir):
     ret = tile.get()
     assert ret
 
-def test_tile_fetch(tmpdir):
-    tile = getortho.Tile(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
-    ret = tile.fetch()
-    assert ret == True
-    assert len(tile.chunks[13]) == (tile.width * tile.height)
-    #getortho.chunk_getter.stop() 
-    #time.sleep(10)
-
-def _test_tile_fetch_many(tmpdir):
-    start_col = 2176
-    start_row = 3232
-
-    #for c in range(2176, 2432, 16):
-    #    for r in range(3232, 3488, 16):
-    for c in range(2176, 2200, 16):
-        for r in range(3232, 3264, 16):
-            t = getortho.Tile(c, r, 'BI', 13, cache_dir=tmpdir)
-            t.get()
-            #t.fetch()
-            #print(len(t.chunks))
-
-    #assert True == False
-
-
 def _test_tile_quick_zoom(tmpdir):
     t = getortho.Tile(2176, 3232, 'EOX', 13, cache_dir=tmpdir)
     t.get(quick_zoom=10)
@@ -294,6 +270,21 @@ def test_get_bytes_mm4_mm0(tmpdir):
 
     tile.write()
     #assert True == False
+
+def test_get_bytes_mip1_reduce(tmpdir):
+    getortho.CFG.autoortho.zlreduce = 1
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
+    mmstart = tile.dds.mipmap_list[1].startpos
+    ret = tile.get_bytes(mmstart, 1024)
+    assert ret
+    
+    testfile = tile.write()
+    with open(testfile, 'rb') as h:
+        h.seek(mmstart)
+        data = h.read(8)
+
+    assert data != b'\x00'*8
+    assert True == False
 
 def test_get_best_chunk(tmpdir):
     tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
