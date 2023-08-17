@@ -23,7 +23,7 @@ jobs:
     - name: Build
       run: |
         echo "${{ env.VERNAME }}" > autoortho/.version
-        make lin_bin VERSION=${{ env.GITHUB_REF_NAME }}
+        make lin_bin VERSION=${{ env.VERNAME }}
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
@@ -61,8 +61,8 @@ jobs:
     - name: Build
       run: |
         echo "${{ env.VERNAME }}" > autoortho/.version
-        make win_exe VERSION=${{ env.GITHUB_REF_NAME }}
-        make win_zip ZIP="7z a" VERSION=${{ env.GITHUB_REF_NAME }}
+        make win_exe VERSION=${{ env.VERNAME }}
+        make win_zip ZIP="7z a" VERSION=${{ env.VERNAME }}
 
     - name: Save artifact
       uses: actions/upload-artifact@v3
