@@ -22,7 +22,7 @@ jobs:
 
     - name: Build
       run: |
-        echo "${{ env.GITHUB_REF_NAME }} > .version"
+        echo "${{ env.VERNAME }}" > autoortho/.version
         make lin_bin VERSION=${{ env.GITHUB_REF_NAME }}
 
     - name: Save artifact
@@ -60,7 +60,7 @@ jobs:
 
     - name: Build
       run: |
-        echo "${{ env.GITHUB_REF_NAME }} > .version"
+        echo "${{ env.VERNAME }}" > autoortho/.version
         make win_exe VERSION=${{ env.GITHUB_REF_NAME }}
         make win_zip ZIP="7z a" VERSION=${{ env.GITHUB_REF_NAME }}
 
