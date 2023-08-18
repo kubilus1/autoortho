@@ -13,6 +13,9 @@ Please read and familiarize yourself with the documentation before asking
 questions!!
 ---
 
+_No really, read the documentation before asking questions, likely this is
+already covered._
+
 * Documentation: (https://kubilus1.github.io/autoortho/)
 * FAQ: (https://kubilus1.github.io/autoortho/faq/)
 * Discussions and help: (https://github.com/kubilus1/autoortho/discussions)

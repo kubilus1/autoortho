@@ -77,6 +77,9 @@ testperf:
 %.txt: %.in
 	pip-compile $<
 
+serve_docs:
+	docker run -p 8000:8000 -v `pwd`:/docs squidfunk/mkdocs-material
+
 clean:
 	-rm -rf build
 	-rm -rf __main__.dist

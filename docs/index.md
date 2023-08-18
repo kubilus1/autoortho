@@ -1,6 +1,6 @@
-# Quick start
+# Instructions
 
-## *nix Setup
+## Linux Setup
 Assumptions:
 
 * You have installed X-Plane 11.50+
@@ -27,7 +27,8 @@ Assumptions:
 * You have setup and configured [Dokan](https://github.com/dokan-dev/dokany/releases/latest)
 * * NOTE: As a backup you can try [WinFSP](https://github.com/winfsp/winfsp)
     Dokan is now recommended, but some users on Windows 11 have better luck
-    with WinFSP for some reason.
+    with WinFSP for some reason.  Make sure to fully uninstall Dokan (and
+    reboot) before attempting to use WinFSP.
 * You install all components, including scenery, on a local NTFS drive.
 
 ### Zip File Steps:
@@ -88,7 +89,7 @@ incorrect location.
 
 This can result in strange issues, such as having no roads, buildings, or
 trees when flying with XPlane.  If this is the case, double check the order of
-files in scenery_packs.init
+files in scenery_packs.ini.
 
 This tool will download and setup numerous directories in your 'Custom
 Scenery' folder of the form:  `z_ao_<short name of scenery pack>` and a
@@ -105,33 +106,53 @@ z_ao_na
 z_autoortho
 zzz_global_scenery
 ```
+
+## Installing in custom directories
+
+It is possible to install scenery into directories other than X-Plane's Custom
+Scenery directory.  
+
+You should have a good understanding of how X-Plane handles custom scenery
+before attempting this!
+
+1. This will require that you configure AutoOrtho to point the 'Custom Scenery' setting to this alternative directory.
+2. Setup and install scenery as per normal.  Run the program at least once to
+   create the mount points.  You should see folder that correspond to the
+   installed packages now in the alternative directory that was setup.  The
+   format will look like `z_ao_XXXX`
+3. You will then need to manually link each of the resulting mount directories to X-Planes's origin Custom Scenery dir.
+   On Linux you can use a symlink.  On Windows you can create a shortcut.
+4. Make sure Autoortho is running and start X-Plane.  Double check your
+   `scenery_packs.ini` file to assure the directories are seen.
+
+
 ---
 
 # Requirements and Compatibility
 
-This project requires python3.x and all pre-requisites in the
+To run from source, this project requires python3.x and all pre-requisites in the
 `requirements.txt` file.  Also, a copy of X-Plane 11.50+ of course.
 
-Most testing is done on Ubuntu 20.04 using FUSE.  Other Linux flavors ought to work as
+Most testing is done on Ubuntu 22.04 using FUSE.  Other Linux flavors ought to work as
 well.  MacOS very likely *should* work, but I have no way of testing it.
 
 I have done testing on Windows 10 with the
 [Dokan](https://github.com/dokan-dev/dokany/releases/latest) project.
-This does appear to work
-fine, but this is not how I use this project, so it's not my primary concern.
+This does appear to work fine, but this is not how I use this project, so it's not my primary concern.
 
 # Known issues and limits
 * Currently I try to limit the memory usage, though it's possible it
   will exceed this in certain scenarios.
 * Not really possible to post-process the satellite photos.  You get what you
   get.
-* Will still require properly created DSF files
 * Will add a couple minutes to initial flight time for new areas.  That's to
   be expected though.
 * Will require and use a lot of internet requests (surprise!) and writes a lot of small files locally.  
   There are many parts along your path that may need tuning or may not like this (ISP, DNS, Wifi, drive speed, CPU speed, etc).  
   User's should be ready to diagnose their specific setup and determine if this project fits withing their own personal computing requirements.
-
+* Windows has too many variations with how filesystems are handled, links are
+  done, intrusive malware detection systems, etc and will likely always be
+  slower and more difficult to use with this project.
 
 # TODOS
 
