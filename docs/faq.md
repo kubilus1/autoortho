@@ -53,3 +53,12 @@ You have to start X-Plane separately from this tool.  It's also best to start X-
 ## When using Windows I see an error using the run.bat file such as ` note: This error originates from a subprocess, and is likely not a problem with pip. error: legacy-install-failure`
 
 This is likely due to having a very new version of Python and a package dependency that does not have a pre-built 'wheel' binary.  Further in that error you will see a link to visual studio build tools that can be installed.  You could also try downgrading your version of Python.  For instance try uninstalling Python 3.11 and install Python 3.10.
+
+## Downloading and extracting files takes a very long time on Windows
+
+This may be due to Windows Defender real time scanning be enabled.  You can
+temporarily disable this, which should make a difference, but it will be
+re-enabled automatically.
+
+You can exclude directories, such as `C:\Users\.autoortho-data' or wherever
+else you installed your download and cache directories.
