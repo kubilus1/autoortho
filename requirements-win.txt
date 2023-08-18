@@ -46,3 +46,4 @@ werkzeug==2.2.2
     # via flask
 winfspy==0.8.3
     # via -r .\requirements-win.in
+packaging==23.1
