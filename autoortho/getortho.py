@@ -56,6 +56,12 @@ tile_stats = StatTracker(20, 12)
 mm_stats = StatTracker(0, 5)
 partial_stats = StatTracker()
 
+def _is_jpeg(dataheader):
+    # FFD8FF identifies image as a JPEG
+    if dataheader[:3] == b'\xFF\xD8\xFF':
+        return True
+    else:
+        return False
 
 def _gtile_to_quadkey(til_x, til_y, zoomlevel):
     """
@@ -228,14 +234,13 @@ class Chunk(object):
             # Update modified data
             cache_file.touch()
 
-            if data[:3] != b'\xFF\xD8\xFF':
-                # FFD8FF identifies image as a JPEG
+            if _is_jpeg(data[:3]):
+                self.data = data
+                return True
+            else:
                 log.info(f"Loading file {self} not a JPEG! {data[:3]} path: {self.cache_path}")
                 self.data = b''
             #    return False
-            else:
-                self.data = data
-            return True
         else:
             inc_stat('chunk_miss')
             return False
@@ -266,8 +271,8 @@ class Chunk(object):
 
         MAPTYPES = {
             "EOX": f"https://{server}.s2maps-tiles.eu/wmts/?layer={MAPID}&style=default&tilematrixset={MATRIXSET}&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={self.zoom}&TileCol={self.col}&TileRow={self.row}",
-            "BI": f"http://r{server_num}.ortho.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=136",
-            #"GO2": f"http://khms{server_num}.google.com/kh/v=934?x={self.col}&y={self.row}&z={self.zoom}",
+            "BI": f"http://ecn.t{server_num}.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13716",
+            "GO2": f"http://khms{server_num}.google.com/kh/v=934?x={self.col}&y={self.row}&z={self.zoom}",
             "ARC": f"http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "NAIP": f"http://naip.maptiles.arcgis.com/arcgis/rest/services/NAIP/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "USGS": f"https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
@@ -291,13 +296,13 @@ class Chunk(object):
                 log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
                 return False
             data = resp.read()
-            if data[:3] != b'\xFF\xD8\xFF':
+            if _is_jpeg(data[:3]):
+                self.data = data
+            else:
                 # FFD8FF identifies image as a JPEG
                 log.debug(f"Loading file {self} not a JPEG! {data[:3]} URL: {self.url}")
             #    return False
                 self.data = b''
-            else:
-                self.data = data
             STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
         except Exception as err:
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err} URL: {self.url}")
