@@ -10,11 +10,22 @@ import threading
 
 import subprocess
 import collections
+from functools import wraps, lru_cache, cache
 
 from io import BytesIO
+
+# Hack in DNS caching
+import socket
+orig_getaddrinfo = socket.getaddrinfo
+@cache
+def cached_getaddrinfo(*args):
+    log.info(f"ADDR INFO LOOKUP: {args}")
+    return orig_getaddrinfo(*args)
+socket.getaddrinfo = cached_getaddrinfo
+
+
 from urllib.request import urlopen, Request
 from queue import Queue, PriorityQueue, Empty
-from functools import wraps, lru_cache
 from pathlib import Path
 
 import pydds
