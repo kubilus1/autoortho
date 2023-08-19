@@ -11,9 +11,10 @@ def setuplogs():
     if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
 
+    log_level=logging.DEBUG if os.environ.get('AO_DEBUG') or CFG.general.debug else logging.INFO
     logging.basicConfig(
             #filename=os.path.join(log_dir, "autoortho.log"),
-            level=logging.DEBUG if os.environ.get('AO_DEBUG') or CFG.general.debug else logging.INFO,
+            level=log_level,
             handlers=[
                 #logging.FileHandler(filename=os.path.join(log_dir, "autoortho.log")),
                 logging.handlers.RotatingFileHandler(
@@ -24,6 +25,8 @@ def setuplogs():
                 logging.StreamHandler()
             ]
     )
+    log = logging.getLogger(__name__)
+    log.info(f"Setup logs: {log_dir}, level: {log_level}")
 
 import autoortho
 
