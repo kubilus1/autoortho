@@ -21,12 +21,7 @@ from packaging import version
 from aoconfig import CFG
 
 import logging
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 log = logging.getLogger(__name__)
-
-if not log:
-    print("NO LOG")
-print(log)
 
 TESTMODE=os.environ.get('AO_TESTMODE', False)
 
@@ -720,6 +715,7 @@ class OrthoManager(object):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
     parser = argparse.ArgumentParser(
         description = "AutoOrtho Scenery Downloader"
