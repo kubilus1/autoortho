@@ -10,6 +10,8 @@ import shutil
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+import requests
+
 import getortho
 
 #getortho.ISPC = False
@@ -43,6 +45,13 @@ def test_maptype_chunk(maptype, tmpdir):
     ret = c.get()
     assert ret
     assert getortho._is_jpeg(c.data[:3])
+   
+    session = requests.Session()
+    c = getortho.Chunk(2176, 3264, maptype, 13, cache_dir=tmpdir)
+    ret = c.get(session=session)
+    assert ret
+    assert getortho._is_jpeg(c.data[:3])
+
 
 @pytest.fixture
 def tile(tmpdir):

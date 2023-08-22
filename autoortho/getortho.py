@@ -90,6 +90,7 @@ class Getter(object):
             pool_maxsize = 32
         )
         self.session.mount('https://', adapter)
+        self.session.mount('http://', adapter)
 
         for i in range(num_workers):
             t = threading.Thread(target=self.worker, args=(i,), daemon=True)
@@ -243,7 +244,7 @@ class Chunk(object):
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
-    def get(self, idx=0, session=None):
+    def get(self, idx=0, session=requests):
         log.debug(f"Getting {self}") 
 
         if self.get_cache():
