@@ -21,7 +21,6 @@ import pydds
 
 import requests
 import psutil
-from PIL import Image
 from aoimage import AoImage
 
 from aoconfig import CFG
@@ -486,48 +485,6 @@ class Tile(object):
 
         return True
    
-
-    def write_cache_tile(self, quick_zoom=0):
-
-        col, row, width, height, zoom, zoom_diff = self._get_quick_zoom(quick_zoom)
-
-        outfile = os.path.join(self.cache_dir, f"{self.row}_{self.col}_{self.maptype}_{self.zoom}_{zoom}.dds")
-
-        new_im = Image.new('RGBA', (256*width,256*height), (250,250,250))
-        try:
-            for chunk in self.chunks[zoom]:
-                ret = chunk.ready.wait()
-                if not ret:
-                    log.error("Failed to get chunk")
-
-                start_x = int((chunk.width) * (chunk.col - col))
-                start_y = int((chunk.height) * (chunk.row - row))
-                #end_x = int(start_x + chunk.width)
-                #end_y = int(start_y + chunk.height)
-
-                new_im.paste(
-                    Image.open(BytesIO(chunk.data)).convert("RGBA"),
-                    (
-                        start_x,
-                        start_y
-                    )
-                )
-
-            self.ready.clear()
-            #pydds.to_dds(new_im, outfile)
-            self.dds.gen_mipmaps(new_im)
-            self.dds.write(outfile)
-        except:
-            #log.error(f"Error detected for {self} {outfile}, remove possibly corrupted files.")
-            #os.remove(outfile)
-            raise
-        finally:
-            log.debug("Done")
-            new_im.close()
-
-        log.info(f"Done writing {outfile}")
-        self.ready.set()
-
     def find_mipmap_pos(self, offset):
         for m in self.dds.mipmap_list:
             if offset < m.endpos:
@@ -736,7 +693,6 @@ class Tile(object):
 
         log.debug(f"GET_IMG: Create new image: Zoom: {self.zoom} | {(256*width, 256*height)}")
         
-        #new_im = Image.new('RGBA', (256*width,256*height), (0,0,0))
         new_im = AoImage.new('RGBA', (256*width,256*height), (66,77,55))
 
         log.debug(f"GET_IMG: Will use image {new_im}")
@@ -777,7 +733,6 @@ class Tile(object):
             if chunk_img:
                 new_im.paste(
                     chunk_img,
-                    #Image.open(BytesIO(chunk.data)).convert("RGBA"),
                     (
                         start_x,
                         start_y
