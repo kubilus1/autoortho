@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pydds
 
-
+import requests
 import psutil
 from PIL import Image
 from aoimage import AoImage
@@ -34,22 +34,6 @@ log = logging.getLogger(__name__)
 
 #from memory_profiler import profile
 
-def do_url(url, headers={}):
-    req = Request(url, headers=headers)
-    resp = urlopen(req, timeout=5)
-    if resp.status != 200:
-        raise Exception
-    return resp.read()
-
-MAPID = "s2cloudless-2020_3857"
-MATRIXSET = "g"
-
-##
-
-import socket
-import struct
-
-##
 
 # Track average fetch times
 tile_stats = StatTracker(20, 12)
@@ -92,6 +76,7 @@ class Getter(object):
     queue = None 
     workers = None
     WORKING = False
+    session = None
 
     def __init__(self, num_workers):
         
@@ -100,6 +85,12 @@ class Getter(object):
         self.workers = []
         self.WORKING = True
         self.localdata = threading.local()
+        self.session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections = 32,
+            pool_maxsize = 32
+        )
+        self.session.mount('https://', adapter)
 
         for i in range(num_workers):
             t = threading.Thread(target=self.worker, args=(i,), daemon=True)
@@ -160,10 +151,11 @@ class ChunkGetter(Getter):
             return True
 
         kwargs['idx'] = self.localdata.idx
+        kwargs['session'] = self.session
         #log.debug(f"{obj}, {args}, {kwargs}")
         return obj.get(*args, **kwargs)
 
-chunk_getter = ChunkGetter(64)
+chunk_getter = ChunkGetter(32)
 
 #class TileGetter(Getter):
 #    def get(self, obj, *args, **kwargs):
@@ -225,7 +217,6 @@ class Chunk(object):
         return f"Chunk({self.col},{self.row},{self.maptype},{self.zoom},{self.priority})"
 
     def get_cache(self):
-        global STATS
         if os.path.isfile(self.cache_path):
             inc_stat('chunk_hit')
             cache_file = Path(self.cache_path)
@@ -235,6 +226,7 @@ class Chunk(object):
             cache_file.touch()
 
             if _is_jpeg(data[:3]):
+                #print(f"Found cache that is JPEG for {self}")
                 self.data = data
                 return True
             else:
@@ -252,7 +244,7 @@ class Chunk(object):
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
-    def get(self, idx=0):
+    def get(self, idx=0, session=None):
         log.debug(f"Getting {self}") 
 
         if self.get_cache():
@@ -269,9 +261,11 @@ class Chunk(object):
         # Hack override maptype
         #maptype = "ARC"
 
+        MAPID = "s2cloudless-2020_3857"
+        MATRIXSET = "g"
         MAPTYPES = {
             "EOX": f"https://{server}.s2maps-tiles.eu/wmts/?layer={MAPID}&style=default&tilematrixset={MATRIXSET}&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={self.zoom}&TileCol={self.col}&TileRow={self.row}",
-            "BI": f"http://ecn.t{server_num}.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13816",
+            "BI": f"https://ecn.t{server_num}.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13816",
             "GO2": f"http://khms{server_num}.google.com/kh/v=934?x={self.col}&y={self.row}&z={self.zoom}",
             "ARC": f"http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "NAIP": f"http://naip.maptiles.arcgis.com/arcgis/rest/services/NAIP/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
@@ -288,15 +282,32 @@ class Chunk(object):
         self.attempt += 1
 
         log.debug(f"Requesting {self.url} ..")
-        req = Request(self.url, headers=header)
+
+        use_requests = True
+        
         resp = 0
         try:
-            resp = urlopen(req, timeout=5)
-            if resp.status != 200:
-                log.warning(f"Failed with status {resp.status} to get chunk {self} on server {server}.")
+            if use_requests:
+                #resp = session.get(self.url, stream=True)
+                resp = session.get(self.url)
+                status_code = resp.status_code
+            else:
+                req = Request(self.url, headers=header)
+                resp = urlopen(req, timeout=5)
+                status_code = resp.status
+
+            if status_code != 200:
+                log.warning(f"Failed with status {status_code} to get chunk {self} on server {server}.")
                 return False
-            data = resp.read()
+
+            if use_requests:
+                data = resp.content
+                #data = resp.raw.read()
+            else:
+                data = resp.read()
+
             if _is_jpeg(data[:3]):
+                log.debug(f"Data for {self} is JPEG")
                 self.data = data
             else:
                 # FFD8FF identifies image as a JPEG
@@ -517,31 +528,6 @@ class Tile(object):
         log.info(f"Done writing {outfile}")
         self.ready.set()
 
-
-    def __get(self, quick_zoom=0, background=False):
-        # Deprecated method
-        
-        self.ready.clear()
-        zoom = int(quick_zoom) if quick_zoom else self.zoom
-
-        #if self.cache_file[0] < zoom:
-        log.info(f"Will get tile")
-        start_time = time.time()
-        #with self.tile_condition:
-        with self._lock:
-            self.fetch(quick_zoom, background)
-            self.write_cache_tile(quick_zoom)
-        end_time = time.time()
-        tile_time = end_time - start_time
-        log.info(f"Retrieved tile cachefile: {self.cache_file} in {tile_time} seconds.")
-        #tile_fetch_times.setdefault(zoom, collections.deque(maxlen=10)).append(tile_time)
-        #tile_averages[zoom] = sum(tile_fetch_times.get(zoom))/len(tile_fetch_times.get(zoom))      
-        #log.info(f"Fetch times: {tile_averages}")
-
-        self._find_cache_file()
-        return self.cache_file[1]
-
-
     def find_mipmap_pos(self, offset):
         for m in self.dds.mipmap_list:
             if offset < m.endpos:
@@ -755,9 +741,11 @@ class Tile(object):
 
         log.debug(f"GET_IMG: Will use image {new_im}")
 
+        chunks[0].ready.wait(maxwait)
         #log.info(f"NUM CHUNKS: {len(chunks)}")
         for chunk in chunks:
-            chunk_ready = chunk.ready.wait(maxwait)
+            chunk_ready = chunk.ready.is_set()
+            #chunk_ready = chunk.ready.wait(maxwait)
             
             start_x = int((chunk.width) * (chunk.col - col))
             start_y = int((chunk.height) * (chunk.row - row))
@@ -765,18 +753,23 @@ class Tile(object):
             chunk_img = None
             if chunk_ready and chunk.data:
                 # We returned and have data!
+                log.debug(f"GET_IMG: Ready and found chunk data.")
                 chunk_img = AoImage.load_from_memory(chunk.data)
             elif mipmap < 4 and not chunk_ready:
                 # Ran out of time, requesting mm 0-3.  Search for backup...
-                log.debug(f"GET_IMG: Tile {self} Try to find backup chunk.")
+                log.debug(f"GET_IMG: Tile {self} not ready.  Try to find backup chunk.")
                 chunk_img = self.get_best_chunk(chunk.col, chunk.row, mipmap, zoom)
                 if chunk_img:
                     inc_stat('backup_chunk_count')
-            elif not chunk_ready:
+
+            if not chunk_ready and not chunk_img:
                 # Ran out of time, lower mipmap.  Retry...
+                log.debug(f"GET_IMG: Final retry for {chunk}")
                 inc_stat('retry_chunk_count')
                 chunk_ready = chunk.ready.wait(maxwait)
+                #chunk_ready = chunk.ready.is_set()
                 if chunk_ready and chunk.data:
+                    log.debug(f"GET_IMG: Final retry for {chunk}, SUCCESS!")
                     # We returned and have data!
                     chunk_img = AoImage.load_from_memory(chunk.data)
 
@@ -832,7 +825,7 @@ class Tile(object):
             #     c.close()
             #     continue
         
-            log.info(f"Found best chunk for {col}x{row}x{zoom} at {col_p}x{row_p}x{zoom_p}")
+            log.debug(f"Found best chunk for {col}x{row}x{zoom} at {col_p}x{row_p}x{zoom_p}")
             # Offset into chunk
             col_offset = col % scalefactor
             row_offset = row % scalefactor
@@ -856,8 +849,6 @@ class Tile(object):
             return chunk_img
 
         return False
-
-            
 
 
     def _get_best_chunk(self, x, y, mm):
@@ -975,34 +966,6 @@ class Tile(object):
                 chunk.close()
         self.chunks = {}
         
-
-
-class CacheFile(object):
-    file_condition = threading.Condition()
-    path = None
-
-    # EMPTY, WRITING, READY
-    state = None
-
-
-class Map(object):
-
-    tiles = []
-
-    def __init__(self, cache_dir="./cache"):
-        self.cache_dir = cache_dir
-
-    def get_tiles(self, col, row, maptype, zoom, quick_zoom=0, background=False):
-        t = Tile(col, row, maptype, zoom, cache_dir=self.cache_dir) 
-
-        if background:
-            tile_getter.submit(t, quick_zoom)
-            self.tiles.append(t)
-            ret = True
-        else:
-            ret = t.get(quick_zoom)
-        return ret
-
 
 class TileCacher(object):
     tiles = {}
