@@ -15,7 +15,10 @@ autoortho_lin_$(VERSION).bin: autoortho/*.py
 enter:
 	docker run --rm -it -v `pwd`:/code ubuntu:focal /bin/bash
 
-bin:
+autoortho/.version:
+	echo "$(VERSION)" > $@
+
+bin: autoortho/.version
 	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
 		--linux-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=tk-inter \
@@ -28,7 +31,7 @@ bin:
 		--onefile \
 		./autoortho/__main__.py -o autoortho_lin.bin
 
-_autoortho_win.exe:
+_autoortho_win.exe: autoortho/.version
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
 		--disable-ccache \
@@ -44,7 +47,7 @@ _autoortho_win.exe:
 		--onefile \
 		./autoortho/__main__.py -o autoortho_win.exe
 
-__main__.dist:
+__main__.dist: autoortho/.version
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
 		--disable-ccache \

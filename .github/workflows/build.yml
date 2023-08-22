@@ -23,7 +23,6 @@ jobs:
 
     - name: Build
       run: |
-        echo "${{ env.VERNAME }}" > autoortho/.version
         make lin_bin VERSION="${{ env.VERNAME }}"
 
     - name: Save artifact
@@ -56,12 +55,10 @@ jobs:
           #choco --yes install winfsp
           python -m pip install -U pytest 
           python -m pip install -U -r requirements.txt
-          python -m pip install -U -r requirements-win.txt
           python -m pip install -U -r requirements-build.txt
 
     - name: Build
       run: |
-        echo "${{ env.VERNAME }}" > autoortho/.version
         make win_exe VERSION="${{ env.VERNAME }}"
         make win_zip ZIP="7z a" VERSION="${{ env.VERNAME }}"
 
