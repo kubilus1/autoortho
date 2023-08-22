@@ -39,7 +39,6 @@ jobs:
       run: |
           #choco --yes install winfsp
           py -m pip install -U pytest 
-          #py -m pip install -U -r requirements-win-test.txt
           py -m pip install -U -r requirements.txt
 
     - name: Test
