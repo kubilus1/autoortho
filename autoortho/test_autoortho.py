@@ -371,12 +371,9 @@ def test_read_dds_abs(mount):
     header = ''
    
     print("STARTING!")
-    os.chdir(os.path.abspath(os.path.join(mount, '.')))
+    with pushd(mount):
+        log.info(f"CWD: {os.getcwd()}")
     log.info(f"CWD: {os.getcwd()}")
-    print("CWD")
-    os.chdir(os.path.abspath(os.path.join(mount, '..')))
-    log.info(f"CWD: {os.getcwd()}")
-    print("CWD")
 
     #with pushd(os.path.join(mount, 'terrain')):
     log.info(f"MOUNT: {mount}")
@@ -406,5 +403,3 @@ def test_read_dds_abs(mount):
 
 
     log.info(f"CWD: {os.getcwd()}")
-
-    #assert True == False
