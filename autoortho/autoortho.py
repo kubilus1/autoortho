@@ -266,6 +266,7 @@ def main():
             while RUNNING:
                 time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
+            RUNNING = False
             pass
         finally:
             log.info("Shutting down ...")
