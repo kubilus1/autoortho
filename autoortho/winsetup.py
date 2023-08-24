@@ -7,19 +7,19 @@ log = logging.getLogger(__name__)
 
 from ctypes.util import find_library
 
-
 def find_win_libs():
+    fuse_libs = []
 
     # Find dokan
     log.info("Looking for Dokan ...")
     _lib_dokan= find_library('dokanfuse2.dll')
     if _lib_dokan:
         log.info(f"Dokan found at {_lib_dokan}")
+        fuse_libs.append(("dokan-FUSE", _lib_dokan))
     else:
         log.info("Dokan not found.") 
 
     log.info("Looking for WinFSP ...")
-
     # Find WinFSP
     try:
         import _winreg as reg
@@ -41,33 +41,32 @@ def find_win_libs():
         _lib_winfsp += r"bin\winfsp-%s.dll" % ("x64" if sys.maxsize > 0xffffffff else "x86")
         if os.path.exists(_lib_winfsp):
             log.info(f"Found WinFSP at {_lib_winfsp}")
+            fuse_libs.append(("winfsp-FUSE", _lib_winfsp))
     else:
         log.info("WinFSP not found.")
 
-
-    if _lib_dokan:
-        log.info("Dokan mode.")
-        return "dokan-FUSE", _lib_dokan
-    elif _lib_winfsp:
-        log.info(f"WinFSP-FUSE mode.")
-        return "winfsp-FUSE", _lib_winfsp
-    else:
+    if not fuse_libs:
         log.error(f"No required Windows libs detected!  Please install DokanyV2 or WinFSP.")
         return None, None
+
+    if CFG.windows.prefer_winfsp:
+        fuse_libs.reverse()
+    
+    fusemode, fuselib = fuse_libs[0]
+    log.info(f"Will use detected {fusemode} with libs {fuselib}")
+    os.environ['FUSE_LIBRARY_PATH'] = fuselib
+    return fusemode, fuselib
 
 
 def setup_winfsp_mount(path):
     if os.path.lexists(path):
         # Windows cannot reliably determine if a directory exists or is empty or not (what a mess) so prompt before doing anything more.
-        log.warning(f"Mount point {path} exists.  WinFSP requires mount point does not already exist.  Do you wish to remove it (y/n)?")
-        clean = input(f"Removing existing mount point before proceeding? (y/n)")
+        log.warning(f"Mount point {path} exists.  WinFSP requires mount point does not already exist. Renaming {path} to {path}_bkp")
 
-        if clean.lower() == 'y':
-            os.rmdir(path)
-        else:
-            log.error(f"Cannot proceed with clashing directory {path}.  Exiting.")
-            input("Press any key to continue")
-            sys.exit(1)
+        os.rename(
+            path,
+            f"{path}_bkp"
+        )
 
 
 def setup_dokan_mount(path):

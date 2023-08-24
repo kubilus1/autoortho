@@ -14,12 +14,72 @@ import winsetup
 import config_ui
 
 import flighttrack
-#import multiprocessing
+import importlib
 
 from version import __version__
 
 import logging
 log = logging.getLogger(__name__)
+
+import geocoder
+import pytest
+import ctypes
+
+
+def diagnose(CFG):
+    if platform.system() == 'Windows':
+        systemtype, libpath = winsetup.find_win_libs()
+    else:
+        systemtype = "Linux-FUSE"
+
+    location = geocoder.ip("me")
+
+    log.info("Waiting for mounts...")
+    for scenery in CFG.scenery_mounts:
+        mount = scenery.get('mount')
+        ret = False
+        for i in range(5):
+            time.sleep(i)
+            ret = os.path.isdir(os.path.join(mount, 'textures'))
+            if ret:
+                break
+            log.info('.')
+
+    failed = False
+    log.info("\n\n")
+    log.info("------------------------------------")
+    log.info(" Diagnostic check ...")
+    log.info("------------------------------------")
+    log.info(f"Detected system: {platform.uname()}")
+    log.info(f"Detected location {location.address}")
+    log.info(f"Detected installed scenery:")
+    for scenery in CFG.scenery_mounts:
+        root = scenery.get('root')
+        mount = scenery.get('mount')
+        log.info(f"    {root}")
+        ret = os.path.isdir(os.path.join(mount, 'textures'))
+        log.info(f"        Mounted? {ret}")
+        if not ret:
+            failed = True
+
+    ret = pytest.main([
+        "-vv",
+        "autoortho/test_getortho.py::test_maptype_chunk"
+    ])
+    if ret != 0:
+        failed = True
+
+    log.info("------------------------------------")
+    if failed:
+        log.warning("***************")
+        log.warning("***************")
+        log.warning("FAILURES DETECTED!!")  
+        log.warning("Please review logs and setup.")
+        log.warning("***************")
+        log.warning("***************")
+    else:
+        log.info(" Diagnostics done.  All checks passed")
+    log.info("------------------------------------\n\n")
 
 def run(root, mountpoint, threading=True):
     #aostats.STATS = statsdict
@@ -44,6 +104,8 @@ def run(root, mountpoint, threading=True):
             winsetup.setup_dokan_mount(mountpoint) 
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
             import autoortho_fuse
+            from refuse import high
+            high._libfuse = ctypes.CDLL(libpath)
             autoortho_fuse.run(
                     autoortho_fuse.AutoOrtho(root), 
                     mountpoint, 
@@ -57,11 +119,17 @@ def run(root, mountpoint, threading=True):
             winsetup.setup_winfsp_mount(mountpoint) 
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
             import autoortho_fuse
+            from refuse import high
+            high._libfuse = ctypes.CDLL(libpath)
             autoortho_fuse.run(
                     autoortho_fuse.AutoOrtho(root), 
                     mountpoint, 
                     nothreads
             )
+        else:
+            log.error(f"Unknown mount type of {systemtype}!")
+            time.sleep(5)
+            sys.exit(1)
     else:
         log.info("Running in FUSE mode.")
         root = os.path.expanduser(root)
@@ -157,7 +225,7 @@ def main():
     ftrack.start()
     
     stats.start()
-    
+   
     do_threads = True
     if do_threads:
         mount_threads = []
@@ -175,6 +243,10 @@ def main():
             mount_threads.append(t)
         
         try:
+            time.sleep(1)
+            # Check things out
+            diagnose(CFG)
+
             def handle_sigterm(sig, frame):
                 raise(SystemExit)
 
