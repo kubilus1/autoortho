@@ -82,6 +82,7 @@ def diagnose(CFG):
     log.info("------------------------------------\n\n")
 
 def run(root, mountpoint, threading=True):
+    global RUNNING
     #aostats.STATS = statsdict
     #import flighttrack
     #flighttrack.ft.running = flight_running
@@ -101,7 +102,11 @@ def run(root, mountpoint, threading=True):
             os.environ['FUSE_LIBRARY_PATH'] = libpath
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
-            winsetup.setup_dokan_mount(mountpoint) 
+            ret = winsetup.setup_dokan_mount(mountpoint)
+            if not ret:
+                log.error(f"Mount point setup failed for {mountpoint}!")
+                RUNNING = False
+                return
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
             import autoortho_fuse
             from refuse import high
@@ -116,7 +121,11 @@ def run(root, mountpoint, threading=True):
             os.environ['FUSE_LIBRARY_PATH'] = libpath
             root = os.path.expanduser(root)
             mountpoint = os.path.expanduser(mountpoint)
-            winsetup.setup_winfsp_mount(mountpoint) 
+            ret = winsetup.setup_winfsp_mount(mountpoint) 
+            if not ret:
+                log.error(f"Mount point setup failed for {mountpoint}!")
+                RUNNING = False
+                return
             log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
             import autoortho_fuse
             from refuse import high
@@ -226,6 +235,8 @@ def main():
     
     stats.start()
    
+    global RUNNING
+    RUNNING = True
     do_threads = True
     if do_threads:
         mount_threads = []
@@ -243,20 +254,21 @@ def main():
             mount_threads.append(t)
         
         try:
-            time.sleep(1)
-            # Check things out
-            diagnose(CFG)
-
             def handle_sigterm(sig, frame):
                 raise(SystemExit)
 
             signal.signal(signal.SIGTERM, handle_sigterm)
+            
+            time.sleep(1)
+            # Check things out
+            diagnose(CFG)
 
-            while True:
+            while RUNNING:
                 time.sleep(1)
         except (KeyboardInterrupt, SystemExit):
             pass
         finally:
+            log.info("Shutting down ...")
             for scenery in CFG.scenery_mounts:
                 unmount(scenery.get('mount'))
             for t in mount_threads:

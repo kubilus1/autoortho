@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from aoconfig import CFG
 
 import logging
@@ -61,15 +62,21 @@ def find_win_libs():
 def setup_winfsp_mount(path):
     if os.path.lexists(path):
         # Windows cannot reliably determine if a directory exists or is empty or not (what a mess) so prompt before doing anything more.
-        log.warning(f"Mount point {path} exists.  WinFSP requires mount point does not already exist. Renaming {path} to {path}_bkp")
+        log.warning(f"Mount point {path} exists.  WinFSP requires mount point does not already exist. Attempting to rename {path} to {path}_bkp")
+
+        if os.path.lexists(f"{path}_bkp"):
+            log.error(f"Mount point ({path}) already exists, user must manually cleanup.")
+            return False
 
         os.rename(
             path,
             f"{path}_bkp"
         )
-
+        
+    return True
 
 def setup_dokan_mount(path):
     if not os.path.lexists(path):
         log.info(f"Creating mountpoint for Dokan: {path}")
         os.makedirs(path)
+    return True
