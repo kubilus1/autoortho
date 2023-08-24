@@ -24,7 +24,7 @@ import psutil
 from aoimage import AoImage
 
 from aoconfig import CFG
-from aostats import STATS, StatTracker, set_stat, inc_stat
+from aostats import STATS, StatTracker, set_stat, inc_stat, get_stat
 
 MEMTRACE = False
 
@@ -86,8 +86,8 @@ class Getter(object):
         self.localdata = threading.local()
         self.session = requests.Session()
         adapter = requests.adapters.HTTPAdapter(
-            pool_connections = 32,
-            pool_maxsize = 32
+            pool_connections = int(CFG.autoortho.fetch_threads),
+            pool_maxsize = int(CFG.autoortho.fetch_threads)
         )
         self.session.mount('https://', adapter)
         self.session.mount('http://', adapter)
@@ -155,7 +155,7 @@ class ChunkGetter(Getter):
         #log.debug(f"{obj}, {args}, {kwargs}")
         return obj.get(*args, **kwargs)
 
-chunk_getter = ChunkGetter(32)
+chunk_getter = ChunkGetter(int(CFG.autoortho.fetch_threads))
 
 #class TileGetter(Getter):
 #    def get(self, obj, *args, **kwargs):
@@ -298,7 +298,19 @@ class Chunk(object):
 
             if status_code != 200:
                 log.warning(f"Failed with status {status_code} to get chunk {self} on server {server}.")
+                inc_stat(f"http_{status_code}")
+                inc_stat("req_err")
+
+                err = get_stat("req_err")
+                if err > 50:
+                    ok = get_stat("req_ok")
+                    error_rate = err / ( err + ok )
+                    if error_rate >= 0.10:
+                        log.error(f"Very high network error rate detected : {error_rate * 100 : .2f}%")
+                        log.error(f"Check your network connection, DNS, maptype choice, and firewall settings.")
                 return False
+
+            inc_stat("req_ok")
 
             if use_requests:
                 data = resp.content
@@ -314,7 +326,8 @@ class Chunk(object):
                 log.debug(f"Loading file {self} not a JPEG! {data[:3]} URL: {self.url}")
             #    return False
                 self.data = b''
-            STATS['bytes_dl'] = STATS.get('bytes_dl', 0) + len(self.data)
+
+            inc_stat('bytes_dl', len(self.data))
         except Exception as err:
             log.warning(f"Failed to get chunk {self} on server {server}. Err: {err} URL: {self.url}")
             return False
