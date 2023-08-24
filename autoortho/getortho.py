@@ -937,8 +937,6 @@ class Tile(object):
         
 
 class TileCacher(object):
-    tiles = {}
-
     hits = 0
     misses = 0
 
@@ -946,11 +944,12 @@ class TileCacher(object):
     cache_mem_lim = pow(2,30) * 1
     cache_tile_lim = 25
 
-    open_count = {}
-    
     def __init__(self, cache_dir='.cache'):
         if MEMTRACE:
             tracemalloc.start()
+
+        self.tiles = {}
+        self.open_count = {}
 
         self.maptype_override = CFG.autoortho.maptype_override
         if self.maptype_override:
