@@ -13,6 +13,9 @@ STATS={}
 def set_stat(stat, value):
     STATS[stat] = value
 
+def get_stat(stat):
+    return STATS.get(stat, 0)
+
 def inc_stat(stat, amount=1):
     STATS[stat] = STATS.get(stat, 0) + amount
 

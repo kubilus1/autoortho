@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import ast
 import pprint
 import configparser
 import platform
@@ -14,10 +15,14 @@ class SectionParser(object):
 
     def __init__(self, /, **kwargs):
         for k,v in kwargs.items():
+            # Detect booleans
             if v.lower() in self.true:
                 v = True
             elif v.lower() in self.false:
                 v = False
+            # Detect list
+            elif v.startswith('[') and v.endswith(']'):
+                v = ast.literal_eval(v)
 
             self.__dict__.update({k:v})
 
@@ -65,6 +70,8 @@ min_zoom = 12
 # stutters.  Lower numbers will be more responsive at the expense of
 # ocassional low quality tiles.
 maxwait = 0.5
+maptypes = ['Null', 'BI', 'NAIP', 'EOX', 'USGS', 'Firefly']
+fetch_threads = 32 
 
 [pydds]
 # ISPC or STB for dds file compression
@@ -90,6 +97,8 @@ xplane_udp_port = 49000
 # Max size of the image disk cache in GB. Minimum of 10GB
 file_cache_size = 30
 
+[windows]
+prefer_winfsp = False
 """
 
     def __init__(self, conf_file=None):

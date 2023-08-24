@@ -39,8 +39,7 @@ jobs:
       run: |
           #choco --yes install winfsp
           py -m pip install -U pytest 
-          # Windows OS package install ecosystem is sketchy and broken.  Just test min stuff ...
-          py -m pip install -U -r requirements-win-test.txt
+          py -m pip install -U -r requirements.txt
 
     - name: Test
       run: cd autoortho && py -m pytest -v test_getortho.py test_pydds.py test_downloader.py
