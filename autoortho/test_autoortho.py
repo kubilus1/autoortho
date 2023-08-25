@@ -14,10 +14,7 @@ import random
 import string
 import tempfile
 
-from refuse.high import fuse_exit
-
 import autoortho
-import autoortho_fuse
 import aostats
 from aoconfig import CFG
 
@@ -27,19 +24,62 @@ log = logging.getLogger('log')
 #log.setLevel(logging.DEBUG)
 log.setLevel(logging.INFO)
 
+from contextlib import contextmanager
+
+@contextmanager
+def pushd(new_dir):
+    previous_dir = os.getcwd()
+    os.chdir(new_dir)
+    try:
+        yield
+    finally:
+        os.chdir(previous_dir)
+
+@pytest.fixture
+def scenery_dir(tmpdir):
+    scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
+    structure = [
+        os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test', 'Earth nav data'),
+        os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test', 'terrain'),
+        os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test', 'textures'),
+    ]
+
+    for d in structure:
+        os.makedirs(d)
+
+    return os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test')
+
 #@pytest.fixture(scope="module")
 #def mount(tmpdir_factory):
-@pytest.fixture
-def mount(tmpdir):
+#@pytest.mark.parametrize("prefer_winfsp", [True, False])
+if platform.system() == "Windows":
+    mount_params = [False, True]
+else:
+    mount_params = [False]
+
+@pytest.fixture(params=mount_params)
+def mount(tmpdir, request, scenery_dir):
+
     #tmpdir = tmpdir_factory.mktemp("mount")
 
-    mountdir = str(os.path.join(tmpdir, 'mount'))
+    mountdir = str(os.path.abspath(os.path.join(tmpdir, 'mount')))
     cachedir = str(os.path.join(tmpdir, 'cache'))
-    rootdir = "./testfiles"
+    #rootdir = os.path.abspath('./testfiles')
+    rootdir = scenery_dir
 
-    os.makedirs(mountdir)
+    prefer_winfsp = request.param
+    
+    if not prefer_winfsp:
+        log.info(f"SETTING UP {mountdir}")
+        os.makedirs(mountdir)
+    else:
+        if os.path.lexists(mountdir):
+            os.rmdir(mountdir)
+        log.info(f"NOT SETTING UP {mountdir}")
+
     os.makedirs(cachedir)
     CFG.paths.cache_dir = cachedir
+    CFG.windows.prefer_winfsp = prefer_winfsp 
 
     try:
         t = threading.Thread(
@@ -54,8 +94,10 @@ def mount(tmpdir):
         yield mountdir
 
     finally:
+        log.debug(f"Unmount {mountdir}")
         autoortho.unmount(mountdir)
         t.join(1)
+
 
 
 def _test_stuff():
@@ -312,3 +354,52 @@ def test_multi_read(mount, tmpdir):
 
     assert header1 == header2
     #assert True == False
+
+def test_read_dds_relative(mount):
+    header = ''
+    with pushd(os.path.join(mount, 'terrain')):
+        log.info(f"MOUNT: {mount}")
+        testfile = f"../textures/24832_12416_BI16.dds"
+
+        with open(testfile, "rb") as h:
+            header = h.read(128)
+        log.info("MOUNT: DONE!")
+
+    assert header[:3] == b'\x44\x44\x53'
+
+def test_read_dds_abs(mount):
+    header = ''
+   
+    print("STARTING!")
+    with pushd(mount):
+        log.info(f"CWD: {os.getcwd()}")
+    log.info(f"CWD: {os.getcwd()}")
+
+    #with pushd(os.path.join(mount, 'terrain')):
+    log.info(f"MOUNT: {mount}")
+    testfile = f"{mount}/textures/24832_12416_BI16.dds"
+    print("Mount: {mount}")
+
+    with open(testfile, "rb") as h:
+        print(f"Opened: {testfile}.  About to read...")
+        header = h.read(128)
+        print(f"Read header. {len(header)} bytes")
+    log.info("MOUNT: DONE!")
+    print("Mount done.")
+
+    assert header[:3] == b'\x44\x44\x53'
+
+
+    with pushd(os.path.join(mount, 'terrain')):
+        log.info(f"MOUNT: {mount}")
+        testfile = f"{mount}/textures/24832_12432_BI16.dds"
+
+        with open(testfile, "rb") as h:
+            header = h.read(128)
+        log.info("MOUNT: DONE!")
+
+        assert header[:3] == b'\x44\x44\x53'
+        log.info(f"CWD: {os.getcwd()}")
+
+
+    log.info(f"CWD: {os.getcwd()}")

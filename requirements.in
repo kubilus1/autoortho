@@ -6,3 +6,5 @@ flask-socketio
 eventlet
 packaging
 requests
+geocoder
+pytest

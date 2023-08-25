@@ -52,6 +52,11 @@ SSL_CERT_DIR=/etc/ssl/certs ./autoortho_lin.bin
 ### On Linux this does not start/gives a FUSE error
 Make sure that your `/etc/fuse.conf` files is set to `user_allow_other`.  You may need to uncomment a line.
 
+### The program crashed and now I get an error when AutoOrtho attempts to mount
+You can clear mounts manually with the command `sudo umount -f AutoOrtho`.
+You may need to run this for each remaining mount.  The `mount` command will
+list your current mount points.
+
 ---
 
 ## Windows Issues
