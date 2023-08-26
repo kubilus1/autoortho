@@ -72,9 +72,11 @@ class ConfigUI(object):
             log.info("-"*28)
             log.info(f"Running setup!")
             log.info("-"*28)
-            scenery_path = input(f"Enter path to X-Plane 11 custom_scenery directory ({scenery_path}) : ") or scenery_path
+            scenery_path = input(f"Enter path to scenery install directory ({scenery_path}) : ") or scenery_path
+            xplane_path = input(f"Enter path to X-Plane install directory ({xplane_path}) : ") or xplane_path
             
             self.config['paths']['scenery_path'] = scenery_path
+            self.config['paths']['xplane_path'] = xplane_path
             self.config['general']['showconfig'] = str(showconfig)
             self.config['autoortho']['maptype_override'] = maptype
 
@@ -115,10 +117,16 @@ class ConfigUI(object):
             #[sg.Image(os.path.join(CUR_PATH, 'imgs', 'flight1.png'), subsample=3)],
             [sg.HorizontalSeparator(pad=5)],
             [
-                sg.Text('X-Plane scenery dir:', size=(18,1)), 
+                sg.Text('Scenery install dir:', size=(18,1)), 
                 sg.InputText(scenery_path, size=(45,1), key='scenery_path',
                     metadata={'section':self.cfg.paths}), 
                 sg.FolderBrowse(key="scenery_b", target='scenery_path', initial_folder=scenery_path)
+            ],
+            [
+                sg.Text('X-Plane install dir:', size=(18,1)), 
+                sg.InputText(self.cfg.paths.xplane_path, size=(45,1), key='xplane_path',
+                    metadata={'section':self.cfg.paths}), 
+                sg.FolderBrowse(key="xplane_b", target='xplane_path', initial_folder=self.cfg.paths.xplane_path)
             ],
             [
                 sg.Text('Image cache dir:', size=(18,1)),
@@ -375,7 +383,12 @@ class ConfigUI(object):
 
 
     def verify(self):
-        self._check_xplane_dir(self.cfg.paths.scenery_path)
+        self._check_xplane_dir(self.cfg.paths.xplane_path)
+        for scenery in self.cfg.scenery_mounts:
+            self._check_ortho_dir(scenery.get('root'))
+
+        if not self.cfg.scenery_mounts:
+            self.errors.append(f"No installed scenery detcted!")
 
         msg = []
         if self.warnings:
@@ -456,13 +469,16 @@ class ConfigUI(object):
         return ret
 
     def _check_xplane_dir(self, path):
-        ret = True
 
-        if os.path.basename(path) != "Custom Scenery":
-            self.warnings.append(f"XPlane Custom Scenery directory {path} seems wrong.  This may cause issues.")
-            ret = False
+        if not os.path.isdir(path):
+            self.errors.append(f"XPlane install directory '{path}' is not a directory.")
+            return False
 
-        return ret
+        if not "Custom Scenery" in os.listdir(path):
+            self.errors.append(f"XPlane install directory '{path}' seems wrong.")
+            return False
+
+        return True
 
 
 
