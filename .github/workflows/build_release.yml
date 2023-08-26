@@ -47,7 +47,7 @@ jobs:
       with:
         files: autoortho_lin_*.bin
         tag_name: ${{ inputs.relname }}
-        prerelase: ${{ inputs.prerelease }}
+        prerelease: ${{ inputs.prerelease }}
 
 
   build-windows:
@@ -90,4 +90,4 @@ jobs:
           AutoOrtho_*.exe
           autoortho_win_*.zip
         tag_name: ${{ inputs.relname }}
-        prerelase: ${{ inputs.prerelease }}
+        prerelease: ${{ inputs.prerelease }}
