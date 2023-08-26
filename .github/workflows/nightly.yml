@@ -10,10 +10,10 @@ jobs:
   getcalver:
     runs-on: ubuntu-latest
 
-  steps:
-    - name: Get CalVer
-      run: |
-        echo "CALVER="$(date +%Y.%m.%d) > $GITHUB_ENV 
+    steps:
+      - name: Get CalVer
+        run: |
+          echo "CALVER="$(date +%Y.%m.%d) > $GITHUB_ENV 
 
   build: 
     uses: ./.github/workflows/build_release.yml
