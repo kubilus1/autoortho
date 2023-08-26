@@ -9,14 +9,17 @@ on:
 jobs:
   getcalver:
     runs-on: ubuntu-latest
-
+    outputs:
+      calver: ${{ steps.getcalver.outputs.CALVER }}
     steps:
       - name: Get CalVer
+        id: getcalver
         run: |
-          echo "CALVER="$(date +%Y.%m.%d) > $GITHUB_ENV 
+          echo "CALVER="$(date +%Y.%m.%d) > $GITHUB_OUTPUT
 
-  build: 
+  build:
+    needs: getcalver 
     uses: ./.github/workflows/build_release.yml
     with:
-      version: ${{ env.CALVER }}
+      version: ${{ needs.getcalver.outputs.calver }}
       relname: nightly 

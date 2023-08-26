@@ -6,6 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build: ./.github/workflows/build_release.yml
-  with:
-    version: ${{ github.head_ref || github.ref_name }}
+  build: 
+    uses: ./.github/workflows/build_release.yml
+    with:
+      version: ${{ github.head_ref || github.ref_name }}

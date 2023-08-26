@@ -6,7 +6,8 @@ on:
       - '*'
 
 jobs:
-  build: ./.github/workflows/build_release.yml
-  with:
-    version: ${{ github.head_ref || github.ref_name }}
-    relname: ${{ github.ref }}
+  build: 
+    uses: ./.github/workflows/build_release.yml
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      relname: ${{ github.ref }}
