@@ -52,7 +52,9 @@ hide = True
 debug = False
 
 [paths]
-# X-Plane Custom Scenery path
+# X-Plane install path
+xplane_path = 
+# Scenery install path (X-Plane Custom Scenery or other.)
 scenery_path =
 # Directory where satellite images are cached
 cache_dir = {os.path.join(os.path.expanduser("~"), ".autoortho-data", "cache")}
@@ -140,7 +142,12 @@ prefer_winfsp = False
                 "z_autoortho",
                 "scenery"
         )
-       
+      
+        self.xplane_custom_scenery_path = os.path.abspath(os.path.join(
+                self.paths.xplane_path,
+                "Custom Scenery"
+        ))
+
         sceneries = []
         if os.path.exists(self.ao_scenery_path):
             sceneries = os.listdir(self.ao_scenery_path)
@@ -148,7 +155,7 @@ prefer_winfsp = False
 
         self.scenery_mounts = [{
             "root":os.path.join(self.ao_scenery_path, s),
-            "mount":os.path.join(self.paths.scenery_path, s)
+            "mount":os.path.join(self.xplane_custom_scenery_path, s)
         } for s in sceneries]
         print(self.scenery_mounts)
 
@@ -157,14 +164,6 @@ prefer_winfsp = False
             log.info(f"Creating dir {self.ao_scenery_path}")
             os.makedirs(self.ao_scenery_path)
         return
-
-        self.z_autoortho_path = os.path.join(self.paths.scenery_path, 'z_autoortho')
-        self.root = os.path.join(self.z_autoortho_path, '_textures')
-        self.mountpoint = os.path.join(self.z_autoortho_path, 'textures')
-        
-        if not os.path.exists(self.z_autoortho_path):
-            log.info(f"Creating dir {self.z_autoortho_path}")
-            os.makedirs(self.z_autoortho_path)
 
 
     def save(self):
