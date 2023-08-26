@@ -11,3 +11,4 @@ jobs:
     with:
       version: ${{ github.head_ref || github.ref_name }}
       relname: ${{ github.ref }}
+      prerelease: false

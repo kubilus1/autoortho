@@ -10,6 +10,11 @@ on:
       version:
         required: true
         type: string
+      prerelease:
+        required: false
+        type: boolean
+        default: true
+
 
 jobs:
   build-linux:
@@ -42,6 +47,7 @@ jobs:
       with:
         files: autoortho_lin_*.bin
         tag_name: ${{ inputs.relname }}
+        prerelase: ${{ inputs.prerelease }}
 
 
   build-windows:
@@ -84,4 +90,4 @@ jobs:
           AutoOrtho_*.exe
           autoortho_win_*.zip
         tag_name: ${{ inputs.relname }}
-
+        prerelase: ${{ inputs.prerelease }}
