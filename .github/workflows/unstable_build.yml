@@ -1,10 +1,16 @@
-name: Nightly Release 
+#
+# Create an 'unstable' release from the main branch
+#
+
+name: Unstable Release
 
 on:
-  schedule:
-    - cron: '0 5 * * *'
+  #schedule:
+  #  - cron: '0 5 * * *'
   workflow_dispatch:
   pull_request:
+  push:
+    branches: [ main ]
 
 jobs:
   getcalver:
@@ -15,11 +21,11 @@ jobs:
       - name: Get CalVer
         id: getcalver
         run: |
-          echo "CALVER="$(date +%Y.%m.%d) > $GITHUB_OUTPUT
+          echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > $GITHUB_OUTPUT
 
   build:
     needs: getcalver 
     uses: ./.github/workflows/build_release.yml
     with:
       version: ${{ needs.getcalver.outputs.calver }}
-      relname: nightly 
+      relname: unstable 
