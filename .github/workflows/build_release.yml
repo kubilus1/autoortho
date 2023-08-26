@@ -6,7 +6,7 @@ on:
       relname: 
         required: true
         type: string
-        default: "none"
+        default: ""
       version:
         required: true
         type: string
@@ -37,7 +37,7 @@ jobs:
         path: autoortho_lin_*.bin
 
     - name: Release
-      if: ${{ inputs.release != "none" }}
+      if: ${{ inputs.relname != "" }}
       uses: softprops/action-gh-release@v1
       with:
         files: autoortho_lin_*.bin
@@ -77,7 +77,7 @@ jobs:
           autoortho_win_*.zip
 
     - name: Release
-      if: ${{ inputs.release != "none" }}
+      if: ${{ inputs.relname != "" }}
       uses: softprops/action-gh-release@v1
       with:
         files: |
