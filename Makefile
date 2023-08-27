@@ -28,6 +28,7 @@ bin: autoortho/.version
 		--include-data-file=./autoortho/lib/linux/*.so=lib/linux/ \
 		--include-data-file=./autoortho/aoimage/*.so=aoimage/ \
 		--include-data-dir=./autoortho/imgs=imgs \
+		--noinclude-pytest-mode=INCLUDE_PYTEST_MODE \
 		--onefile \
 		./autoortho/__main__.py -o autoortho_lin.bin
 
@@ -44,6 +45,7 @@ _autoortho_win.exe: autoortho/.version
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
 		--include-data-dir=./autoortho/imgs=imgs \
+		--noinclude-pytest-mode=INCLUDE_PYTEST_MODE \
 		--onefile \
 		./autoortho/__main__.py -o autoortho_win.exe
 
@@ -60,6 +62,7 @@ __main__.dist: autoortho/.version
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
 		--include-data-dir=./autoortho/imgs=imgs \
+		--noinclude-pytest-mode=INCLUDE_PYTEST_MODE \
 		--standalone \
 		./autoortho/__main__.py -o autoortho_win.exe
 
