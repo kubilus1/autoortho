@@ -14,7 +14,10 @@ on:
         required: false
         type: boolean
         default: true
-
+      internalver:
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build-linux:
@@ -30,6 +33,11 @@ jobs:
       run: |
         sudo apt-get update && sudo apt-get install -y make ca-certificates
         sudo update-ca-certificates
+
+    - name: Optionally set internal version separately
+      if: ${{ inputs.internalver != '' }}
+      run: |
+        echo "${{ inputs.internalver }}" > autoortho/.version
 
     - name: Build
       run: |
@@ -68,6 +76,11 @@ jobs:
           #choco --yes install winfsp
           python -m pip install -U -r requirements.txt
           python -m pip install -U -r requirements-build.txt
+
+    - name: Optionally set internal version separately
+      if: ${{ inputs.internalver != '' }}
+      run: |
+        echo "${{ inputs.internalver }}" > autoortho/.version
 
     - name: Build
       run: |

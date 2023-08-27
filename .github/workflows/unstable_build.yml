@@ -22,13 +22,12 @@ jobs:
       - name: Get CalVer
         id: getcalver
         run: |
-          echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > autoortho/.version
-        #  echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > $GITHUB_OUTPUT
+          echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > $GITHUB_OUTPUT
 
   build:
     needs: getcalver 
     uses: ./.github/workflows/build_release.yml
     with:
       version: unstable
-      #version: ${{ needs.getcalver.outputs.calver }}
+      internalver: ${{ needs.getcalver.outputs.calver }}
       relname: unstable 
