@@ -9,14 +9,15 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-    
+  
+  pull_request:  
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: write
   pages: write
   id-token: write
-  #pull-requests: write
+  pull-requests: write
 
 # Allow one concurrent deployment
 concurrency:
@@ -45,7 +46,7 @@ jobs:
       - name: Publish Tag as latest
         if: ${{ github.ref_type == 'tag' }}
         run: |
-          mike deploy --push --update-aliases ${{ gitub.ref_name }} latest
+          mike deploy --push --update-aliases ${{ github.ref_name }} latest
 
       - name: Publish main as unstable
         if: ${{ github.ref_type == 'branch' }}
