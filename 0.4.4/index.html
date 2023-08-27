@@ -1,0 +1,524 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+        <link rel="next" href="details/">
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.2, mkdocs-material-9.2.5">
+    
+    
+      
+        <title>AutoOrtho</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.0e669242.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#quick-start" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="AutoOrtho" class="md-header__button md-logo" aria-label="AutoOrtho" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AutoOrtho
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Quick start
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="AutoOrtho" class="md-nav__button md-logo" aria-label="AutoOrtho" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    AutoOrtho
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Quick start
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Quick start
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nix-setup" class="md-nav__link">
+    *nix Setup
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows-setup" class="md-nav__link">
+    Windows Setup
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Approach
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="faq/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ and Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="info/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Info Attributions and Other Projects
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nix-setup" class="md-nav__link">
+    *nix Setup
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows-setup" class="md-nav__link">
+    Windows Setup
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="quick-start">Quick start</h1>
+<h2 id="nix-setup">*nix Setup</h2>
+<p>Assumptions:</p>
+<ul>
+<li>You have installed X-Plane 11.50+</li>
+<li>You have a reasonably fast CPU and broadband internet </li>
+<li>FUSE is installed and setup (Enable <code>user_allow_other</code> in /etc/fuse.conf, if not already the case.) </li>
+</ul>
+<p>Steps:</p>
+<ol>
+<li>Download the most recent packaged release <a href="https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_lin.zip">autoortho_lin.zip</a></li>
+<li>Extract the downloaded file somewhere sensible and make executable if needed <code>chmod +x autoortho_lin.bin</code> </li>
+<li>Run the program <code>./autoortho_lin.bin</code></li>
+<li>Configure your X-Plane Custom Scenery directory to point to the appropriate location</li>
+<li>Download and setup an ortho set from the 'Scenery' tab.</li>
+<li>Click 'Run' to run the program</li>
+<li>Configure your scenery_packs.ini file appropriately</li>
+<li>Run X-Plane and choose a location for an ortho set you have downloaded</li>
+</ol>
+<h2 id="windows-setup">Windows Setup</h2>
+<p>Assumptions:</p>
+<ul>
+<li>You are running 64bit Windows 10+</li>
+<li>You have install X-Plane 11.50+</li>
+<li>You have setup and configured <a href="https://github.com/dokan-dev/dokany/releases/latest">Dokan</a></li>
+<li>
+<ul>
+<li>NOTE: As a backup you can try <a href="https://github.com/winfsp/winfsp">WinFSP</a>
+    but Dokan is now recommended.</li>
+</ul>
+</li>
+</ul>
+<p>Steps:</p>
+<ol>
+<li>Download the most recent packaged release <a href="https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_win.zip">autoortho_win.zip</a></li>
+<li>Extract the downloaded file and place <code>autoortho_win.exe</code> in a sensible location</li>
+<li>Run the program</li>
+<li>Configure your X-Plane Custom Scenery directory to point to the appropriate location</li>
+<li>Download and setup an ortho set from the 'Scenery' tab.</li>
+<li>Click 'Run' to run the program</li>
+<li>Configure your scenery_packs.ini file appropriately </li>
+<li>Run X-Plane and choose a location for an ortho set you have downloaded</li>
+</ol>
+<hr />
+<h1 id="scenery-setup">Scenery Setup</h1>
+<h2 id="using-provided-sceneries">Using provided sceneries</h2>
+<p><em>IMPORTANT</em></p>
+<p>The scenery packs provided with this tool that you download should be setup via the configuration utility.  This does more than simply download and extract the files.</p>
+<p>If you do wish to manaually manipulate these scenery packs, you should review the source code (downloader.py in particular) and understand how symlinks and/or junctions work and the limitations of each.</p>
+<p>If you manually move things around outside of the configuration utility, things very well might break!</p>
+<p><em>IMPORTANT</em></p>
+<h2 id="configuring-scenery_packsini">Configuring scenery_packs.ini</h2>
+<p>Any scenery added to XPlane requires being setup in the scenery_packs.ini file
+located in your installs 'Custom Scenery' directory.</p>
+<p>This file is order dependent where higher priority layers are towards the top
+of the file and lower priority items are towards the bottom.</p>
+<p>On initial run of XPlane after installing new scenery, these layers will
+automatically be added to your scenery_packs.ini file, but likely in an
+incorrect location.</p>
+<p>This can result in strange issues, such as having no roads, buildings, or
+trees when flying with XPlane.  If this is the case, double check the order of
+files in scenery_packs.init</p>
+<p>This tool will download and setup numerous directories in your 'Custom
+Scenery' folder of the form:  <code>z_&lt;short name of scenery pack&gt;_&lt;number&gt;</code> and a
+directory named <code>yAutoOrtho_Overlays</code>.  Typically these should be listed
+towards the bottom of your scenery_packs.ini file:</p>
+<pre><code>Landmarks, airports, etc
+simHeaven, special layers, etc
+yAutoOrtho_Overlays
+z_aus_pac_00
+z_aus_pac_01
+z_aus_pac_02
+z_aus_pac_03
+z_aus_pac_04
+z_aus_pac_05
+z_aus_pac_06
+zzz_global_scenery
+</code></pre>
+<hr />
+<h1 id="requirements-and-compatibility">Requirements and Compatibility</h1>
+<p>This project requires python3.x and all pre-requisites in the
+<code>requirements.txt</code> file.  Also, a copy of X-Plane 11.50+ of course.</p>
+<p>Most testing is done on Ubuntu 20.04 using FUSE.  Other Linux flavors ought to work as
+well.  MacOS very likely <em>should</em> work, but I have no way of testing it.</p>
+<p>I have done testing on Windows 10 with the
+<a href="https://github.com/winfsp/winfsp">WinFSP</a> project.  This does appear to work
+fine, but this is not how I use this project, so it's not my primary concern.</p>
+<h1 id="known-issues-and-limits">Known issues and limits</h1>
+<ul>
+<li>Currently I try to limit the cache to 2GB of memory, though it's possible it
+  will exceed this in certain scenarios.</li>
+<li>Not really possible to post-process the satellite photos.  You get what you
+  get.</li>
+<li>Will still require properly created DSF files</li>
+<li>Will add a couple minutes to initial flight time for new areas.  That's to
+  be expected though.</li>
+</ul>
+<h1 id="todos">TODOS</h1>
+<ul>
+<li>~See if this will work on Windows with WinFSP~ </li>
+<li>Re-introduce a file cache for tiles purged from memory</li>
+<li>~Allow for overriding the satellite source type.  Since this pulls on the fly, we aren't stuck with what was setup initially with Ortho4XP.~</li>
+<li>~Package a set of DSF files to get started with~</li>
+<li>See if we can auto-arrange scenery_packs.ini files</li>
+</ul>
+<h1 id="warnings-warranty-etc">Warnings, Warranty, etc</h1>
+<p>This project is provided free of charge and is not warrantied in any way.  Use
+at your own risk.</p>
+<p>Accessing map data from 3rd parties may or may not be allowed and is up to you
+the end user to determine and use appropriately.</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.dfff1995.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="assets/javascripts/bundle.78eede0e.min.js"></script>
+      
+    
+  </body>
+</html>
