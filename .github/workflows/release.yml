@@ -10,5 +10,5 @@ jobs:
     uses: ./.github/workflows/build_release.yml
     with:
       version: ${{ github.head_ref || github.ref_name }}
-      relname: ${{ github.ref }}
-      prerelease: false
+      relname: ${{ github.ref_name }}
+      prerelease: true
