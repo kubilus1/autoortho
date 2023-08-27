@@ -7,6 +7,7 @@ import time
 import platform
 import argparse
 import threading
+import tempfile
 
 import aoconfig
 import aostats
@@ -22,7 +23,6 @@ import logging
 log = logging.getLogger(__name__)
 
 import geocoder
-import pytest
 import ctypes
 
 
@@ -62,12 +62,17 @@ def diagnose(CFG):
         if not ret:
             failed = True
 
-    ret = pytest.main([
-        "-vv",
-        "autoortho/test_getortho.py::test_maptype_chunk"
-    ])
-    if ret != 0:
-        failed = True
+    log.info(f"Checking maptypes:")
+    import getortho
+    for maptype in CFG.autoortho.maptypes:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            c = getortho.Chunk(2176, 3232, maptype, 13, cache_dir=tmpdir)
+            ret = c.get()
+            if ret:
+                log.info(f"    Maptype: {maptype} OK!")
+            else:
+                log.warning(f"    Maptype: {maptype} FAILED!")
+                failed = True
 
     log.info("------------------------------------")
     if failed:
