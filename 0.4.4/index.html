@@ -69,7 +69,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#instructions" class="md-skip">
+        <a href="#quick-start" class="md-skip">
           Skip to content
         </a>
       
@@ -107,7 +107,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Instructions
+              Quick start
             
           </span>
         </div>
@@ -194,7 +194,7 @@
   
     
   
-  Instructions
+  Quick start
 
       </a>
     </li>
@@ -316,7 +316,7 @@
           
   
   <span class="md-ellipsis">
-    Instructions
+    Quick start
   </span>
   
 
@@ -327,7 +327,7 @@
         
   
   <span class="md-ellipsis">
-    Instructions
+    Quick start
   </span>
   
 
@@ -349,22 +349,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#linux-setup" class="md-nav__link">
-    Linux Setup
+  <a href="#nix-setup" class="md-nav__link">
+    *nix Setup
   </a>
-  
-    <nav class="md-nav" aria-label="Linux Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#steps" class="md-nav__link">
-    Steps:
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -372,26 +359,6 @@
   <a href="#windows-setup" class="md-nav__link">
     Windows Setup
   </a>
-  
-    <nav class="md-nav" aria-label="Windows Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#zip-file-steps" class="md-nav__link">
-    Zip File Steps:
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#experimental-installer-steps" class="md-nav__link">
-    Experimental Installer Steps:
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -487,22 +454,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#linux-setup" class="md-nav__link">
-    Linux Setup
+  <a href="#nix-setup" class="md-nav__link">
+    *nix Setup
   </a>
-  
-    <nav class="md-nav" aria-label="Linux Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#steps" class="md-nav__link">
-    Steps:
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -510,26 +464,6 @@
   <a href="#windows-setup" class="md-nav__link">
     Windows Setup
   </a>
-  
-    <nav class="md-nav" aria-label="Windows Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#zip-file-steps" class="md-nav__link">
-    Zip File Steps:
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#experimental-installer-steps" class="md-nav__link">
-    Experimental Installer Steps:
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -551,18 +485,18 @@
   
 
 
-<h1 id="instructions">Instructions</h1>
-<h2 id="linux-setup">Linux Setup</h2>
+<h1 id="quick-start">Quick start</h1>
+<h2 id="nix-setup">*nix Setup</h2>
 <p>Assumptions:</p>
 <ul>
 <li>You have installed X-Plane 11.50+</li>
 <li>You have a reasonably fast CPU and broadband internet </li>
 <li>FUSE is installed and setup (Enable <code>user_allow_other</code> in /etc/fuse.conf, if not already the case.) </li>
 </ul>
-<h3 id="steps">Steps:</h3>
+<p>Steps:</p>
 <ol>
-<li>Download the most recent packaged release (autortho_lin_####.bin) <a href="https://github.com/kubilus1/autoortho/releases/latest">from here</a></li>
-<li>Make executable if needed <code>chmod +x autoortho_lin.bin</code> </li>
+<li>Download the most recent packaged release <a href="https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_lin.zip">autoortho_lin.zip</a></li>
+<li>Extract the downloaded file somewhere sensible and make executable if needed <code>chmod +x autoortho_lin.bin</code> </li>
 <li>Run the program <code>./autoortho_lin.bin</code></li>
 <li>Configure your X-Plane Custom Scenery directory to point to the appropriate location</li>
 <li>Download and setup an ortho set from the 'Scenery' tab.</li>
@@ -579,33 +513,15 @@
 <li>
 <ul>
 <li>NOTE: As a backup you can try <a href="https://github.com/winfsp/winfsp">WinFSP</a>
-    Dokan is now recommended, but some users on Windows 11 have better luck
-    with WinFSP for some reason.  Make sure to fully uninstall Dokan (and
-    reboot) before attempting to use WinFSP.</li>
+    but Dokan is now recommended.</li>
 </ul>
 </li>
-<li>You install all components, including scenery, on a local NTFS drive.</li>
 </ul>
-<h3 id="zip-file-steps">Zip File Steps:</h3>
+<p>Steps:</p>
 <ol>
-<li>Download the most recent packaged release (autoortho_win_####.zip) <a href="https://github.com/kubilus1/autoortho/releases/latest">from here</a></li>
-<li>Extract the downloaded directory.</li>
-<li>Run <code>autoortho_win.exe</code> from within the extracted dir.</li>
-<li>Configure your X-Plane Custom Scenery directory to point to the appropriate location</li>
-<li>Download and setup an ortho set from the 'Scenery' tab.</li>
-<li>Click 'Run' to run the program</li>
-<li>Configure your scenery_packs.ini file appropriately </li>
-<li>Run X-Plane and choose a location for an ortho set you have downloaded</li>
-</ol>
-<h3 id="experimental-installer-steps">Experimental Installer Steps:</h3>
-<p>Alternatively, there is now an installer that can be used.  This is
-experimental ATM:</p>
-<ol>
-<li>Download the most recent packaged release (AutoOrtho_####.exe) <a href="https://github.com/kubilus1/autoortho/releases/latest">from here</a></li>
-<li>Run the program.</li>
-<li>If there is a prior install you will be prompted to uninstall first.  Do
-   this.</li>
-<li>Run AutoOrtho from your system start menu.</li>
+<li>Download the most recent packaged release <a href="https://github.com/kubilus1/autoortho/releases/latest/download/autoortho_win.zip">autoortho_win.zip</a></li>
+<li>Extract the downloaded file and place <code>autoortho_win.exe</code> in a sensible location</li>
+<li>Run the program</li>
 <li>Configure your X-Plane Custom Scenery directory to point to the appropriate location</li>
 <li>Download and setup an ortho set from the 'Scenery' tab.</li>
 <li>Click 'Run' to run the program</li>
@@ -630,66 +546,49 @@ automatically be added to your scenery_packs.ini file, but likely in an
 incorrect location.</p>
 <p>This can result in strange issues, such as having no roads, buildings, or
 trees when flying with XPlane.  If this is the case, double check the order of
-files in scenery_packs.ini.</p>
+files in scenery_packs.init</p>
 <p>This tool will download and setup numerous directories in your 'Custom
-Scenery' folder of the form:  <code>z_ao_&lt;short name of scenery pack&gt;</code> and a
+Scenery' folder of the form:  <code>z_&lt;short name of scenery pack&gt;_&lt;number&gt;</code> and a
 directory named <code>yAutoOrtho_Overlays</code>.  Typically these should be listed
 towards the bottom of your scenery_packs.ini file:</p>
 <pre><code>Landmarks, airports, etc
 simHeaven, special layers, etc
 yAutoOrtho_Overlays
-z_ao_aus_pac
-z_ao_eur
-z_ao_na
-z_autoortho
+z_aus_pac_00
+z_aus_pac_01
+z_aus_pac_02
+z_aus_pac_03
+z_aus_pac_04
+z_aus_pac_05
+z_aus_pac_06
 zzz_global_scenery
 </code></pre>
-<h2 id="installing-in-custom-directories">Installing in custom directories</h2>
-<p>It is possible to install scenery into directories other than X-Plane's Custom
-Scenery directory.  </p>
-<p>You should have a good understanding of how X-Plane handles custom scenery
-before attempting this!</p>
-<ol>
-<li>This will require that you configure AutoOrtho to point the 'Custom Scenery' setting to this alternative directory.</li>
-<li>Setup and install scenery as per normal.  Run the program at least once to
-   create the mount points.  You should see folder that correspond to the
-   installed packages now in the alternative directory that was setup.  The
-   format will look like <code>z_ao_XXXX</code></li>
-<li>You will then need to manually link each of the resulting mount directories to X-Planes's origin Custom Scenery dir.
-   On Linux you can use a symlink.  On Windows you can create a shortcut.</li>
-<li>Make sure Autoortho is running and start X-Plane.  Double check your
-   <code>scenery_packs.ini</code> file to assure the directories are seen.</li>
-</ol>
 <hr />
 <h1 id="requirements-and-compatibility">Requirements and Compatibility</h1>
-<p>To run from source, this project requires python3.x and all pre-requisites in the
+<p>This project requires python3.x and all pre-requisites in the
 <code>requirements.txt</code> file.  Also, a copy of X-Plane 11.50+ of course.</p>
-<p>Most testing is done on Ubuntu 22.04 using FUSE.  Other Linux flavors ought to work as
+<p>Most testing is done on Ubuntu 20.04 using FUSE.  Other Linux flavors ought to work as
 well.  MacOS very likely <em>should</em> work, but I have no way of testing it.</p>
 <p>I have done testing on Windows 10 with the
-<a href="https://github.com/dokan-dev/dokany/releases/latest">Dokan</a> project.
-This does appear to work fine, but this is not how I use this project, so it's not my primary concern.</p>
+<a href="https://github.com/winfsp/winfsp">WinFSP</a> project.  This does appear to work
+fine, but this is not how I use this project, so it's not my primary concern.</p>
 <h1 id="known-issues-and-limits">Known issues and limits</h1>
 <ul>
-<li>Currently I try to limit the memory usage, though it's possible it
+<li>Currently I try to limit the cache to 2GB of memory, though it's possible it
   will exceed this in certain scenarios.</li>
 <li>Not really possible to post-process the satellite photos.  You get what you
   get.</li>
+<li>Will still require properly created DSF files</li>
 <li>Will add a couple minutes to initial flight time for new areas.  That's to
   be expected though.</li>
-<li>Will require and use a lot of internet requests (surprise!) and writes a lot of small files locally.<br />
-  There are many parts along your path that may need tuning or may not like this (ISP, DNS, Wifi, drive speed, CPU speed, etc).<br />
-  User's should be ready to diagnose their specific setup and determine if this project fits withing their own personal computing requirements.</li>
-<li>Windows has too many variations with how filesystems are handled, links are
-  done, intrusive malware detection systems, etc and will likely always be
-  slower and more difficult to use with this project.</li>
 </ul>
 <h1 id="todos">TODOS</h1>
 <ul>
 <li>~See if this will work on Windows with WinFSP~ </li>
+<li>Re-introduce a file cache for tiles purged from memory</li>
 <li>~Allow for overriding the satellite source type.  Since this pulls on the fly, we aren't stuck with what was setup initially with Ortho4XP.~</li>
 <li>~Package a set of DSF files to get started with~</li>
-<li>Attempt to make a workable OSX version</li>
+<li>See if we can auto-arrange scenery_packs.ini files</li>
 </ul>
 <h1 id="warnings-warranty-etc">Warnings, Warranty, etc</h1>
 <p>This project is provided free of charge and is not warrantied in any way.  Use

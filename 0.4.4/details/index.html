@@ -194,7 +194,7 @@
   
     
   
-  Instructions
+  Quick start
 
       </a>
     </li>
@@ -309,7 +309,7 @@
         
   
   <span class="md-ellipsis">
-    Instructions
+    Quick start
   </span>
   
 
@@ -555,13 +555,20 @@ that is referrenced by a scenery pack's terrain files.</p>
 <p>Due to how XPlane identifies terrain information, these directories have been
 split up into reasonable sized pieces, which is why each provided scenery pack
 has numerous numbered directories. </p>
-<p>This project creates a special pass through filesystem that mounts directories into a location that XPlane can find and intercepts requests to '.dds' files.  This is handled through the magic of FUSE (Filesystem in UserSpacE).  FUSE is a common and standard feature of Linux, but requires extra stuff for other Operatings Systems.s</p>
-<p>Sceneries stripped of satellite imagery, likely still have
-coastline PNG files that must be preserved.  These are simply passed through when requested.</p>
+<p>However, autoorotho only mounts a single directory, under <code>Custom
+Scenery/z_autoortho/textures</code>.  </p>
+<p>How does that work then?  Simple each scenery directory provided by autoortho
+just symlinks (on linux) or sets up a filesystem junction (on windows) to this
+mount point!</p>
+<p>However, sceneries that do not have satellite imagery, likely still have
+coastline PNG files that must be preserved.  These are simply moved to <code>Custom
+Scenery/z_autoortho/_textures</code></p>
 <p>You can take advantage of this setup for your own scenery that you have
 packaged:
-* Place your scenery directory in <code>Custom Scenery/z_autoortho/scenery</code></p>
-<p>When execute Autoortho will detect directories in that scenery dir and mount these in your configured <code>Custom Scenery</code> directory.</p>
+* Place your scenery in <code>Custom Scenery</code> as per normal
+* Copy any existing texture files to <code>Custom Scenery/z_autoortho/_textures</code>
+* Symlink, or directoy junction your scenery to <code>Custom
+  Scenery/z_autoortho/textures</code></p>
 <h2 id="ortho4xp-usage-tips">Ortho4XP Usage Tips</h2>
 <p>Ortho4XP can generate scenery files without downloading photos, which is
 perfect for this project.  In the config set <code>skip_downloads</code> to <code>True</code></p>
