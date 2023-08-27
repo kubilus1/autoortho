@@ -17,14 +17,17 @@ jobs:
     outputs:
       calver: ${{ steps.getcalver.outputs.CALVER }}
     steps:
+      - uses: actions/checkout@v3
       - name: Get CalVer
         id: getcalver
         run: |
-          echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > $GITHUB_OUTPUT
+          echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > autoortho/.version
+        #  echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > $GITHUB_OUTPUT
 
   build:
     needs: getcalver 
     uses: ./.github/workflows/build_release.yml
     with:
-      version: ${{ needs.getcalver.outputs.calver }}
+      version: unstable
+      #version: ${{ needs.getcalver.outputs.calver }}
       relname: unstable 
