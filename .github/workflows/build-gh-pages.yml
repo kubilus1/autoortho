@@ -36,6 +36,10 @@ jobs:
       - name: Setup
         run: |
           python3 -m pip install mkdocs-material mike
+      - name: Configure
+        run: |
+          git config --global user.name Doc Deploy
+          git config --global user.email docs@email.com
       - name: Publish
         run: |
           mike deploy --push --update-aliases unstable latest
