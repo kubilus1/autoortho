@@ -1,21 +1,25 @@
 #!/usr/bin/env python
 
 import os
-import signal
 import sys
 import time
+import ctypes
+import shutil
+import signal
+import tempfile
 import platform
 import argparse
 import threading
-import tempfile
+import importlib
+
+from pathlib import Path
+from contextlib import contextmanager
 
 import aoconfig
 import aostats
 import winsetup
 import config_ui
-
 import flighttrack
-import importlib
 
 from version import __version__
 
@@ -23,7 +27,67 @@ import logging
 log = logging.getLogger(__name__)
 
 import geocoder
-import ctypes
+
+class MountError(Exception):
+    pass
+
+class AutoOrthoError(Exception):
+    pass
+
+@contextmanager
+def setupmount(mountpoint, systemtype):
+    mountpoint = os.path.expanduser(mountpoint)
+
+    placeholder_path = os.path.join(mountpoint, ".AO_PLACEHOLDER")
+
+    # Stash placeholder
+    if os.path.isdir(mountpoint):
+        log.info(f"Existing mountpoint detected: {mountpoint}")
+        if os.path.lexists(placeholder_path):
+            log.info(f"Detected placeholder dir.  Removing: {mountpoint}")
+            shutil.rmtree(mountpoint)
+
+    # Setup
+    if systemtype == "Linux-FUSE":
+        if not os.path.exists(mountpoint):
+            os.makedirs(mountpoint)
+        if not os.path.isdir(mountpoint):
+            raise MountError(f"Failed to setup mount point {mountpoint}!")
+
+    elif systemtype == "dokan-FUSE":
+        ret = winsetup.setup_dokan_mount(mountpoint)
+        if not ret:
+            raise MountError(f"Failed to setup mount point {mountpoint}!")
+
+    elif systemtype == "winfsp-FUSE":
+        ret = winsetup.setup_winfsp_mount(mountpoint)
+        if not ret:
+            raise MountError(f"Failed to setup mount point {mountpoint}!")
+
+    else:
+        log.error(f"Unknown mount type of {systemtype}!")
+        time.sleep(5)
+        raise MountError(f"Unknown system type: {systemtype} for mount {mountpoint}")
+
+    yield mountpoint
+
+    # Cleanup
+    log.info(f"Cleaning up mountpoint: {mountpoint}")
+    os.rmdir(mountpoint)
+
+    # Restore placeholder
+    log.info(f"Restoring placeholder for mountpoint: {mountpoint}")
+    structure = [
+        os.path.join(mountpoint, 'Earth nav data'),
+        os.path.join(mountpoint, 'terrain'),
+        os.path.join(mountpoint, 'textures'),
+    ]
+
+    for d in structure:
+        os.makedirs(d)
+
+    Path(placeholder_path).touch()
+    log.info(f"Mount point {mountpoint} exiting.")
 
 
 def diagnose(CFG):
@@ -88,9 +152,6 @@ def diagnose(CFG):
 
 def run(root, mountpoint, threading=True):
     global RUNNING
-    #aostats.STATS = statsdict
-    #import flighttrack
-    #flighttrack.ft.running = flight_running
 
     if threading:
         log.info("Running in multi-threaded mode.")
@@ -99,69 +160,37 @@ def run(root, mountpoint, threading=True):
         log.info("Running in single-threaded mode.")
         nothreads = True
 
-    if platform.system() == 'Windows':
-        systemtype, libpath = winsetup.find_win_libs()
-        if systemtype == "dokan-FUSE":
-            # Windows user mode FS support is kind of a mess, so try a few things.
-            log.info("Running in Windows FUSE mode with Dokan.")
-            os.environ['FUSE_LIBRARY_PATH'] = libpath
-            root = os.path.expanduser(root)
-            mountpoint = os.path.expanduser(mountpoint)
-            ret = winsetup.setup_dokan_mount(mountpoint)
-            if not ret:
-                log.error(f"Mount point setup failed for {mountpoint}!")
-                RUNNING = False
-                return
-            log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-            import autoortho_fuse
-            from refuse import high
-            high._libfuse = ctypes.CDLL(libpath)
-            autoortho_fuse.run(
-                    autoortho_fuse.AutoOrtho(root), 
-                    mountpoint, 
-                    nothreads
-            )
-        elif systemtype == "winfsp-FUSE":
-            log.info("Running in Windows FUSE mode with WinFSP.")
-            os.environ['FUSE_LIBRARY_PATH'] = libpath
-            root = os.path.expanduser(root)
-            mountpoint = os.path.expanduser(mountpoint)
-            ret = winsetup.setup_winfsp_mount(mountpoint) 
-            if not ret:
-                log.error(f"Mount point setup failed for {mountpoint}!")
-                RUNNING = False
-                return
-            log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-            import autoortho_fuse
-            from refuse import high
-            high._libfuse = ctypes.CDLL(libpath)
-            autoortho_fuse.run(
-                    autoortho_fuse.AutoOrtho(root), 
-                    mountpoint, 
-                    nothreads
-            )
-        else:
-            log.error(f"Unknown mount type of {systemtype}!")
-            time.sleep(5)
-            sys.exit(1)
-    else:
-        log.info("Running in FUSE mode.")
-        root = os.path.expanduser(root)
-        mountpoint = os.path.expanduser(mountpoint)
-    
-        if not os.path.exists(mountpoint):
-            os.makedirs(mountpoint)
-        if not os.path.isdir(mountpoint):
-            log.error(f"WARNING: {mountpoint} is not a directory.  Exiting.")
-            sys.exit(1)
+    root = os.path.expanduser(root)
 
-        log.info(f"AutoOrtho:  root: {root}  mountpoint: {mountpoint}")
-        import autoortho_fuse
-        autoortho_fuse.run(
-                autoortho_fuse.AutoOrtho(root),
-                mountpoint, 
-                nothreads
-        )
+    try:
+        if platform.system() == 'Windows':
+            systemtype, libpath = winsetup.find_win_libs()
+            with setupmount(mountpoint, systemtype) as mount:
+                log.info(f"AutoOrtho:  root: {root}  mountpoint: {mount}")
+                import autoortho_fuse
+                from refuse import high
+                high._libfuse = ctypes.CDLL(libpath)
+                autoortho_fuse.run(
+                        autoortho_fuse.AutoOrtho(root), 
+                        mount,
+                        nothreads
+                )
+        else:
+            with setupmount(mountpoint, "Linux-FUSE") as mount:
+                log.info("Running in FUSE mode.")
+                log.info(f"AutoOrtho:  root: {root}  mountpoint: {mount}")
+                import autoortho_fuse
+                autoortho_fuse.run(
+                        autoortho_fuse.AutoOrtho(root),
+                        mount, 
+                        nothreads
+                )
+
+    except Exception as err:
+        log.error(f"Exception detected when running FUSE mount: {err}.  Exiting...")
+        RUNNING = False
+        time.sleep(5)
+
 
 def unmount(mountpoint):
     mounted = True
