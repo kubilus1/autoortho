@@ -403,3 +403,27 @@ def test_read_dds_abs(mount):
 
 
     log.info(f"CWD: {os.getcwd()}")
+
+@pytest.mark.parametrize("prefer_winfsp", [True, False])
+def test_mount_restore(tmpdir, scenery_dir, prefer_winfsp):
+    mountdir = str(os.path.abspath(os.path.join(tmpdir, 'mount')))
+    cachedir = str(os.path.join(tmpdir, 'cache'))
+    rootdir = scenery_dir
+
+
+    t = threading.Thread(
+        daemon = True,
+        target = autoortho.run,
+        args = (rootdir, mountdir)
+    )
+
+    t.start()
+    time.sleep(1)
+
+    assert os.path.isdir(os.path.join(mountdir, "textures"))
+
+    log.debug(f"Unmount {mountdir}")
+    autoortho.unmount(mountdir)
+    t.join(1)
+
+    assert os.path.lexists(os.path.join(mountdir, ".AO_PLACEHOLDER"))

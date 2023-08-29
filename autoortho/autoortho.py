@@ -48,6 +48,7 @@ def setupmount(mountpoint, systemtype):
             shutil.rmtree(mountpoint)
 
     # Setup
+    log.info(f"Setting up mountpoint: {mountpoint}")
     if systemtype == "Linux-FUSE":
         if not os.path.exists(mountpoint):
             os.makedirs(mountpoint)
@@ -72,8 +73,9 @@ def setupmount(mountpoint, systemtype):
     yield mountpoint
 
     # Cleanup
-    log.info(f"Cleaning up mountpoint: {mountpoint}")
-    os.rmdir(mountpoint)
+    if os.path.lexists(mountpoint):
+        log.info(f"Cleaning up mountpoint: {mountpoint}")
+        os.rmdir(mountpoint)
 
     # Restore placeholder
     log.info(f"Restoring placeholder for mountpoint: {mountpoint}")
