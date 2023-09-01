@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+  #pull_request:
 
 jobs:
   getcalver:
@@ -17,6 +18,7 @@ jobs:
     outputs:
       calver: ${{ steps.getcalver.outputs.CALVER }}
     steps:
+      - uses: actions/checkout@v3
       - name: Get CalVer
         id: getcalver
         run: |
@@ -26,5 +28,6 @@ jobs:
     needs: getcalver 
     uses: ./.github/workflows/build_release.yml
     with:
-      version: ${{ needs.getcalver.outputs.calver }}
+      version: unstable
+      internalver: ${{ needs.getcalver.outputs.calver }}
       relname: unstable 
