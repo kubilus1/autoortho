@@ -22,7 +22,7 @@ def setuplogs():
                     maxBytes=10485760,
                     backupCount=5
                 ),
-                logging.StreamHandler()
+                logging.StreamHandler() if sys.stdout is not None else logging.NullHandler()
             ]
     )
     log = logging.getLogger(__name__)
