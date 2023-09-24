@@ -45,7 +45,7 @@ _autoortho_win.exe: autoortho/.version
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
 		--include-data-dir=./autoortho/imgs=imgs \
 		--onefile \
-		--windows-disable-console \
+		--disable-console \
 		./autoortho/__main__.py -o autoortho_win.exe
 
 __main__.dist: autoortho/.version
@@ -62,7 +62,7 @@ __main__.dist: autoortho/.version
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
 		--include-data-dir=./autoortho/imgs=imgs \
 		--standalone \
-		--windows-disable-console \
+		--disable-console \
 		./autoortho/__main__.py -o autoortho_win.exe
 
 win_exe: AutoOrtho_win_$(VERSION).exe
