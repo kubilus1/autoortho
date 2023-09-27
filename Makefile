@@ -61,6 +61,7 @@ __main__.dist: autoortho/.version
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
 		--include-data-dir=./autoortho/imgs=imgs \
+		--onefile-windows-splash-screen-image=./autoortho/imgs/splash.png \
 		--standalone \
 		--disable-console \
 		./autoortho/__main__.py -o autoortho_win.exe
