@@ -312,10 +312,6 @@ def main():
     if args.configure or (CFG.general.showconfig and not args.headless):
         # Show cfgui at start
         run_headless = False
-        #cfgui = config_ui.ConfigUI(CFG)
-        ## Block until 'Run' button hit unless headless
-        #cfgui.setup(headless = args.headless)
-        #cfgui.verify()
     else:
         # Don't show cfgui
         run_headless = True
@@ -356,9 +352,7 @@ def main():
     else:
         log.info("Running CFG UI")
         cfgui = AOMountUI(CFG)
-        # Block until 'Run' button hit unless headless
         cfgui.setup()
-        
         
     stats.stop()
     flighttrack.ft.stop()

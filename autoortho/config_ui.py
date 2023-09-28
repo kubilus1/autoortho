@@ -34,14 +34,11 @@ class ConfigUI(object):
     window = None
     running = False
     ready = None
-    run_ao = None
     splash_w = None
 
     def __init__(self, cfg):
         self.ready = threading.Event()
         self.ready.clear()
-        self.run_ao = threading.Event()
-        self.run_ao.clear()
         
         self.start_splash()
 
