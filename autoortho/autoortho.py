@@ -363,6 +363,8 @@ def main():
     stats.stop()
     flighttrack.ft.stop()
 
+    log.info("AutoOrtho exit.")
+
 
 if __name__ == '__main__':
     main()
