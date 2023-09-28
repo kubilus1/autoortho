@@ -224,7 +224,7 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def readdir(self, path, fh):
-        log.info(f"READDIR: {path} {fh}")
+        #log.info(f"READDIR: {path} {fh}")
         if path in ["/textures"]:
             return ['.', '..', '.AOISWORKING', '24832_12416_BI16.dds']
         elif path in ["/terrain"]:
@@ -264,7 +264,7 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def statfs(self, path):
-        log.info(f"STATFS: {path}")
+        #log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
         if platform.system() == 'Windows':
             stats = {
