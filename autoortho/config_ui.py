@@ -35,12 +35,15 @@ class ConfigUI(object):
     running = False
     ready = None
     run_ao = None
+    splash_w = None
 
     def __init__(self, cfg):
         self.ready = threading.Event()
         self.ready.clear()
         self.run_ao = threading.Event()
         self.run_ao.clear()
+        
+        self.start_splash()
 
         self.cfg = cfg
         self.dl = downloader.OrthoManager(
@@ -59,7 +62,18 @@ class ConfigUI(object):
         else:
             self.icon_path =os.path.join(CUR_PATH, 'imgs', 'ao-icon.png')
 
-    def setup(self, headless=False):
+    def start_splash(self):
+        splash_path = os.path.join(CUR_PATH, 'imgs', 'splash.png')
+        self.splash_w = sg.Window(
+                'Window Title', [[sg.Image(splash_path, subsample=2)]], 
+                transparent_color=sg.theme_background_color(), no_titlebar=True,
+                keep_on_top=True, finalize=True
+        )
+        event, values = self.splash_w.read(timeout=100)
+        return
+
+
+    def setup(self):
         scenery_path = self.cfg.paths.scenery_path
         showconfig = self.cfg.general.showconfig
         maptype = self.cfg.autoortho.maptype_override
@@ -67,23 +81,8 @@ class ConfigUI(object):
         if not os.path.exists(self.cfg.paths.cache_dir):
             os.makedirs(self.cfg.paths.cache_dir)
 
-        if not headless:
-            self.ui_loop()
-        else:
+        self.ui_loop()
 
-            log.info("-"*28)
-            log.info(f"Running setup!")
-            log.info("-"*28)
-            scenery_path = input(f"Enter path to scenery install directory ({scenery_path}) : ") or scenery_path
-            xplane_path = input(f"Enter path to X-Plane install directory ({xplane_path}) : ") or xplane_path
-            
-            self.config['paths']['scenery_path'] = scenery_path
-            self.config['paths']['xplane_path'] = xplane_path
-            self.config['general']['showconfig'] = str(showconfig)
-            self.config['autoortho']['maptype_override'] = maptype
-
-            self.save()
-            self.load()
 
     def refresh_scenery(self):
         self.dl.regions = {}
@@ -269,6 +268,10 @@ class ConfigUI(object):
         scenery_t = threading.Thread(target=self.scenery_setup)
         scenery_t.start()
 
+        if self.splash_w is not None:
+            # GUI starting, close splash screen
+            self.splash_w.close()
+        
         self.ready.set()
 
         try:
