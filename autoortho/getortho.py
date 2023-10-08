@@ -799,9 +799,13 @@ class Tile(object):
             col_offset = col % scalefactor
             row_offset = row % scalefactor
 
+            log.debug(f"Col_Offset: {col_offset}, Row_Offset: {row_offset}, Scale_Factor: {scalefactor}")
+
             # Pixel width
             w_p = 256 >> diff
             h_p = 256 >> diff
+
+            log.debug(f"Pixel Size: {w_p}x{h_p}")
 
             # Load image to crop
             img_p = AoImage.load_from_memory(c.data)
@@ -812,11 +816,12 @@ class Tile(object):
 
             # Crop
             crop_img = AoImage.new('RGBA', (w_p, h_p), (0,255,0))
-            img_p.crop(crop_img, (col_offset, row_offset))
+            img_p.crop(crop_img, (col_offset * w_p, row_offset * h_p))
             chunk_img = crop_img.scale(scalefactor)
 
             return chunk_img
 
+        log.debug(f"No best chunk found for {col}x{row}x{zoom}!")
         return False
 
 

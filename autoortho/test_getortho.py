@@ -338,3 +338,19 @@ def test_get_best_chunk(tmpdir):
     ret = tile3.get_best_chunk(18408, 26857, 0, 16)
     assert not ret
 
+
+@pytest.mark.parametrize("mm", [4,3,2,1])
+def test_get_best_chunks_all(mm, tmpdir):
+    tile = getortho.Tile(17408, 25856, 'BI', 16, cache_dir=tmpdir)
+    
+    # Verify we get a match
+    tile.get_img(mm)
+
+    for x in range(16):
+        for y in range(16):
+            ret = tile.get_best_chunk(17408+x, 25856+y, 0, 16)
+            assert(ret)
+            ret.write_jpg(os.path.join(tmpdir, f"best_{mm}_{x}_{y}.jpg"))
+
+    #assert True == False
+    
