@@ -825,29 +825,6 @@ class Tile(object):
         return False
 
 
-    def _get_best_chunk(self, x, y, mm):
-        for i in range(mm+1, 5):
-            if i in self.imgs:
-                # We have an image already
-                img = self.imgs[i]
-
-                # Difference between requested mm and found image mm level
-                mmdiff = i - mm
-
-                mm4_x = x >> mmdiff
-                mm4_y = y >> mmdiff
-                scalefactor = 1 << mmdiff
-
-                mm_w = 256 >> mmdiff
-                mm_h = 256 >> mmdiff
-
-                log.debug(f"GET_IMG: {self} Crop: {mm4_x}x{mm4_y} w:{mm_w} h:{mm_h}")
-                crop_img = AoImage.new('RGBA', (mm_w, mm_h), (0,255,0))
-                img.crop(crop_img, (mm4_x, mm4_y))
-                chunk_img = crop_img.scale(scalefactor)
-                return chunk_img
-        return False
-
     #@profile
     @locked
     def get_mipmap(self, mipmap=0):
