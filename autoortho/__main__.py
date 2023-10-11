@@ -26,7 +26,7 @@ def setuplogs():
             ]
     )
     log = logging.getLogger(__name__)
-    log.info(f"Setup logs: {log_dir}, level: {log_level}")
+    log.info(f"Setup logs: {log_dir}, log level: {log_level}")
 
 import autoortho
 
