@@ -164,6 +164,10 @@ class AOMount:
         self.mount_threads = []
 
     def mount_sceneries(self, blocking=True):
+        if not self.cfg.scenery_mounts:
+            log.warning(f"No installed sceneries detected.  Exiting.")
+            return
+
         self.mounts_running = True
         for scenery in self.cfg.scenery_mounts:
             t = threading.Thread(
@@ -318,9 +322,6 @@ def main():
 
     stats = aostats.AOStats()
 
-    if not CFG.scenery_mounts:
-        log.warning(f"No installed sceneries detected.  Exiting.")
-        sys.exit(0)
 
     import flighttrack
     ftrack = threading.Thread(
