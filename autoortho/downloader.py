@@ -224,8 +224,8 @@ class Package(object):
         MBps = (total_fetched/1048576) / elapsed
         cur_activity['pcnt_done'] = pcnt_done
         cur_activity['MBps'] = MBps
-        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
-        cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
+        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} Mbps", end='')
+        cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} Mbps"
 
     def check(self):
         log.info(f"Checking {self.name}")
