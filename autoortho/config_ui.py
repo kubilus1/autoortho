@@ -36,11 +36,12 @@ class ConfigUI(object):
     ready = None
     splash_w = None
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, show_splash=True):
         self.ready = threading.Event()
         self.ready.clear()
         
-        self.start_splash()
+        if show_splash:
+            self.start_splash()
 
         self.cfg = cfg
         self.dl = downloader.OrthoManager(
@@ -49,8 +50,7 @@ class ConfigUI(object):
             noclean = self.cfg.scenery.noclean
         )
 
-        if self.cfg.general.gui:
-            sg.theme('DarkAmber')
+        sg.theme('DarkAmber')
 
         self.scenery_q = queue.Queue()
 
@@ -250,9 +250,9 @@ class ConfigUI(object):
         ]
 
         font = ("Helventica", 14)
+
         self.window = sg.Window(f'AutoOrtho Setup ver {__version__}', layout, font=font,
                 finalize=True, icon=self.icon_path)
-
 
         #print = lambda *args, **kwargs: window['output'].print(*args, **kwargs)
         self.window['-EXPAND-'].expand(True, True, True)
@@ -278,7 +278,8 @@ class ConfigUI(object):
                 #print(f"VALUES {values}")
                 #print(f"EVENT: {event}")
                 if event == sg.WIN_CLOSED:
-                    print("Exiting ...")
+                    print("WIN_CLOSED event.  Exiting ...")
+                    log.info("Exiting ...")
                     #print("Not saving changes ...")
                     #self.show_status("Exiting")
                     close = True
@@ -292,6 +293,13 @@ class ConfigUI(object):
                 elif event == "Run":
                     print("Updating config.")
                     self.show_status("Updating config")
+                    cbutton = self.window["Clean Cache"]
+                    rbutton = self.window["Run"]
+                    sbutton = self.window["Save"]
+                    rbutton.update("Running")
+                    cbutton.update(disabled=True)
+                    rbutton.update(disabled=True)
+                    sbutton.update(disabled=True)
                     self.save()
                     self.cfg.load()
                     self.show_status("Mounting sceneries")
@@ -299,7 +307,8 @@ class ConfigUI(object):
                     self.show_status("Verifying")
                     self.verify()
                     self.show_status("Running")
-                    self.window.minimize()
+                    if self.cfg.general.hide:
+                        self.window.minimize()
                 elif event == 'Save':
                     print("Updating config.")
                     self.show_status("Updating config")
@@ -323,6 +332,7 @@ class ConfigUI(object):
                     cbutton.update(disabled=False)
                     rbutton.update(disabled=False)
                 elif event.startswith("scenery-"):
+                    log.info("Scenery install event")
                     self.save()
                     self.cfg.load()
                     button = self.window[event]
@@ -348,6 +358,10 @@ class ConfigUI(object):
         self.running = False
         self.unmount_sceneries()
         self.window.close()
+
+
+    def unmount_sceneries(self):
+        log.info("Unimplemented method: 'unmount_sceneries'")
 
 
     def update_logs(self):
@@ -458,8 +472,7 @@ class ConfigUI(object):
         font = ("Helventica", 14)
         if msg:
             print(msg)
-            if self.cfg.general.gui:
-                sg.popup("\n".join(msg), title="WARNING!", font=font)
+            sg.popup("\n".join(msg), title="WARNING!", font=font)
 
         if self.errors:
             log.error("ERRORS DETECTED.  Exiting.")

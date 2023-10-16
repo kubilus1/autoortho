@@ -15,14 +15,19 @@ def cfg(tmpdir):
 @pytest.fixture
 def cfgui(tmpdir):
     cfg = aoconfig.AOConfig(os.path.join(tmpdir, '.aocfg'))
-    cfgui = config_ui.ConfigUI(cfg)
+    cfgui = config_ui.ConfigUI(cfg, show_splash=False)
+    print("CFG UI CREATED")
     t = threading.Thread(daemon=True, target=cfgui.ui_loop)
     t.start()
     cfgui.ready.wait()
-
+    print("CFG UI READY")
     yield cfgui
+    print("CFG UI STOPPING")
     cfgui.stop()
+    print("STOPPED")
     t.join()
+    print("JOINED")
+
 
 
 def test_cfg_init(cfg):

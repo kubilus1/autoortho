@@ -42,13 +42,11 @@ class AOConfig(object):
 
     _defaults = f"""
 [general]
-# Use GUI config at startup
-gui = True
 # Show config setup at startup everytime
 showconfig = True
-# Hide when running
+# Hide/minimize when running
 hide = True
-# Debug mode
+# Debug mode.  VERY verbose and will slow things down.  Don't use this typically.
 debug = False
 
 [paths]

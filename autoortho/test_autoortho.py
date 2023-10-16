@@ -85,7 +85,7 @@ def mount(tmpdir, request, scenery_dir):
         t = threading.Thread(
             daemon = True,
             target = autoortho.run,
-            args = (rootdir, mountdir)
+            args = (rootdir, mountdir, True)
         )
 
         t.start()
@@ -414,7 +414,7 @@ def test_mount_restore(tmpdir, scenery_dir, prefer_winfsp):
     t = threading.Thread(
         daemon = True,
         target = autoortho.run,
-        args = (rootdir, mountdir)
+        args = (rootdir, mountdir, True)
     )
 
     t.start()

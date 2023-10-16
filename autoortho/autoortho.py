@@ -320,8 +320,16 @@ def main():
         # Don't show cfgui
         run_headless = True
 
-    stats = aostats.AOStats()
+    root = args.root
+    mountpoint = args.mountpoint
 
+    run(root, mountpoint, run_headless)
+
+
+def run(root, mountpoint, run_headless):
+    CFG = aoconfig.CFG
+
+    stats = aostats.AOStats()
 
     import flighttrack
     ftrack = threading.Thread(
@@ -334,10 +342,8 @@ def main():
     stats.start()
    
     # Run things
-    if args.root and args.mountpoint:
+    if root and mountpoint:
         # Just mount specific requested dirs
-        root = args.root
-        mountpoint = args.mountpoint
         print("root:", root)
         print("mountpoint:", mountpoint)
         aom = AOMount(CFG)
@@ -360,6 +366,16 @@ def main():
 
     log.info("AutoOrtho exit.")
 
+def unmount(mountpoint):
+    mounted = True
+    while mounted:
+        print(f"Shutting down {mountpoint}")
+        print("Send poison pill ...")
+        mounted = os.path.isfile(os.path.join(
+            mountpoint,
+            ".poison"
+        ))
+        time.sleep(0.5)
 
 if __name__ == '__main__':
     main()
