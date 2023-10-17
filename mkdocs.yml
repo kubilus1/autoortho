@@ -1,3 +1,13 @@
 site_name: 'AutoOrtho'
+repo_url: https://github.com/kubilus1/autoortho
 theme:
   name: 'material'
+  features:
+    - navigation.tabs
+  palette:
+    scheme: slate
+
+extra:
+  version:
+    provider: mike
+

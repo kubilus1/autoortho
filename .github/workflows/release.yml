@@ -6,67 +6,9 @@ on:
       - '*'
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-   
-    - name: Setup 
-      run: |
-        sudo apt-get update && sudo apt-get install -y make
-
-    - name: Build
-      run: |
-        make autoortho_lin.bin
-
-    - name: Save artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: linbin
-        path: autoortho_lin.bin
-
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: autoortho_lin.bin
-
-
-  build-windows:
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v3
-   
-    - uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-
-    - name: Setup 
-      run: |
-          #choco --yes install winfsp
-          python -m pip install -U pytest 
-          # Windows OS package install ecosystem is sketchy and broken.  Just test min stuff ...
-          python -m pip install -U -r requirements-win.txt
-          python -m pip install -U -r requirements-build.txt
-
-    - name: Build
-      run: |
-        make autoortho_win.exe
-        make autoortho_win.zip ZIP="7z a"
-
-    - name: Save artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: winbin
-        path: |
-          autoortho_win.exe
-          autoortho_win.zip
-
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          autoortho_win.exe
-          autoortho_win.zip
-
+  build: 
+    uses: ./.github/workflows/build_release.yml
+    with:
+      version: ${{ github.head_ref || github.ref_name }}
+      relname: ${{ github.ref_name }}
+      prerelease: true

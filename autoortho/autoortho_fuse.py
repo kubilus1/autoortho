@@ -36,6 +36,7 @@ import socket
 #from memory_profiler import profile
 import tracemalloc
 
+print(f"LIBFUSE: {id(_libfuse)} : {_libfuse}")
 
 def deg2num(lat_deg, lon_deg, zoom):
   lat_rad = math.radians(lat_deg)
@@ -83,7 +84,7 @@ class AutoOrtho(Operations):
         self.ktx2_re = re.compile(".*/(\d+)[-_](\d+)[-_]((?!ZL)\D*)(\d+).ktx2")
         self.dsf_re = re.compile(".*/[-+]\d+[-+]\d+.dsf")
         self.ter_re = re.compile(".*/\d+[-_]\d+[-_](\D*)(\d+).ter")
-        self.root = root
+        self.root = os.path.abspath(root)
         self.cache_dir = cache_dir
 
         self.tc = getortho.TileCacher(cache_dir)
@@ -170,8 +171,22 @@ class AutoOrtho(Operations):
         elif path.endswith(".poison"):
             log.info("Poison pill.  Exiting!")
             fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
-            threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
+            #threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
+            do_fuse_exit(fuse_ptr)
             
+            attrs = {
+                'st_atime': 1649857250.382081, 
+                'st_ctime': 1649857251.726115, 
+                'st_gid': self.default_gid,
+                'st_uid': self.default_uid,
+                'st_mode': 33206,
+                'st_mtime': 1649857251.726115, 
+                'st_nlink': 1, 
+                'st_size': 0, 
+                'st_blksize': 32768
+            }
+            return attrs
+        elif path.endswith('AOISWORKING'):
             attrs = {
                 'st_atime': 1649857250.382081, 
                 'st_ctime': 1649857251.726115, 
@@ -209,10 +224,11 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def readdir(self, path, fh):
-        log.info(f"READDIR: {path} {fh}")
-        if path in ["/textures", "/terrain"]:
-            return ['.','..']
-    
+        #log.info(f"READDIR: {path} {fh}")
+        if path in ["/textures"]:
+            return ['.', '..', '.AOISWORKING', '24832_12416_BI16.dds']
+        elif path in ["/terrain"]:
+            return ['.', '..', '.AOISWORKING']
 
         if path not in self.path_dict:
             full_path = self._full_path(path)
@@ -223,6 +239,7 @@ class AutoOrtho(Operations):
         else:
             dirents = self.path_dict.get(path)
 
+        log.debug(f"DIRENTS: {dirents}")
         return dirents
         #for r in dirents:
         #    yield r
@@ -247,7 +264,7 @@ class AutoOrtho(Operations):
 
     @lru_cache
     def statfs(self, path):
-        log.info(f"STATFS: {path}")
+        #log.info(f"STATFS: {path}")
         full_path = self._full_path(path)
         if platform.system() == 'Windows':
             stats = {
@@ -319,6 +336,8 @@ class AutoOrtho(Operations):
             t = self.tc._open_tile(row, col, maptype, zoom) 
         elif platform.system() == 'Windows':
             h = os.open(full_path, flags|os.O_BINARY)
+        elif path.endswith('AOISWORKING'):
+            return h
         else:
             h = os.open(full_path, flags)
 
@@ -442,7 +461,7 @@ class AutoOrtho(Operations):
 
 def do_fuse_exit(fuse_ptr=None):
     print("fuse_exit called")
-    time.sleep(1)
+    #time.sleep(1)
     if not fuse_ptr:
         fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
     print(fuse_ptr)
@@ -454,7 +473,7 @@ def run(ao, mountpoint, nothreads=False):
 
     FUSE(
         ao,
-        mountpoint, 
+        os.path.abspath(mountpoint), 
         nothreads=nothreads, 
         foreground=True, 
         allow_other=True,

@@ -10,7 +10,7 @@ int main(void) {
     
     aoimage_t img;
 
-    if(!aoimage_read_jpg("../testfiles/test_tile.jpg", &img)) {
+    if(!aoimage_read_jpg("../testfiles/test_tile2.jpg", &img)) {
         printf("Error in loading the image\n");
         exit(1);
     }

@@ -1,7 +1,10 @@
 refuse
-pillow-simd
 psutil
 pysimplegui
 Flask
 flask-socketio
 eventlet
+packaging
+requests
+geocoder
+pytest

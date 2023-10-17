@@ -1,0 +1,33 @@
+#
+# Create an 'unstable' release from the main branch
+#
+
+name: Unstable Release
+
+on:
+  #schedule:
+  #  - cron: '0 5 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  #pull_request:
+
+jobs:
+  getcalver:
+    runs-on: ubuntu-latest
+    outputs:
+      calver: ${{ steps.getcalver.outputs.CALVER }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get CalVer
+        id: getcalver
+        run: |
+          echo "CALVER="$(date +%Y.%m.%d.%H.%M.%S) > $GITHUB_OUTPUT
+
+  build:
+    needs: getcalver 
+    uses: ./.github/workflows/build_release.yml
+    with:
+      version: unstable
+      internalver: ${{ needs.getcalver.outputs.calver }}
+      relname: unstable 
