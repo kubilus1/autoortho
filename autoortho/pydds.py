@@ -29,14 +29,14 @@ elif platform.system().lower() == 'windows':
     print("Windows detected")
     _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','stb_dxt.dll')
     _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','windows','ispc_texcomp.dll')
-elif platform.system().lower() == 'darwin' and platform.processor().lower() == 'arm':
-    _stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','darwin_arm','libstbdxt.dylib')
+elif platform.system().lower() == 'darwin':
+    #_stb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','darwin_arm','libstbdxt.dylib')
     _ispc_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'lib','darwin_arm','libispc_texcomp.dylib')
 else:
     print("System is not supported")
     exit()
 
-_stb = CDLL(_stb_path)
+#_stb = CDLL(_stb_path)
 _ispc = CDLL(_ispc_path)
 
 DDSD_CAPS = 0x00000001          # dwCaps/dwCaps2 is enabled. 
