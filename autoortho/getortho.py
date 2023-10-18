@@ -187,6 +187,7 @@ class Chunk(object):
     data = None
     img = None
     url = None
+    _lock = None
 
     serverlist=['a','b','c','d']
 
@@ -197,6 +198,8 @@ class Chunk(object):
         self.maptype = maptype
         self.cache_dir = cache_dir
         
+        self._lock = threading.RLock()
+
         # Hack override maptype
         #self.maptype = "BI"
 
@@ -244,8 +247,13 @@ class Chunk(object):
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
 
+    @locked
     def get(self, idx=0, session=requests):
         log.debug(f"Getting {self}") 
+
+        if self.ready.is_set():
+            log.warning(f"{self} is already retrieved. Return.")
+            return True
 
         if self.get_cache():
             self.ready.set()
@@ -337,8 +345,8 @@ class Chunk(object):
 
         self.fetchtime = time.time() - self.starttime
 
-        self.save_cache()
         self.ready.set()
+        self.save_cache()
         return True
 
     def close(self):
