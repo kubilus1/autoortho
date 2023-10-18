@@ -2,6 +2,7 @@
 
 TARGET=main
 JPGT=/opt/libjpeg-turbo/lib64/
+#JPGT=/opt/homebrew/opt/jpeg-turbo/lib
 
 HEADERS=$(wildcard *.h)
 OBJECTS=aoimage.o
@@ -10,13 +11,20 @@ OBJECTS=aoimage.o
 CC=gcc
 LD=gcc
 
-CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden \
-	 $(DEFINES)
+CFLAGS+=-O2 -arch arm64 -arch x86_64 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden -I/opt/libjpeg-turbo/include/ \
+	$(DEFINES)
 
-LDFLAGS=-shared -rdynamic -nodefaultlibs  -lpthread
+LDFLAGS=-shared -rdynamic -nodefaultlibs -arch arm64 -arch x86_64 -lpthread
 #LIBS=-lturbojpeg
-#LIBS=./libturbojpeg.a
-LIBS=-L$(JPGT) -lturbojpeg
+# Statically linked with libjpeg-turbo-3.0.1
+LIBS=$(JPGT)/libturbojpeg.a
+#LIBS=-L$(JPGT) -lturbojpeg
+
+#CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden \
+	 $(DEFINES)
+#
+#LDFLAGS=-shared -rdynamic -nodefaultlibs  -lpthread
+#LIBS=-L$(JPGT) -lturbojpeg
 
 all: $(TARGET)
 
@@ -25,11 +33,10 @@ all: $(TARGET)
 
 main: main.c aoimage.dylib $(HEADERS)
 	$(CC) $(CFLAGS) -o main \
-		main.c aoimage.c  $(LIBS)
+	main.c aoimage.c  $(LIBS)
 
 aoimage.dylib: $(OBJECTS)
 	$(LD) -o aoimage.dylib $(LDFLAGS) $(OBJECTS) $(LIBS)
 
 clean:
 	rm -f $(OBJECTS) $(TARGET) aoimage.dylib
-

@@ -32,7 +32,8 @@ bin: autoortho/.version
 		./autoortho/__main__.py -o autoortho_lin.bin
 
 autoortho_osx.bin: autoortho/.version
-	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
+	#python3.10 -m nuitka --verbose --verbose-output=nuitka.log 
+	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--macos-app-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=eventlet \
 		--enable-plugin=tk-inter \
