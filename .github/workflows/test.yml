@@ -23,8 +23,8 @@ jobs:
         cd autoortho
         pytest --log-level=DEBUG -v test_getortho.py test_pydds.py test_downloader.py
 
-  test-linux:
-    runs-on: ubuntu-latest
+  test-macos:
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v3
