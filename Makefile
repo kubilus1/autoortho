@@ -32,6 +32,7 @@ bin: autoortho/.version
 		./autoortho/__main__.py -o autoortho_lin.bin
 
 autoortho_osx.bin: autoortho/.version
+	#python3.10 -m nuitka --verbose --verbose-output=nuitka.log 
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--macos-app-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=eventlet \
@@ -79,6 +80,10 @@ __main__.dist: autoortho/.version
 		--standalone \
 		--disable-console \
 		./autoortho/__main__.py -o autoortho_win.exe
+
+osx_bin: autoortho_osx_$(VERSION).bin
+autoortho_osx_$(VERSION).bin: autoortho_osx.bin
+	mv autoortho_osx.bin $@
 
 win_exe: AutoOrtho_win_$(VERSION).exe
 AutoOrtho_win_$(VERSION).exe: __main__.dist
