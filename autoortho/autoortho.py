@@ -140,6 +140,14 @@ def diagnose(CFG):
                 log.warning(f"    Maptype: {maptype} FAILED!")
                 failed = True
 
+    log.info(f"Checking DDS file compression:")
+    dds_compressor = CFG.pydds.compressor.upper()
+    if dds_compressor != "ISPC" and platform.system().lower() == 'darwin':
+        log.warning(f"    {dds_compressor} FAILED! Not supported on MacOS, use ISPC instead!")
+        failed = True
+    else:
+        log.info(f"    {dds_compressor} OK!")
+
     log.info("------------------------------------")
     if failed:
         log.warning("***************")
