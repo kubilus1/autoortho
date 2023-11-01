@@ -14,3 +14,7 @@ downloads/
 release/
 *.bin
 .version
+nuitka.log
+nuitka-crash-report.xml
+autoortho/aoimage/main
+autoortho/aoimage/*.dylib

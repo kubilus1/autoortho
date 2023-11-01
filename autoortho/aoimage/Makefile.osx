@@ -1,0 +1,34 @@
+.SUFFIXES: .obj
+
+TARGET=main
+INC_DIR=$(CONDA_PREFIX)/include
+LIB_DIR=$(CONDA_PREFIX)/lib
+
+JPGT=$(CONDA_PREFIX)/lib/libturbojpeg.a
+HEADERS=$(wildcard *.h)
+OBJECTS=aoimage.o
+
+CC=gcc
+LD=gcc
+
+CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden -I$(INC_DIR) \
+	$(DEFINES)
+
+LDFLAGS=-shared -rdynamic -nodefaultlibs  -lpthread
+LIBS=$(LIB_DIR)/libturbojpeg.a
+
+all: $(TARGET)
+
+.c.o: $(HEADERS)
+	$(CC) $(CFLAGS) -c $<
+
+main: main.c aoimage.dylib $(HEADERS)
+	$(CC) $(CFLAGS) -o main \
+		main.c aoimage.c  $(LIBS)
+
+aoimage.dylib: $(OBJECTS)
+	$(LD) -o aoimage.dylib $(LDFLAGS) $(OBJECTS) $(LIBS)
+
+clean:
+	rm -f $(OBJECTS) $(TARGET) aoimage.dylib test*.jpg
+	-rm -rf __pycache__

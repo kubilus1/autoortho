@@ -1,5 +1,8 @@
 ZIP?=zip
 VERSION?=0.0.0
+AOIMAGE_DIR=autoortho/aoimage
+BUILD_OUTPUT_FILES=autoortho_win_$(VERSION).zip AutoOrtho_win_$(VERSION).exe \
+	autoortho_lin_$(VERSION).bin autoortho_osx_$(VERSION).bin
 
 autoortho.pyz:
 	mkdir -p build/autoortho
@@ -11,6 +14,31 @@ lin_bin: autoortho_lin_$(VERSION).bin
 autoortho_lin_$(VERSION).bin: autoortho/*.py
 	docker run --rm -v `pwd`:/code ubuntu:focal /bin/bash -c "cd /code; ./buildreqs.sh; time make bin VERSION=$(VERSION)"
 	mv autoortho_lin.bin $@
+
+
+$(AOIMAGE_DIR)/aoimage.dylib:
+	$(MAKE) -C $(AOIMAGE_DIR) --file Makefile.osx
+
+#
+#		--include-data-file=./autoortho/lib/darwin/*.dylib=lib/darwin/ \
+# Superfluous 		--enable-plugin=eventlet \
+#
+
+osx_bin: autoortho_osx_$(VERSION).bin
+autoortho_osx_$(VERSION).bin: $(AOIMAGE_DIR)/aoimage.dylib autoortho/*.py
+	python3 -m nuitka --verbose --verbose-output=nuitka.log \
+		--macos-app-icon=autoortho/imgs/ao-icon.ico \
+		--disable-ccache \
+		--include-package=geocoder \
+		--enable-plugin=tk-inter \
+		--tcl-library-dir=/usr/local/lib/tcl8.6 \
+		--tk-library-dir=/usr/local/lib/tk8.6 \
+		--include-data-file=./autoortho/.version*=. \
+		--include-data-file=./autoortho/templates/*.html=templates/ \
+		--include-data-file=./autoortho/aoimage/*.dylib=aoimage/ \
+		--include-data-dir=./autoortho/imgs=imgs \
+		--onefile \
+		./autoortho/__main__.py -o $@
 
 enter:
 	docker run --rm -it -v `pwd`:/code ubuntu:focal /bin/bash
@@ -85,8 +113,13 @@ testperf:
 serve_docs:
 	docker run -p 8000:8000 -v `pwd`:/docs squidfunk/mkdocs-material
 
-clean:
+.PHONY: clean_osx
+clean_osx: clean
+	$(MAKE) -C $(AOIMAGE_DIR) --file makefile.osx clean
+
+.PHONY: clean
+clean: clean_osx
 	-rm -rf build
 	-rm -rf __main__.dist
 	-rm -rf __main__.build
-	
+	-rm $(BUILD_OUTPUT_FILES)
