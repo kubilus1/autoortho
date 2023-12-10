@@ -59,6 +59,73 @@ experimental ATM:
 8. Configure your scenery_packs.ini file appropriately 
 9. Run X-Plane and choose a location for an ortho set you have downloaded
 
+
+## MacOS Setup
+
+All of below steps require running command in ``Ternimal`` app.
+
+1. Install [Homebrew](https://brew.sh/) if you don't have it yet.
+2. Install [FUSE for macOS](https://osxfuse.github.io/) with command ``brew install --cask osxfuse``.
+> Note: You need to enable FUSE in ``System Preferences`` -> ``Security & Privacy`` -> ``General`` -> ``Allow apps downloaded from:`` -> ``App Store and identified developers``. Watch some youtobe videos if you don't know how to do it.
+    
+3. Install [xcode command line tools](https://developer.apple.com/xcode/resources/) with command ``xcode-select --install``.
+> Note: if you have already installed xcode, you can skip this step. but make sure it is up-to-date.
+4. Clone the code
+```shell
+git git clone https://github.com/kubilus1/autoortho.git
+
+cd autoortho && git checkout macos
+```
+5. install python3.10 with command ``brew install python@3.10``.
+6. install jpeg-turbo with command ``brew install jpeg-turbo``.
+7. modify brew tcl-tk
+```
+brew edit tcl-tk
+```
+Us your arrow keys to go down to
+```
+def install
+args = %W[
+--prefix=#{prefix}
+--includedir=#{include}/tcl-tk
+--mandir=#{man}
+--enable-threads
+--enable-64bit
+]
+```
+Then press “i”
+
+Then paste this line in that space
+
+`ENV["MACOSX_DEPLOYMENT_TARGET"] = "10.11"`
+
+Make sure it is aligned with the line after it.
+
+It should look like this after
+![img.png](img.png)
+
+After this hit ESC on your keyboard then type the following:
+
+`:wq!` (including the colon)
+
+Then hit enter
+8. install tcl-tk
+```shell
+HOMEBREW_NO_INSTALL_FROM_API=1 brew reinstall --build-from-source tcl-tk
+```
+9. install python-tk with command ``brew install python-tk@3.10``.
+10. install python dependencies.
+```
+python3.10 -m pip install -U pip
+python3.10 -m pip install setuptools
+python3.10 -m pip install wheel
+python3.10 -m pip install -r requirements-build.txt --no-use-pep517
+python3.10 -m pip install -r requirements.txt
+```
+11. Run it
+``` shell
+python3.10 autoortho
+```
 ---
 
 ## Requirements and Compatibility
