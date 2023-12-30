@@ -109,6 +109,7 @@ After this hit ESC on your keyboard then type the following:
 `:wq!` (including the colon)
 
 Then hit enter
+
 8. install tcl-tk
 ```shell
 HOMEBREW_NO_INSTALL_FROM_API=1 brew reinstall --build-from-source tcl-tk
