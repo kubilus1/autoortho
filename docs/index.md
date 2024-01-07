@@ -65,14 +65,14 @@ experimental ATM:
 All of below steps require running command in ``Ternimal`` app.
 
 1. Install [Homebrew](https://brew.sh/) if you don't have it yet.
-2. Install [FUSE for macOS](https://osxfuse.github.io/) with command ``brew install --cask osxfuse``.
+2. Install [FUSE for macOS](  ://osxfuse.github.io/) with command ``brew install --cask osxfuse``.
 > Note: You need to enable FUSE in ``System Preferences`` -> ``Security & Privacy`` -> ``General`` -> ``Allow apps downloaded from:`` -> ``App Store and identified developers``. Watch some youtobe videos if you don't know how to do it.
     
 3. Install [xcode command line tools](https://developer.apple.com/xcode/resources/) with command ``xcode-select --install``.
 > Note: if you have already installed xcode, you can skip this step. but make sure it is up-to-date.
 4. Clone the code
 ```shell
-git git clone https://github.com/kubilus1/autoortho.git
+git clone https://github.com/kubilus1/autoortho.git
 
 cd autoortho && git checkout macos
 ```
