@@ -38,6 +38,7 @@ jobs:
     - name: Setup 
       run: |
           #choco --yes install winfsp
+          py -m pip install --only-binary :all: greenlet
           py -m pip install -U pytest 
           py -m pip install -U -r requirements.txt
 
