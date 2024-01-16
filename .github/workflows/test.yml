@@ -33,14 +33,14 @@ jobs:
    
     - uses: actions/setup-python@v3
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     - name: Setup 
       run: |
           #choco --yes install winfsp
-          py -m pip install --only-binary :all: greenlet==2.0.2
-          py -m pip install --only-binary :all: eventlet==0.33.3 
-          py -m pip install -U pytest 
+          #py -m pip install --only-binary :all: greenlet==2.0.2
+          #py -m pip install --only-binary :all: eventlet==0.33.3 
+          #py -m pip install -U pytest 
           py -m pip install -U -r requirements.txt
 
     - name: Test
