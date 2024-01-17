@@ -31,6 +31,22 @@ bin: autoortho/.version
 		--onefile \
 		./autoortho/__main__.py -o autoortho_lin.bin
 
+autoortho_osx.bin: autoortho/.version
+	#python3.10 -m nuitka --verbose --verbose-output=nuitka.log 
+	python3 -m nuitka --verbose --verbose-output=nuitka.log \
+		--macos-app-icon=autoortho/imgs/ao-icon.ico \
+		--enable-plugin=eventlet \
+		--enable-plugin=tk-inter \
+		--tcl-library-dir=/usr/local/lib/tcl8.6 \
+		--tk-library-dir=/usr/local/lib/tk8.6 \
+		--include-data-file=./autoortho/.version*=. \
+		--include-data-file=./autoortho/templates/*.html=templates/ \
+		--include-data-file=./autoortho/lib/darwin_arm/*.dylib=lib/darwin_arm/ \
+		--include-data-file=./autoortho/aoimage/*.dylib=aoimage/ \
+		--include-data-dir=./autoortho/imgs=imgs \
+		--onefile \
+		./autoortho/__main__.py -o autoortho_osx.bin
+
 _autoortho_win.exe: autoortho/.version
 	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--mingw64 \
@@ -64,6 +80,10 @@ __main__.dist: autoortho/.version
 		--standalone \
 		--disable-console \
 		./autoortho/__main__.py -o autoortho_win.exe
+
+osx_bin: autoortho_osx_$(VERSION).bin
+autoortho_osx_$(VERSION).bin: autoortho_osx.bin
+	mv autoortho_osx.bin $@
 
 win_exe: AutoOrtho_win_$(VERSION).exe
 AutoOrtho_win_$(VERSION).exe: __main__.dist

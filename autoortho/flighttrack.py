@@ -5,6 +5,7 @@ import time
 import json
 import socket
 import threading
+import platform
 from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
@@ -22,6 +23,11 @@ RUNNING=True
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
+
+if platform.system().lower() == 'darwin':
+    local_host = '127.0.0.1'
+else:
+    local_host = '0.0.0.0'
 
 
 class FlightTracker(object):
@@ -192,13 +198,13 @@ def metrics():
 def run():
     #app.run(host='0.0.0.0', port=CFG.flightdata.webui_port, debug=CFG.general.debug, threaded=True, use_reloader=False)
     log.info("Start flighttracker...")
-    socketio.run(app, host='0.0.0.0', port=int(CFG.flightdata.webui_port))
-    log.info("Exiting flighttracker ...") 
+    socketio.run(app, host=local_host, port=int(CFG.flightdata.webui_port))
+    log.info("Exiting flighttracker ...")
 
 def main():
     ft.start()
     try:
-        app.run(host='0.0.0.0', debug=False, threaded=True, use_reloader=False)
+        app.run(host=local_host, debug=False, threaded=True, use_reloader=False)
     except KeyboardInterrupt:
         print("Shutdown requested.")
     finally:

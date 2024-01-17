@@ -25,8 +25,8 @@ from aoconfig import CFG
 import logging
 log = logging.getLogger(__name__)
 
-#from fuse import FUSE, FuseOSError, Operations, fuse_get_context
-from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context, fuse_exit, _libfuse
+#from fuse import FUSE, FuseOSError, Operations, fuse_get_context, _libfuse
+from refuse.high import FUSE, FuseOSError, Operations, fuse_get_context,  _libfuse
 
 import getortho
 
@@ -285,7 +285,7 @@ class AutoOrtho(Operations):
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
             #     'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
             #     'f_frsize', 'f_namemax'))
-        elif platform.system() == 'Linux':
+        else:
             stv = os.statvfs(full_path)
             #log.info(stv)
             return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
@@ -509,3 +509,16 @@ def run(ao, mountpoint, nothreads=False):
         #direct_io=True
     )
     log.info(f"FUSE: Exiting mount {mountpoint}")
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('root')
+    parser.add_argument('mount')
+    args = parser.parse_args()
+    
+    logging.basicConfig(level=logging.DEBUG)
+    ao = AutoOrtho(args.root)
+
+    fuse = FUSE(ao, args.mount, foreground=True, allow_other=True)

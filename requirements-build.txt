@@ -4,12 +4,18 @@
 #
 #    pip-compile requirements-build.in
 #
+imageio==2.31.5
+    # via -r requirements-build.in
 nuitka==1.6.6
     # via -r requirements-build.in
+numpy==1.26.1
+    # via imageio
 ordered-set==4.1.0
     # via
     #   -r requirements-build.in
     #   nuitka
+pillow==10.1.0
+    # via imageio
 zstandard==0.21.0
     # via
     #   -r requirements-build.in
