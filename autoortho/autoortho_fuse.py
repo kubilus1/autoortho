@@ -285,7 +285,7 @@ class AutoOrtho(Operations):
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
             #     'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
             #     'f_frsize', 'f_namemax'))
-        elif platform.system() == 'Linux':
+        else: # Linux or Darwin
             stv = os.statvfs(full_path)
             #log.info(stv)
             return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
