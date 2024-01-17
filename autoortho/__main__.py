@@ -12,17 +12,24 @@ def setuplogs():
         os.makedirs(log_dir)
 
     log_level=logging.DEBUG if os.environ.get('AO_DEBUG') or CFG.general.debug else logging.INFO
+    log_formatter = logging.Formatter("%(levelname)s [%(threadName)s] %(name)s: %(message)s")
+    log_streamHandler = logging.StreamHandler()
+    log_streamHandler.setFormatter(log_formatter)
+
+    log_fileHandler = logging.handlers.RotatingFileHandler(
+        filename=os.path.join(log_dir, "autoortho.log"),
+        maxBytes=10485760,
+        backupCount=5
+    )
+    log_fileHandler.setFormatter(log_formatter)
+
     logging.basicConfig(
             #filename=os.path.join(log_dir, "autoortho.log"),
             level=log_level,
             handlers=[
                 #logging.FileHandler(filename=os.path.join(log_dir, "autoortho.log")),
-                logging.handlers.RotatingFileHandler(
-                    filename=os.path.join(log_dir, "autoortho.log"),
-                    maxBytes=10485760,
-                    backupCount=5
-                ),
-                logging.StreamHandler() if sys.stdout is not None else logging.NullHandler()
+                log_fileHandler,
+                log_streamHandler if sys.stdout is not None else logging.NullHandler()
             ]
     )
     log = logging.getLogger(__name__)
