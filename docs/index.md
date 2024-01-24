@@ -72,9 +72,9 @@ All of below steps require running command in ``Ternimal`` app.
 > Note: if you have already installed xcode, you can skip this step. but make sure it is up-to-date.
 4. Clone the code
 ```shell
-git clone https://github.com/kubilus1/autoortho.git
+git clone https://github.com/zodiac1214/autoortho.git
 
-cd autoortho && git checkout macos
+cd autoortho && git checkout macos-0.7.2
 ```
 5. install python3.10 with command ``brew install python@3.10``.
 6. install jpeg-turbo with command ``brew install jpeg-turbo``.
