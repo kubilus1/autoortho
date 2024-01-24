@@ -70,6 +70,8 @@ class AutoOrtho(Operations):
     path_dict = {}
     tile_dict = {}
 
+    fh_locks = {}
+
     fh = 1000
 
     default_uid = -1
@@ -390,9 +392,10 @@ class AutoOrtho(Operations):
             return data
 
         if not data:
-            os.lseek(fh, offset, os.SEEK_SET)
-            data = os.read(fh, length)
-            log.debug(f"READ: Read {len(data)} bytes.")
+            with self.fh_locks.setdefault(fh, threading.Lock()):
+                os.lseek(fh, offset, os.SEEK_SET)
+                data = os.read(fh, length)
+                log.debug(f"READ: Read {len(data)} bytes.")
 
         return data
 
