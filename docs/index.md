@@ -78,7 +78,8 @@ cd autoortho && git checkout macos-0.7.2
 ```
 5. install python3.10 with command ``brew install python@3.10``.
 6. install jpeg-turbo with command ``brew install jpeg-turbo``.
-7. modify brew tcl-tk
+7. brew install tcl-tk with command ``brew install tcl-tk``.
+8. modify brew tcl-tk
 ```
 brew edit tcl-tk
 ```
@@ -110,12 +111,12 @@ After this hit ESC on your keyboard then type the following:
 
 Then hit enter
 
-8. install tcl-tk
+9. reinstall tcl-tk with modified brew tcl-tk
 ```shell
 HOMEBREW_NO_INSTALL_FROM_API=1 brew reinstall --build-from-source tcl-tk
 ```
-9. install python-tk with command ``brew install python-tk@3.10``.
-10. install python dependencies.
+10. install python-tk with command ``brew install python-tk@3.10``.
+11. install python dependencies.
 ```
 python3.10 -m pip install -U pip
 python3.10 -m pip install setuptools
@@ -123,7 +124,7 @@ python3.10 -m pip install wheel
 python3.10 -m pip install -r requirements-build.txt --no-use-pep517
 python3.10 -m pip install -r requirements.txt
 ```
-11. Run it
+12. Run it
 ``` shell
 python3.10 autoortho
 ```
