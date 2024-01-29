@@ -224,7 +224,8 @@ class Package(object):
         MBps = (total_fetched/1048576) / elapsed
         cur_activity['pcnt_done'] = pcnt_done
         cur_activity['MBps'] = MBps
-        print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
+        if block_num % 1000 == 0:
+            print(f"\r{pcnt_done:.2f}%   {MBps:.2f} MBps", end='')
         cur_activity['status'] = f"Downloading {self.dl_url}\n{pcnt_done:.2f}%   {MBps:.2f} MBps"
 
     def check(self):
