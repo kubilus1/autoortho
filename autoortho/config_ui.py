@@ -171,6 +171,17 @@ class ConfigUI(object):
                 #    metadata={'section':self.cfg.cache}
                 #),
             ],
+            [
+                sg.Text('Saturation'),
+                sg.Slider(
+                    range=(0, 100, 5),
+                    default_value = self.cfg.coloring.saturation,
+                    key='saturation',
+                    size=(20,15),
+                    orientation='horizontal',
+                    metadata={'section':self.cfg.coloring}
+                ),
+            ],
             #[
             #    sg.Checkbox('Cleanup cache on start', key='clean_on_start',
             #        default=self.cfg.cache.clean_on_start,
