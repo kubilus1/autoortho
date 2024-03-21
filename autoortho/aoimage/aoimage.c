@@ -466,8 +466,8 @@ AOIAPI int32_t aoimage_desaturate(aoimage_t *img, float saturation) {
 
     int len = img->width * img->height * 4;
     for (uint8_t *ptr = img->ptr; ptr < img->ptr + len; ptr += 4) {
-        float luma = 0.212671 * ptr[0] + 0.715160 * ptr[1] + 0.072169 * ptr[2];
-        float x = (1.0 - saturation) * luma;
+        float luma = 0.212671f * ptr[0] + 0.715160f * ptr[1] + 0.072169f * ptr[2];
+        float x = (1.0f - saturation) * luma;
         ptr[0] = (uint8_t)(saturation * ptr[0] + x);
         ptr[1] = (uint8_t)(saturation * ptr[1] + x);
         ptr[2] = (uint8_t)(saturation * ptr[2] + x);
