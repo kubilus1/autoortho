@@ -70,6 +70,8 @@ class AutoOrtho(Operations):
     path_dict = {}
     tile_dict = {}
 
+    fh_locks = {}
+
     fh = 1000
 
     default_uid = -1
@@ -390,9 +392,10 @@ class AutoOrtho(Operations):
             return data
 
         if not data:
-            os.lseek(fh, offset, os.SEEK_SET)
-            data = os.read(fh, length)
-            log.debug(f"READ: Read {len(data)} bytes.")
+            with self.fh_locks.setdefault(fh, threading.Lock()):
+                os.lseek(fh, offset, os.SEEK_SET)
+                data = os.read(fh, length)
+                log.debug(f"READ: Read {len(data)} bytes.")
 
         return data
 
@@ -515,7 +518,7 @@ if __name__ == '__main__':
     parser.add_argument('mount')
     args = parser.parse_args()
     
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     ao = AutoOrtho(args.root)
 
     fuse = FUSE(ao, args.mount, foreground=True, allow_other=True)

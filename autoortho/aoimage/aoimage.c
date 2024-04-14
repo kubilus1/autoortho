@@ -397,6 +397,32 @@ AOIAPI void aoimage_tobytes(aoimage_t *img, uint8_t *data) {
     memcpy(data, img->ptr, img->width * img->height * img->channels);
 }
 
+AOIAPI int32_t aoimage_copy(const aoimage_t *s_img, aoimage_t *d_img, uint32_t s_height_only) {
+    assert(NULL != s_img->ptr);
+    assert(s_height_only <= s_img->height);
+
+    if (0 == s_height_only)
+        s_height_only = s_img->height;
+
+    int dlen = s_img->width * s_height_only * s_img->channels;
+    uint8_t *dest = malloc(dlen);
+    if (NULL == dest) {
+		sprintf(d_img->errmsg, "can't malloc %d bytes", dlen);
+        d_img->ptr = NULL;
+        return FALSE;
+    }
+
+    memcpy(dest, s_img->ptr, dlen);
+    d_img->ptr = dest;
+    d_img->width = s_img->width;
+    d_img->height = s_height_only;
+    d_img->stride = 4 * d_img->width;
+    d_img->channels = 4;
+    d_img->errmsg[0] = '\0';
+    return TRUE;
+
+}
+
 AOIAPI int32_t aoimage_paste(aoimage_t *img, const aoimage_t *p_img, uint32_t x, uint32_t y) {
     assert(x + p_img->width <= img->width);
     assert(y + p_img->height <= img->height);
@@ -435,4 +461,18 @@ AOIAPI int32_t aoimage_crop(aoimage_t *img, const aoimage_t *c_img, uint32_t x, 
     return TRUE;
 }
 
+AOIAPI int32_t aoimage_desaturate(aoimage_t *img, float saturation) {
+    assert(img->channels == 4);
+
+    int len = img->width * img->height * 4;
+    for (uint8_t *ptr = img->ptr; ptr < img->ptr + len; ptr += 4) {
+        float luma = 0.212671f * ptr[0] + 0.715160f * ptr[1] + 0.072169f * ptr[2];
+        float x = (1.0f - saturation) * luma;
+        ptr[0] = (uint8_t)(saturation * ptr[0] + x);
+        ptr[1] = (uint8_t)(saturation * ptr[1] + x);
+        ptr[2] = (uint8_t)(saturation * ptr[2] + x);
+    }
+
+    return TRUE;
+}
 
