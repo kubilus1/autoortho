@@ -124,7 +124,11 @@ python3.10 -m pip install wheel
 python3.10 -m pip install -r requirements-build.txt --no-use-pep517
 python3.10 -m pip install -r requirements.txt
 ```
-12. Run it
+12. Remove any MacOS quarantine flags
+``` shell
+sudo xattr -dr com.apple.quarantine *
+```
+13. Run it
 ``` shell
 python3.10 autoortho
 ```

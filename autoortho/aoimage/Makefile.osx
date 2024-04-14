@@ -1,42 +1,40 @@
 .SUFFIXES: .obj
 
 TARGET=main
-#JPGT=/opt/libjpeg-turbo/lib64/
-JPGT=/opt/homebrew/opt/jpeg-turbo/lib
+
+# When jpeg-turbo comes from homebrew, it will only be available for the architecture that homebrew was setup for.
+# We can have two parallel installation of homebrew though. The arch64 goes by default goes into /opt/homebrew
+# and x86_64 goes into /usr/local. From there, we can pull the static libs and mesh them into a univesal binary
+# There are some warnings about missing platform flags at link time but it seems like they can be ignored
+
+JPGT_ARM64=/opt/homebrew/Cellar/jpeg-turbo/3.0.2
+JPGT_X86_64=/usr/local/Cellar/jpeg-turbo/3.0.2
 
 HEADERS=$(wildcard *.h)
 OBJECTS=aoimage.o
 
-
 CC=gcc
 LD=gcc
 
-CFLAGS+=-O2 -arch arm64  -Wall -fPIC -fdiagnostics-color -fvisibility=hidden -I/opt/homebrew/opt/jpeg-turbo/include/ \
+CFLAGS+=-O2 -arch arm64 -arch x86_64 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden -I$(JPGT_ARM64)/include/ \
 	$(DEFINES)
 
-LDFLAGS=-shared -rdynamic -nodefaultlibs -arch arm64  -lpthread
-#LIBS=-lturbojpeg
-# Statically linked with libjpeg-turbo-3.0.1
-LIBS=$(JPGT)/libturbojpeg.a
-#LIBS=-L$(JPGT) -lturbojpeg
-
-#CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden \
-	 $(DEFINES)
-#
-#LDFLAGS=-shared -rdynamic -nodefaultlibs  -lpthread
-#LIBS=-L$(JPGT) -lturbojpeg
+LDFLAGS=-shared -rdynamic -nodefaultlibs -arch arm64 -arch x86_64 -lpthread
 
 all: $(TARGET)
 
 .c.o: $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
 
-main: main.c aoimage.dylib $(HEADERS)
+main: main.c aoimage.dylib lib/libturbojpeg.a $(HEADERS)
 	$(CC) $(CFLAGS) -o main \
-	main.c aoimage.c  $(LIBS)
+	main.c aoimage.c lib/libturbojpeg.a
 
-aoimage.dylib: $(OBJECTS)
-	$(LD) -o aoimage.dylib $(LDFLAGS) $(OBJECTS) $(LIBS)
+lib/libturbojpeg.a:
+	lipo -create -output lib/libturbojpeg.a $(JPGT_X86_64)/lib/libturbojpeg.a $(JPGT_ARM64)/lib/libturbojpeg.a
+
+aoimage.dylib: $(OBJECTS) lib/libturbojpeg.a
+	$(LD) -o aoimage.dylib $(LDFLAGS) $(OBJECTS) lib/libturbojpeg.a
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) aoimage.dylib
+	rm -f $(OBJECTS) $(TARGET) lib/libturbojpeg.a aoimage.dylib 
