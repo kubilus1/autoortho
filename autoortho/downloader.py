@@ -28,7 +28,7 @@ TESTMODE=os.environ.get('AO_TESTMODE', False)
 
 def do_url(url, headers={}, ):
     req = Request(url, headers=headers)
-    resp = urlopen(req, timeout=5)
+    resp = urlopen(req, timeout=15)
     if resp.status != 200:
         raise Exception
     return resp.read()
@@ -102,10 +102,11 @@ class Zip(object):
         log.info(f"Will assemble {self.path} from parts: {self.files}")
         with open(self.path, 'wb') as out_h:
             for f in self.files:
-                with open(f, 'rb') as in_h:
-                    out_h.write(in_h.read())
-                log.info(f"Removing {f}")
-                os.remove(f)
+                if os.path.exists(os.path.join(self.path,f)):
+                    with open(f, 'rb') as in_h:
+                        out_h.write(in_h.read())
+                    log.info(f"Removing {f}")
+                    os.remove(f)
 
         self.assembled = True
 
@@ -139,6 +140,8 @@ class Package(object):
     download_dir = ""
     install_dir = ""
     size = 0
+    regex_for_assembled_files =  r"^([\w]+\.zip)\.\d+$"
+
 
     installed = False
     downloaded = False
@@ -152,7 +155,7 @@ class Package(object):
         self,
         name,
         pkgtype,
-        download_dir = "."
+        download_dir = ".",
     ):
         self.name = name
         self.pkgtype = pkgtype
@@ -178,11 +181,17 @@ class Package(object):
         for url in self.remote_urls:
             cur_activity['status'] = f"Downloading {url}"
 
+            posible_destpath = ""
             filename = os.path.basename(url)
             destpath = os.path.join(self.download_dir, filename)
+            log.info(filename)
+            match = re.match(self.regex_for_assembled_files, filename)
+            if (match):
+                log.info("match!")
+                posible_destpath = os.path.join(self.download_dir, match.group(1))
 
             #if os.path.isfile(self.zf.path):
-            if os.path.isfile(destpath):
+            if os.path.isfile(destpath) or os.path.isfile(posible_destpath):
                 log.info(f"{destpath} already exists.  Skip.")
                 #print(f"{self.zf.path} already exists.  Skip.")
                 #self.zf.assembled = True
@@ -659,6 +668,7 @@ class OrthoManager(object):
 
         if not data and os.path.exists(self.info_cache):
             log.info(f"Using cache ...")
+            log.info(self.info_cache)
             with open(self.info_cache, "rb") as h:
                 resp = h.read()
             data = json.loads(resp)
