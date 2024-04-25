@@ -14,6 +14,7 @@ import argparse
 import platform
 import subprocess
 from urllib.request import urlopen, Request, urlretrieve, urlcleanup
+from urllib.error import URLError, HTTPError
 from datetime import datetime, timezone, timedelta
 from packaging import version
 
@@ -141,7 +142,7 @@ class Package(object):
     install_dir = ""
     size = 0
     regex_for_assembled_files =  r"^([\w]+\.zip)\.\d+$"
-
+    max_retries = 5
 
     installed = False
     downloaded = False
@@ -171,6 +172,7 @@ class Package(object):
 
 
     def download(self):
+        retries = 0
         if self.downloaded:
             log.info(f"Already downloaded.")
             return
@@ -199,21 +201,32 @@ class Package(object):
                 #return
                 #continue
             else:
-                log.info(f"Download {url}")
-                self.dl_start_time = time.time()
-                self.dl_url = url
-                urlcleanup()
-                local_file, headers = urlretrieve(
-                    url,
-                    destpath,
-                    self._show_progress
-                )
-                
-                cur_activity['status'] = f"DONE downloading {url}"
-                log.debug("  DONE!")
-                self.dl_start_time = None 
-                self.dl_url = None
-                urlcleanup()
+                while retries < self.max_retries:
+                    try:
+                        log.info(f"Download {url}")
+                        self.dl_start_time = time.time()
+                        self.dl_url = url
+                        urlcleanup()
+                        local_file, headers = urlretrieve(
+                            url,
+                            destpath,
+                            self._show_progress
+                        )
+                        log.info(f"DONE downloading {url}")
+                        break
+
+                    except (HTTPError, URLError) as e:
+                        retries += 1
+                        log.error(f"Failed to download {url}, attempt {retries} of {self.max_retries}. Error: {e}")
+                        time.sleep(2**retries)  # Exponencial backoff
+                    finally:
+                        self.dl_start_time = None
+                        self.dl_url = None
+                        urlcleanup()
+
+                if retries == self.max_retries:
+                    log.error(f"Max retries reached. Failed to download {url}")
+
 
             if destpath.endswith('sha256'):
                 self.zf.hashfile = destpath
