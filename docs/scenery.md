@@ -40,7 +40,7 @@ yAutoOrtho_Overlays
 z_ao_aus_pac
 z_ao_eur
 z_ao_na
-z_autoortho
+zAutoOrtho
 zzz_global_scenery
 ```
 

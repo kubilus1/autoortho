@@ -98,7 +98,7 @@ coastline PNG files that must be preserved.  These are simply passed through whe
 
 You can take advantage of this setup for your own scenery that you have
 packaged:
-* Place your scenery directory in `Custom Scenery/z_autoortho/scenery`
+* Place your scenery directory in `Custom Scenery/zAutoOrtho/scenery`
 
 When execute Autoortho will detect directories in that scenery dir and mount these in your configured `Custom Scenery` directory.
 

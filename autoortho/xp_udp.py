@@ -10,8 +10,8 @@ def reload_obj(path):
   
   cmd = b"OBJN"
   idx = 1
-  #string = "Custom Scenery/z_autoortho/Earth nav data/+40-120/+40-112.dsf"
-  string = os.path.join("Custom Scenery/z_autoortho", path)
+  #string = "Custom Scenery/zAutoOrtho/Earth nav data/+40-120/+40-112.dsf"
+  string = os.path.join("Custom Scenery/zAutoOrtho", path)
   message = struct.pack("<4sxi500s", cmd, idx, string.encode('utf-8'))
 
   sock.sendto(message, ("127.0.01", 49000))

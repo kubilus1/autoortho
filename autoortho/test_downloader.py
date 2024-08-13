@@ -23,8 +23,8 @@ def scenery_v1(tmpdir):
     
     os.makedirs(os.path.join(scenery_dir, 'z_test_00', 'stuff'))
     os.makedirs(os.path.join(scenery_dir, 'z_test_01', 'stuff'))
-    os.makedirs(os.path.join(scenery_dir, 'z_autoortho', '_textures'))
-    os.makedirs(os.path.join(scenery_dir, 'z_autoortho', 'textures'))
+    os.makedirs(os.path.join(scenery_dir, 'zAutoOrtho', '_textures'))
+    os.makedirs(os.path.join(scenery_dir, 'zAutoOrtho', 'textures'))
    
     info['ortho_dirs'] = [
             os.path.join(scenery_dir, 'z_test_00'),
@@ -32,7 +32,7 @@ def scenery_v1(tmpdir):
             os.path.join(scenery_dir, 'z_test_02'),
     ]
 
-    with open(os.path.join(scenery_dir, 'z_autoortho', 'test_info.json'), 'w') as h:
+    with open(os.path.join(scenery_dir, 'zAutoOrtho', 'test_info.json'), 'w') as h:
         h.write(json.dumps(info))
 
     return scenery_dir
@@ -62,14 +62,14 @@ def test_v1_upgrade(scenery_v1):
     extracts = os.listdir(scenery_v1)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'zAutoOrtho'
     ]
 
-    scenery = os.listdir(os.path.join(scenery_v1, "z_autoortho", "scenery"))
+    scenery = os.listdir(os.path.join(scenery_v1, "zAutoOrtho", "scenery"))
     scenery.sort()
     assert scenery == ['z_ao_test']
 
-    orthodetails = os.listdir(os.path.join(scenery_v1, "z_autoortho"))
+    orthodetails = os.listdir(os.path.join(scenery_v1, "zAutoOrtho"))
     orthodetails.sort()
     assert orthodetails == ['scenery', 'test_info.json']
 
@@ -101,14 +101,14 @@ def test_upgrade(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'zAutoOrtho'
     ]
 
-    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery = os.listdir(os.path.join(scenery_dir, "zAutoOrtho", "scenery"))
     scenery.sort()
     assert scenery == ['z_ao_test']
 
-    orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
+    orthodetails = os.listdir(os.path.join(scenery_dir, "zAutoOrtho"))
     orthodetails.sort()
     assert orthodetails == ['scenery', 'test_info.json']
 
@@ -163,21 +163,21 @@ def test_fetch(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'zAutoOrtho'
     ]
     #assert extracts == [
-    #        'yAutoOrtho_Overlays', 'z_autoortho'
+    #        'yAutoOrtho_Overlays', 'zAutoOrtho'
     #]
 
-    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery = os.listdir(os.path.join(scenery_dir, "zAutoOrtho", "scenery"))
     scenery.sort()
     assert scenery == ['z_ao_test']
 
-    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery", "z_ao_test"))
+    scenery = os.listdir(os.path.join(scenery_dir, "zAutoOrtho", "scenery", "z_ao_test"))
     scenery.sort()
     assert scenery == ['Earth nav data', 'ORTHO_SETUP.md', 'terrain', 'textures']
 
-    orthodetails = os.listdir(os.path.join(scenery_dir, "z_autoortho"))
+    orthodetails = os.listdir(os.path.join(scenery_dir, "zAutoOrtho"))
     orthodetails.sort()
     assert orthodetails == ['scenery', 'test_info.json']
 
@@ -252,13 +252,13 @@ def test_bad_zip(tmpdir):
     extracts = os.listdir(scenery_dir)
     extracts.sort()
     assert extracts == [
-            'yAutoOrtho_Overlays', 'z_autoortho'
+            'yAutoOrtho_Overlays', 'zAutoOrtho'
     ]
     #assert extracts == [
-    #        'yAutoOrtho_Overlays', 'z_autoortho'
+    #        'yAutoOrtho_Overlays', 'zAutoOrtho'
     #]
 
-    scenery = os.listdir(os.path.join(scenery_dir, "z_autoortho", "scenery"))
+    scenery = os.listdir(os.path.join(scenery_dir, "zAutoOrtho", "scenery"))
     scenery.sort()
     assert scenery == ['z_ao_test']
 
