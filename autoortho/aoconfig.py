@@ -139,7 +139,7 @@ prefer_winfsp = False
 
         self.ao_scenery_path = os.path.join(
                 self.paths.scenery_path,
-                "z_autoortho",
+                "zAutoOrtho",
                 "scenery"
         )
       

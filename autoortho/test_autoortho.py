@@ -39,15 +39,15 @@ def pushd(new_dir):
 def scenery_dir(tmpdir):
     scenery_dir = os.path.join(tmpdir, 'Custom Scenery')
     structure = [
-        os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test', 'Earth nav data'),
-        os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test', 'terrain'),
-        os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test', 'textures'),
+        os.path.join(scenery_dir, 'zAutoOrtho', 'z_ao_test', 'Earth nav data'),
+        os.path.join(scenery_dir, 'zAutoOrtho', 'z_ao_test', 'terrain'),
+        os.path.join(scenery_dir, 'zAutoOrtho', 'z_ao_test', 'textures'),
     ]
 
     for d in structure:
         os.makedirs(d)
 
-    return os.path.join(scenery_dir, 'z_autoortho', 'z_ao_test')
+    return os.path.join(scenery_dir, 'zAutoOrtho', 'z_ao_test')
 
 #@pytest.fixture(scope="module")
 #def mount(tmpdir_factory):
