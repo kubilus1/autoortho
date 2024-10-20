@@ -9,7 +9,7 @@ autoortho.pyz:
 
 lin_bin: autoortho_lin_$(VERSION).bin
 autoortho_lin_$(VERSION).bin: autoortho/*.py
-	docker run --rm -v `pwd`:/code ubuntu:focal /bin/bash -c "cd /code; ./buildreqs.sh; time make bin VERSION=$(VERSION)"
+	docker run --rm -v `pwd`:/code ubuntu:jammy /bin/bash -c "cd /code; ./buildreqs.sh; time make bin VERSION=$(VERSION)"
 	mv autoortho_lin.bin $@
 
 enter:
@@ -19,7 +19,7 @@ autoortho/.version:
 	echo "$(VERSION)" > $@
 
 bin: autoortho/.version
-	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
+	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--linux-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=tk-inter \
 		--enable-plugin=eventlet \
