@@ -39,7 +39,7 @@ _autoortho_win.exe: autoortho/.version
 		--enable-plugin=eventlet \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
-		--include-data-file=./autoortho/.version*=. \
+		--include-data-file=./autoortho/.version*=./ \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
@@ -56,7 +56,7 @@ __main__.dist: autoortho/.version
 		--enable-plugin=eventlet \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
-		--include-data-file=./autoortho/.version*=. \
+		--include-data-file=./autoortho/.version*=./ \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
