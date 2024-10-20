@@ -9,7 +9,7 @@ autoortho.pyz:
 
 lin_bin: autoortho_lin_$(VERSION).bin
 autoortho_lin_$(VERSION).bin: autoortho/*.py
-	docker run --rm -v `pwd`:/code ubuntu:focal /bin/bash -c "cd /code; ./buildreqs.sh; time make bin VERSION=$(VERSION)"
+	docker run --rm -v `pwd`:/code ubuntu:jammy /bin/bash -c "cd /code; ./buildreqs.sh; time make bin VERSION=$(VERSION)"
 	mv autoortho_lin.bin $@
 
 enter:
@@ -19,7 +19,7 @@ autoortho/.version:
 	echo "$(VERSION)" > $@
 
 bin: autoortho/.version
-	python3.10 -m nuitka --verbose --verbose-output=nuitka.log \
+	python3 -m nuitka --verbose --verbose-output=nuitka.log \
 		--linux-icon=autoortho/imgs/ao-icon.ico \
 		--enable-plugin=tk-inter \
 		--enable-plugin=eventlet \
@@ -39,7 +39,7 @@ _autoortho_win.exe: autoortho/.version
 		--enable-plugin=eventlet \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
-		--include-data-file=./autoortho/.version*=. \
+		--include-data-file=./autoortho/.version*=./ \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
@@ -56,7 +56,7 @@ __main__.dist: autoortho/.version
 		--enable-plugin=eventlet \
 		--windows-icon-from-ico=autoortho/imgs/ao-icon.ico \
 		--assume-yes-for-downloads \
-		--include-data-file=./autoortho/.version*=. \
+		--include-data-file=./autoortho/.version*=./ \
 		--include-data-file=./autoortho/templates/*.html=templates/ \
 		--include-data-file=./autoortho/lib/windows/*=lib/windows/ \
 		--include-data-file=./autoortho/aoimage/*.dll=aoimage/ \
