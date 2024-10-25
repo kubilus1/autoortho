@@ -37,6 +37,10 @@ else:
     print("System is not supported")
     exit()
 
+if hasattr(sys, '_MEIPASS'):
+    # Running from PyInstaller bundle, load the .dylib from the bundle directory
+    _ispc_path = os.path.join(sys._MEIPASS, "libispc_texcomp.dylib")
+
 if platform.system().lower() == 'darwin':
     _stb = None
 else:
