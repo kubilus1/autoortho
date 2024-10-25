@@ -14,3 +14,4 @@ downloads/
 release/
 *.bin
 .version
+venv
