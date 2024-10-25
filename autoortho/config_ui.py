@@ -18,7 +18,7 @@ from packaging import version
 import logging
 log = logging.getLogger(__name__)
 
-import PySimpleGUI as sg
+import FreeSimpleGUI as sg
 
 import downloader
 from version import __version__

@@ -54,7 +54,7 @@ pluggy==1.2.0
     # via pytest
 psutil==5.9.2
     # via -r requirements.in
-pysimplegui==4.60.4
+freesimplegui>5
     # via -r requirements.in
 pytest==7.4.0
     # via -r requirements.in
