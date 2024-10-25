@@ -68,7 +68,7 @@ All of below steps require running command in ``Ternimal`` app.
 2. Install [FUSE for macOS](  ://osxfuse.github.io/) with command ``brew install --cask macfuse``.
 > Note: You need to enable FUSE in ``System Preferences`` -> ``Security & Privacy`` -> ``General`` -> ``Allow apps downloaded from:`` -> ``App Store and identified developers``. Watch some youtobe videos if you don't know how to do it.
     
-3. Install Run it
+3. Install&Run it
 ``` shell
 ./autoortho_ui
 ```
