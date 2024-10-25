@@ -5,7 +5,7 @@ a = Analysis(
     ['autoortho/autoortho.py'],
     pathex=[],
     binaries=[
-            ('autoortho/lib/darwin_arm/libispc_texcomp.dylib', '.'),  # Adjust destination path if needed
+            ('autoortho/lib/darwin_universal/libispc_texcomp.dylib', '.'),  # Adjust destination path if needed
             ('autoortho/aoimage/aoimage.dylib', '.')
         ],
     datas=[],
