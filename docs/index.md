@@ -60,7 +60,9 @@ experimental ATM:
 9. Run X-Plane and choose a location for an ortho set you have downloaded
 
 
-## MacOS Setup
+## MacOS Setup (See NOTE below)
+
+>NOTE: I will no longer update this branch to match upstream changes. That means MacOS support will end beyond 0.7.2. Anyone could branch off here and pull upstream changes they want in the future. I have decided to branch off and add my own thing in the future as original author never check our PR. 
 
 All of below steps require running command in ``Ternimal`` app.
 
