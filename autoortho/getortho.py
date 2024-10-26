@@ -261,10 +261,10 @@ class Chunk(object):
         # Hack override maptype
         #maptype = "ARC"
 
-        MAPID = "s2cloudless-2020_3857"
+        MAPID = "s2cloudless-2023_3857"
         MATRIXSET = "g"
         MAPTYPES = {
-            "EOX": f"https://{server}.s2maps-tiles.eu/wmts/?layer={MAPID}&style=default&tilematrixset={MATRIXSET}&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={self.zoom}&TileCol={self.col}&TileRow={self.row}",
+            "EOX": f"https://{server}.s2maps-tiles.eu/wmts?layer={MAPID}&style=default&tilematrixset={MATRIXSET}&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={self.zoom}&TileCol={self.col}&TileRow={self.row}",
             "BI": f"https://ecn.t{server_num}.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=13816",
             "GO2": f"http://khms{server_num}.google.com/kh/v=934?x={self.col}&y={self.row}&z={self.zoom}",
             "ARC": f"http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
@@ -272,12 +272,21 @@ class Chunk(object):
             "USGS": f"https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{self.zoom}/{self.row}/{self.col}",
             "FIREFLY": f"https://fly.maptiles.arcgis.com/arcgis/rest/services/World_Imagery_Firefly/MapServer/tile/{self.zoom}/{self.row}/{self.col}"
         }
+       
+
+        #if self.maptype.upper() == "EOX":
+        #    session.headers.update({'referer': 'https://s2maps.eu/'})
+       
+
         self.url = MAPTYPES[self.maptype.upper()]
         #log.debug(f"{self} getting {url}")
         header = {
                 "user-agent": "curl/7.68.0"
         }
-        
+        if self.maptype.upper() == "EOX":
+            log.info("EOX DETECTED")
+            header.update({'referer': 'https://s2maps.eu/'})
+       
         time.sleep((self.attempt/10))
         self.attempt += 1
 
@@ -288,6 +297,8 @@ class Chunk(object):
         resp = 0
         try:
             if use_requests:
+                # FIXME: Not the best way to set headers
+                session.headers = header
                 #resp = session.get(self.url, stream=True)
                 resp = session.get(self.url)
                 status_code = resp.status_code
