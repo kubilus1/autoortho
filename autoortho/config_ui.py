@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 
+import logging
 import os
-import sys
-import time
-import types
-import queue
-import pprint
 import pathlib
 import platform
+import queue
+import sys
 import threading
+import time
 import traceback
-import subprocess
-import configparser
-import platform
+
 from packaging import version
 
-import logging
 log = logging.getLogger(__name__)
 
 import FreeSimpleGUI as sg

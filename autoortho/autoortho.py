@@ -1,38 +1,36 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import time
+import argparse
 import ctypes
+import logging
+import os
+import platform
 import shutil
 import signal
 import tempfile
-import platform
-import argparse
 import threading
-import importlib
-
-from pathlib import Path
+import time
 from contextlib import contextmanager
+from pathlib import Path
 
 import aoconfig
 import aostats
-import winsetup
 import config_ui
-import flighttrack
-
+import winsetup
 from version import __version__
 
-import logging
 log = logging.getLogger(__name__)
 
 import geocoder
 
+
 class MountError(Exception):
     pass
 
+
 class AutoOrthoError(Exception):
     pass
+
 
 @contextmanager
 def setupmount(mountpoint, systemtype):
@@ -152,7 +150,7 @@ def diagnose(CFG):
     if failed:
         log.warning("***************")
         log.warning("***************")
-        log.warning("FAILURES DETECTED!!")  
+        log.warning("FAILURES DETECTED!!")
         log.warning("Please review logs and setup.")
         log.warning("***************")
         log.warning("***************")
@@ -161,7 +159,6 @@ def diagnose(CFG):
         log.info(" Diagnostics done.  All checks passed")
         return True
     log.info("------------------------------------\n\n")
-
 
 
 class AOMount:
@@ -182,14 +179,14 @@ class AOMount:
                 target=self.domount,
                 daemon=False,
                 args=(
-                    scenery.get('root'), 
-                    scenery.get('mount'), 
+                    scenery.get('root'),
+                    scenery.get('mount'),
                     self.cfg.fuse.threading
                 )
             )
             t.start()
             self.mount_threads.append(t)
-        
+
         if not blocking:
             log.info("Running mounts in non-blocking mode.")
             time.sleep(1)
@@ -198,10 +195,10 @@ class AOMount:
 
         try:
             def handle_sigterm(sig, frame):
-                raise(SystemExit)
+                raise (SystemExit)
 
             signal.signal(signal.SIGTERM, handle_sigterm)
-            
+
             time.sleep(1)
             # Check things out
             diagnose(self.cfg)
@@ -216,7 +213,6 @@ class AOMount:
             log.info("Shutting down ...")
             self.unmount_sceneries()
 
-
     def unmount_sceneries(self):
         log.info("Unmounting ...")
         self.mounts_running = False
@@ -228,7 +224,6 @@ class AOMount:
             t.join(5)
             log.info(f"Thread {t.ident} exited.")
         log.info("Unmount complete")
-
 
     def domount(self, root, mountpoint, threading=True):
 
@@ -250,9 +245,9 @@ class AOMount:
                     from refuse import high
                     high._libfuse = ctypes.CDLL(libpath)
                     autoortho_fuse.run(
-                            autoortho_fuse.AutoOrtho(root), 
-                            mount,
-                            nothreads
+                        autoortho_fuse.AutoOrtho(root),
+                        mount,
+                        nothreads
                     )
             else:
                 with setupmount(mountpoint, "Linux-FUSE") as mount:
@@ -260,9 +255,9 @@ class AOMount:
                     log.info(f"AutoOrtho:  root: {root}  mountpoint: {mount}")
                     import autoortho_fuse
                     autoortho_fuse.run(
-                            autoortho_fuse.AutoOrtho(root),
-                            mount, 
-                            nothreads
+                        autoortho_fuse.AutoOrtho(root),
+                        mount,
+                        nothreads
                     )
 
         except Exception as err:
@@ -295,12 +290,12 @@ def main():
     )
     parser.add_argument(
         "root",
-        help = "Root directory of orthophotos",
+        help="Root directory of orthophotos",
         nargs="?"
     )
     parser.add_argument(
         "mountpoint",
-        help = "Directory within X-Plane 11 custom scenery folder to mount",
+        help="Directory within X-Plane 11 custom scenery folder to mount",
         nargs="?"
     )
     parser.add_argument(
@@ -308,14 +303,14 @@ def main():
         "--configure",
         default=False,
         action="store_true",
-        help = "Run the configuration setup again."
+        help="Run the configuration setup again."
     )
     parser.add_argument(
         "-H",
         "--headless",
         default=False,
         action="store_true",
-        help = "Run in headless mode."
+        help="Run in headless mode."
     )
 
     args = parser.parse_args()
@@ -330,7 +325,6 @@ def main():
 
     stats = aostats.AOStats()
 
-
     import flighttrack
     ftrack = threading.Thread(
         target=flighttrack.run,
@@ -340,7 +334,7 @@ def main():
     # Start helper threads
     ftrack.start()
     stats.start()
-   
+
     # Run things
     if args.root and args.mountpoint:
         # Just mount specific requested dirs
@@ -350,8 +344,8 @@ def main():
         print("mountpoint:", mountpoint)
         aom = AOMount(CFG)
         aom.domount(
-            root, 
-            mountpoint, 
+            root,
+            mountpoint,
             CFG.fuse.threading
         )
     elif run_headless:
@@ -362,7 +356,7 @@ def main():
         log.info("Running CFG UI")
         cfgui = AOMountUI(CFG)
         cfgui.setup()
-        
+
     stats.stop()
     flighttrack.ft.stop()
 
