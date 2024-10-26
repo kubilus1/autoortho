@@ -6,7 +6,9 @@ a = Analysis(
     pathex=[],
     binaries=[
             ('autoortho/lib/darwin_universal/libispc_texcomp.dylib', '.'),  # Adjust destination path if needed
-            ('autoortho/aoimage/aoimage.dylib', '.')
+            ('autoortho/aoimage/aoimage.dylib', '.'),
+            ('autoortho/imgs/splash.png', 'imgs'),
+            ('autoortho/imgs/banner1.png', 'imgs'),
         ],
     datas=[],
     hiddenimports=['socketio', 'flask_socketio','engineio.async_threading', 'socketio.async_threading','engineio.async_eventlet'],
