@@ -56,9 +56,7 @@ jobs:
 
     - name: Setup 
       run: |
-          #choco --yes install winfsp
-          py -m pip install -U pytest 
-          py -m pip install -U -r requirements.txt
+          python -m pip install -U -r requirements.txt
 
     - name: Test
-      run: cd autoortho && py -m pytest -v test_getortho.py test_pydds.py test_downloader.py
+      run: cd autoortho && python -m pytest -v test_getortho.py test_pydds.py test_downloader.py

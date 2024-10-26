@@ -59,6 +59,82 @@ experimental ATM:
 8. Configure your scenery_packs.ini file appropriately 
 9. Run X-Plane and choose a location for an ortho set you have downloaded
 
+
+## MacOS Setup (See NOTE below)
+
+>NOTE: I will no longer update this branch to match upstream changes. That means MacOS support will end beyond 0.7.2. Anyone could branch off here and pull upstream changes they want in the future. I have decided to branch off and add my own thing in the future as original author never check our PR. 
+
+All of below steps require running command in ``Ternimal`` app.
+
+1. Install [Homebrew](https://brew.sh/) if you don't have it yet.
+2. Install [FUSE for macOS](  ://osxfuse.github.io/) with command ``brew install --cask macfuse``.
+> Note: You need to enable FUSE in ``System Preferences`` -> ``Security & Privacy`` -> ``General`` -> ``Allow apps downloaded from:`` -> ``App Store and identified developers``. Watch some youtobe videos if you don't know how to do it.
+    
+3. Install [xcode command line tools](https://developer.apple.com/xcode/resources/) with command ``xcode-select --install``.
+> Note: if you have already installed xcode, you can skip this step. but make sure it is up-to-date.
+4. Clone the code
+```shell
+git clone https://github.com/zodiac1214/autoortho.git
+
+cd autoortho && git checkout macos-0.7.2
+```
+5. install python3.10 with command ``brew install python@3.10``.
+6. install jpeg-turbo with command ``brew install jpeg-turbo``.
+7. brew install tcl-tk with command ``brew install tcl-tk``.
+8. Run command `brew tap --force homebrew/core`.
+9. modify brew tcl-tk
+```
+brew edit tcl-tk
+```
+Us your arrow keys to go down to
+```
+def install
+args = %W[
+--prefix=#{prefix}
+--includedir=#{include}/tcl-tk
+--mandir=#{man}
+--enable-threads
+--enable-64bit
+]
+```
+Then press “i”
+
+Then paste this line in that space
+
+`ENV["MACOSX_DEPLOYMENT_TARGET"] = "10.11"`
+
+Make sure it is aligned with the line after it.
+
+It should look like this after
+![img.png](img.png)
+
+After this hit ESC on your keyboard then type the following:
+
+`:wq!` (including the colon)
+
+Then hit enter
+
+10. reinstall tcl-tk with modified brew tcl-tk
+```shell
+HOMEBREW_NO_INSTALL_FROM_API=1 brew reinstall --build-from-source tcl-tk
+```
+11. install python-tk with command ``brew install python-tk@3.10``.
+12. install python dependencies.
+```
+python3.10 -m pip install -U pip
+python3.10 -m pip install setuptools
+python3.10 -m pip install wheel
+python3.10 -m pip install -r requirements-build.txt --no-use-pep517
+python3.10 -m pip install -r requirements.txt
+```
+13. Remove any MacOS quarantine flags
+``` shell
+sudo xattr -dr com.apple.quarantine *
+```
+14. Run it
+``` shell
+python3.10 autoortho
+```
 ---
 
 ## Requirements and Compatibility
