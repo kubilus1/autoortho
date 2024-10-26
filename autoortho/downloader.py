@@ -757,9 +757,7 @@ if __name__ == "__main__":
         r = d.regions.get(region)
         rel = r.get_latest_release()
         rel.download()
-        # d.download_region(region)
         if not args.downloadonly:
-            # d.install(region)
             r.install_release()
 
     elif args.command == 'list':
@@ -771,10 +769,7 @@ if __name__ == "__main__":
             if r.local_rel:
                 localinfo = f" ... installed {r.local_rel.name} version: {r.local_rel.ver}"
             log.info(f"{r.region_id} latest version: {rel.name} {rel.ver} {localinfo}")
-            # print(f"{r} current version {r.local_version}")
-            # log.info(f"{r} current version {r.local_version}")
-            # if r.pending_update:
-            #    log.info(f"    Available update ver: {r.latest_version}, size: {r.size/1048576:.2f} MB, downloads: {r.download_count}")
+
     else:
         parser.print_help()
         sys.exit(1)
