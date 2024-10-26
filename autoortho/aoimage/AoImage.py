@@ -16,7 +16,6 @@ class AOImageException(Exception):
 class AoImage(Structure):
     _fields_ = [
         ('_data', c_uint64),  # ctypes pointers are tricky when changed under the hud so we treat it as number
-        # ('_data', POINTER(c_uint64)),    # ctypes pointers are tricky when changed under the hud so we treat it as number
         ('_width', c_uint32),
         ('_height', c_uint32),
         ('_stride', c_uint32),
@@ -26,7 +25,6 @@ class AoImage(Structure):
 
     def __init__(self):
         self._data = 0
-        # self._data = cast('\x00', POINTER(c_uint64))
         self._width = 0
         self._height = 0
         self._stride = 0
@@ -67,7 +65,6 @@ class AoImage(Structure):
             if not _aoi.aoimage_reduce_2(orig, half):
                 log.debug(f"AoImage.reduce_2 error: {half._errmsg.decode()}")
                 raise AOImageException(f"AoImage.reduce_2 error: {half._errmsg.decode()}")
-                # return None
 
             steps -= 1
 
@@ -136,7 +133,6 @@ class AoImage(Structure):
 
 ## factories
 def new(mode, wh, color):
-    # print(f"{mode}, {wh}, {color}")
     assert (mode == "RGBA")
     new = AoImage()
     if not _aoi.aoimage_create(new, wh[0], wh[1], color[0], color[1], color[2]):
@@ -178,7 +174,6 @@ else:
     exit()
 
 if hasattr(sys, '_MEIPASS'):
-    # Running from PyInstaller bundle, load the .dylib from the bundle directory
     _aoi_path = os.path.join(sys._MEIPASS, "aoimage.dylib")
 
 _aoi = CDLL(_aoi_path)
