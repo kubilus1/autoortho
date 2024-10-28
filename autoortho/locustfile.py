@@ -117,9 +117,9 @@ class DDSRead(User):
 
 class DDSUser(DDSRead):
     #path = "./mount"
-    #path = "/home/mkubilus/Software/xplane/autoortho/Custom Scenery/z_autoortho/textures"
+    #path = "/home/mkubilus/Software/xplane/autoortho/Custom Scenery/zAutoOrtho/textures"
     print(CFG.paths)
-    path = os.path.join(CFG.paths.scenery_path, 'z_autoortho', 'textures')
+    path = os.path.join(CFG.paths.scenery_path, 'zAutoOrtho', 'textures')
     print(f"Testing against {path}")
 
     @task(1)

@@ -318,7 +318,7 @@ class Release(object):
         self.url = url
         self.release_dict = release_dict if release_dict else {}
         self.packages = {}
-        self.info_path = os.path.join(self.install_dir, "z_autoortho", f"{self.name}_info.json")
+        self.info_path = os.path.join(self.install_dir, "zAutoOrtho", f"{self.name}_info.json")
         self.ortho_dirs = []
         self.info_ver = "v2"
 
@@ -432,7 +432,7 @@ class Release(object):
                 p.install_dir = f"{self.install_dir}/yAutoOrtho_Overlays"
             elif pkgtype == "z":
                 # Ortho package
-                p.install_dir = f"{self.install_dir}/z_autoortho/scenery/z_ao_{self.id}"
+                p.install_dir = f"{self.install_dir}/zAutoOrtho/scenery/z_ao_{self.id}"
 
 
             p.remote_urls.append(a.get('browser_download_url'))
@@ -513,8 +513,8 @@ class Release(object):
                 shutil.rmtree(o)
 
         legacy_dirs = [
-            os.path.join(self.install_dir, "z_autoortho", "textures"),
-            os.path.join(self.install_dir, "z_autoortho", "_textures")
+            os.path.join(self.install_dir, "zAutoOrtho", "textures"),
+            os.path.join(self.install_dir, "zAutoOrtho", "_textures")
         ]
         for l in legacy_dirs:
             if os.path.exists(l):
@@ -550,7 +550,7 @@ class Region(object):
     def find_existing(self):
         log.info(f"Checking installed releases for {self.region_id}")
         local_rel_info = glob.glob(os.path.join(
-            self.install_dir, "z_autoortho", f"{self.region_id}_info.json"
+            self.install_dir, "zAutoOrtho", f"{self.region_id}_info.json"
         ))
         
         for rel in [ os.path.basename(rel) for rel in local_rel_info ]:
