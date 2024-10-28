@@ -20,43 +20,6 @@ on:
         default: ''
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-
-    env:
-      VERNAME: ${{ inputs.version }}
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup
-        run: |
-          sudo apt-get update && sudo apt-get install -y make ca-certificates
-          sudo update-ca-certificates
-
-      - name: Optionally set internal version separately
-        if: ${{ inputs.internalver != '' }}
-        run: |
-          echo "${{ inputs.internalver }}" > autoortho/.version
-
-      - name: Build
-        run: |
-          make lin_bin VERSION=${{ env.VERNAME }}
-
-      - name: Save artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linbin
-          path: autoortho_lin_*.bin
-
-      - name: Release
-        if: ${{ inputs.relname != '' }}
-        uses: softprops/action-gh-release@v1
-        with:
-          files: autoortho_lin_*.bin
-          tag_name: ${{ inputs.relname }}
-          prerelease: ${{ inputs.prerelease }}
-
   build-macos:
     runs-on: macos-latest
 
@@ -102,50 +65,3 @@ jobs:
           tag_name: ${{ inputs.relname }}
           prerelease: ${{ inputs.prerelease }}
 
-
-  build-windows:
-    runs-on: windows-latest
-
-    env:
-      VERNAME: ${{ inputs.version }}
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v3
-        with:
-          python-version: '3.10'
-
-      - name: Setup
-        run: |
-          #choco --yes install winfsp
-          python -m pip install -U -r requirements.txt
-          python -m pip install -U -r requirements-build.txt
-
-      - name: Optionally set internal version separately
-        if: ${{ inputs.internalver != '' }}
-        run: |
-          echo "${{ inputs.internalver }}" > autoortho/.version
-
-      - name: Build
-        run: |
-          make win_exe VERSION=${{ env.VERNAME }}
-          make win_zip ZIP="7z a" VERSION=${{ env.VERNAME }}
-
-      - name: Save artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: winbin
-          path: |
-            AutoOrtho_*.exe
-            autoortho_win_*.zip
-
-      - name: Release
-        if: ${{ inputs.relname != '' }}
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            AutoOrtho_*.exe
-            autoortho_win_*.zip
-          tag_name: ${{ inputs.relname }}
-          prerelease: ${{ inputs.prerelease }}
