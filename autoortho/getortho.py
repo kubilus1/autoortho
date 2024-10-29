@@ -432,6 +432,8 @@ class Tile(object):
                 dxt_format=CFG.pydds.format)
         self.id = f"{row}_{col}_{maptype}_{zoom}"
 
+        # in % in the CFG
+        self.saturation = 0.01 * float(CFG.coloring.saturation)
 
     def __lt__(self, other):
         return self.priority < other.priority
@@ -660,8 +662,18 @@ class Tile(object):
         self.ready.set()
         return outfile
 
-    @locked
     def get_img(self, mipmap, startrow=0, endrow=None, maxwait=5, min_zoom=None):
+        im = self._get_img(mipmap, startrow, endrow, maxwait, min_zoom)
+        if im is None:
+            return None
+
+        if self.saturation < 1.0:
+            im = im.copy().desaturate(self.saturation)
+
+        return im
+
+    @locked
+    def _get_img(self, mipmap, startrow=0, endrow=None, maxwait=5, min_zoom=None):
         #
         # Get an image for a particular mipmap
         #
