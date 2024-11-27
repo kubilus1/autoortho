@@ -191,17 +191,32 @@ class Chunk(object):
     serverlist=['a','b','c','d']
 
     def __init__(self, col, row, maptype, zoom, priority=0, cache_dir='.cache'):
+        # Slippy -> lat/lon
+        def num2deg(col, row, zoom):
+            n = 1 << zoom
+            lonDeg = col / n * 360.0 - 180.0
+            latRad = math.atan(math.sinh(math.pi * (1 - 2 * row / n)))
+            latDeg = math.degrees(latRad)
+            return latDeg, lonDeg
+
         self.col = col
         self.row = row
         self.zoom = zoom
         self.maptype = maptype
-        self.cache_dir = cache_dir
-        
+
+        latDeg, lonDeg = num2deg(self.col, self.row, self.zoom)
+        tile = '{:+03d}{:+04d}'.format(math.floor(latDeg), math.floor(lonDeg))
+
+        self.cache_dir = os.path.join(cache_dir, tile)
+
+        log.info(f"Slippy {self.col} {self.row} {self.zoom} => Cache {self.cache_dir}")
+
         # Hack override maptype
         #self.maptype = "BI"
 
         if not priority:
             self.priority = zoom
+
         self.chunk_id = f"{col}_{row}_{zoom}_{maptype}"
         self.ready = threading.Event()
         self.ready.clear()
@@ -240,6 +255,10 @@ class Chunk(object):
     def save_cache(self):
         if not self.data:
             return
+
+        if not os.path.isdir(self.cache_dir):
+            log.info(f"Creating cache dir {self.cache_dir}")
+            os.makedirs(self.cache_dir)
 
         with open(self.cache_path, 'wb') as h:
             h.write(self.data)
