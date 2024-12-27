@@ -10,7 +10,7 @@ apt-get update
 #apt-get install -y make curl patchelf python3.10 python3.10-tk zlib1g-dev \
 #    ccache python3.10-distutils python3.10-dev libjpeg-dev libturbojpeg0-dev build-essential
 apt-get install -y make curl patchelf python3-pip python3-tk zlib1g-dev \
-    ccache python3-distutils python3-dev libjpeg-dev libturbojpeg0-dev build-essential
+    ccache python3-distutils python3-dev libjpeg-dev libturbojpeg0-dev build-essential ca-certificates
 
 #curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 
