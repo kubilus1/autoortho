@@ -72,7 +72,7 @@ min_zoom = 12
 # stutters.  Lower numbers will be more responsive at the expense of
 # ocassional low quality tiles.
 maxwait = 0.5
-maptypes = ['Null', 'BI', 'NAIP', 'EOX', 'USGS', 'Firefly']
+maptypes = ['Null', 'BI', 'NAIP', 'EOX', 'USGS', 'Firefly', 'YNDX']
 fetch_threads = 32 
 
 [pydds]

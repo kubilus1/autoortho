@@ -97,7 +97,7 @@ class ConfigUI(object):
         scenery_path = self.cfg.paths.scenery_path
         showconfig = self.cfg.general.showconfig
         maptype = self.cfg.autoortho.maptype_override
-        maptypes = ['', 'BI', 'NAIP', 'EOX', 'USGS', 'Firefly'] 
+        maptypes = ['', 'BI', 'NAIP', 'EOX', 'USGS', 'Firefly', 'YNDX']
 
         sg.theme('DarkAmber')
 
