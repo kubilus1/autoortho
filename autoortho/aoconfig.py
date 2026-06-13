@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import ast
 import pprint
 import configparser
@@ -13,8 +14,14 @@ class SectionParser(object):
     true = ['true','1', 'yes', 'on']
     false = ['false', '0', 'no', 'off']
 
+    # Inline comment: an unquoted '#' or ';' preceded by whitespace
+    _inline_comment = re.compile(r'\s[#;]')
+
     def __init__(self, /, **kwargs):
         for k,v in kwargs.items():
+            # Strip inline comments and surrounding whitespace from values
+            if isinstance(v, str):
+                v = self._inline_comment.split(v, maxsplit=1)[0].strip()
             # Detect booleans
             if v.lower() in self.true:
                 v = True
