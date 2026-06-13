@@ -297,10 +297,8 @@ class Chunk(object):
         resp = 0
         try:
             if use_requests:
-                # FIXME: Not the best way to set headers
-                session.headers = header
                 #resp = session.get(self.url, stream=True)
-                resp = session.get(self.url)
+                resp = session.get(self.url, headers=header)
                 status_code = resp.status_code
             else:
                 req = Request(self.url, headers=header)

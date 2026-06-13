@@ -89,6 +89,8 @@ def setupmount(mountpoint, systemtype):
         os.makedirs(d)
 
     Path(placeholder_path).touch()
+
+    Path(placeholder_path).touch()
     log.info(f"Mount point {mountpoint} exiting.")
 
 
