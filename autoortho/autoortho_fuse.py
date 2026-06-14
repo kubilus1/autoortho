@@ -171,10 +171,22 @@ class AutoOrtho(Operations):
                 #'st_dev': 1421433975
             }
         elif path.endswith(".poison"):
-            log.info("Poison pill.  Exiting!")
-            fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
-            #threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
-            do_fuse_exit(fuse_ptr)
+            log.info("Poison pill. Exiting!")
+
+            # FUSE-T on macOS may return a raw integer-style context pointer here,
+            # while macFUSE/libfuse paths may expose .contents.fuse. The Silicon
+            # Mac launcher already owns process shutdown and unmount cleanup, so
+            # avoid crashing getattr on Darwin when X-Plane probes .poison.
+            if platform.system() == "Darwin":
+                log.info("Darwin/FUSE-T poison pill: deferring exit to launcher cleanup.")
+            else:
+                try:
+                    fuse_ctx = _libfuse.fuse_get_context()
+                    fuse_ptr = ctypes.c_void_p(fuse_ctx.contents.fuse)
+                    #threading.Thread(target=do_fuse_exit, args=(fuse_ptr,)).start()
+                    do_fuse_exit(fuse_ptr)
+                except Exception as err:
+                    log.warning("Poison pill fuse exit ignored: %r", err)
             
             attrs = {
                 'st_atime': 1649857250.382081, 
@@ -285,7 +297,7 @@ class AutoOrtho(Operations):
             # return dict((key, getattr(st, key)) for key in ('f_bavail', 'f_bfree',
             #     'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
             #     'f_frsize', 'f_namemax'))
-        elif platform.system() == 'Linux':
+        elif platform.system() in ('Linux', 'Darwin'):
             stv = os.statvfs(full_path)
             #log.info(stv)
             return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
@@ -474,38 +486,31 @@ def do_fuse_exit(fuse_ptr=None):
 def run(ao, mountpoint, nothreads=False):
     log.info(f"MOUNT: {mountpoint}")
 
+    if platform.system() == "Darwin":
+        print("Using macOS FUSE options")
+        print("Mountpoint:", os.path.abspath(mountpoint))
+        FUSE(
+            ao,
+            os.path.abspath(mountpoint),
+            nothreads=True,
+            foreground=True,
+            debug=True,
+            volname="AutoOrtho",
+        )
+        log.info(f"FUSE: Exiting mount {mountpoint}")
+        return
+
     FUSE(
         ao,
-        os.path.abspath(mountpoint), 
-        nothreads=nothreads, 
-        foreground=True, 
-        allow_other=True,
-        #nonempty=True,
-        #auto_cache=True,
-        #max_read=32768,
-        #max_read=16384,
-        #kernel_cache=True,
-        uid=-1,
-        gid=-1,
-        #debug=True,
-        #mode="0777",
-        #umask="777",
-        #FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
-        #FileSecurity="D:P(A;;FA;;;OW)",
-        #FileSecurity="D:P(A;;0x1200A9;;;WD)",
-        #FileSecurity="D:P(A;OICI;FA;;;WD)(A;OICI;FA;;;BU)(A;OICI;FA;;;BA)(A;OICI;FA;;;OW)",
-        #FileSecurity="O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;WD)",
-        #umask=0,
-        #create_dir_umask=0,
-        #max_background=4,
-        #kernel_cache=False,
-        #max_readahead=0,
-        #sync_read=True,
-        #async_read=False,
-        #max_readahead=8192,
-        #max_readahead=0,
-        #max_read=262144,
-        #default_permissions=True,
-        #direct_io=True
+        os.path.abspath(mountpoint),
+        nothreads=True,
+        foreground=True,
+        # allow_other=True,
+        # nonempty=True,
+        # auto_cache=True,
+        # max_read=32768,
+        # kernel_cache=True,
+        # uid=-1,
+        # gid=-1,
     )
     log.info(f"FUSE: Exiting mount {mountpoint}")

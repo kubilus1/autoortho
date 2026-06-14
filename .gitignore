@@ -14,3 +14,32 @@ downloads/
 release/
 *.bin
 .version
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python local environments/cache
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+autoortho/venv/
+
+# AutoOrtho local/runtime artifacts
+*.log
+autoortho-mac-fuset-*.log
+autoortho-live-tiles.log
+
+# Portable beta generated output
+AutoOrtho-Silicon-Mac-Beta/
+AutoOrtho-Silicon-Mac-Beta*.zip
+runtime/venv/
+wheelhouse/
+
+# Local backups
+*.bak*
+*.orig
+*_backup*
